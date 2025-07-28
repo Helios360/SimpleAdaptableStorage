@@ -48,10 +48,16 @@ CREATE TABLE IF NOT EXISTS Candidats (
     date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     tags JSON,
     skills JSON,
-    status TINYINT,
-    is_admin TINYINT,
+    status TINYINT DEFAULT 0,
+    is_admin TINYINT DEFAULT 0,
     tests JSON,
     gen_score INT,
+);
+CREATE TABLE IF NOT EXISTS Test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question VARCHAR(200),
+    type VARCHAR(50),
+
 );
 EOF
 # tests = [Frontend score/100 coef.1, Backend score/100 coef.0,70, Psychotechnical score/100 coef.1,5]
