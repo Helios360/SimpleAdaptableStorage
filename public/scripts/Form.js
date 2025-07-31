@@ -25,3 +25,16 @@ document.addEventListener("DOMContentLoaded", function () {
     password.addEventListener("input", checkPasswordMatch);
     confirm.addEventListener("input", checkPasswordMatch);
 });
+
+document.getElementById('cv').addEventListener('change', function() {
+  const fileName = this.files[0]?.name || "No file chosen";
+  document.getElementById('cvFileName').textContent = fileName;
+});
+document.getElementById('id_doc').addEventListener('change', function() {
+  const fileName = this.files[0]?.name || "No file chosen";
+  document.getElementById('piRectoFilename').textContent = fileName;
+});
+document.getElementById('id_doc_verso').addEventListener('change', function() {
+  const fileName = this.files[0]?.name || "No file chosen";
+  document.getElementById('piVersoFilename').textContent = fileName;
+});

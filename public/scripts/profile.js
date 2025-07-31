@@ -6,6 +6,8 @@ const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
 const token = localStorage.getItem('token');
+document.getElementById('PImg').style.display = "none";
+document.getElementById('PImgVerso').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
@@ -52,7 +54,7 @@ if (data.success) {
             return;
         }
         const data = {
-            name: document.getElementById('name').value,
+            name: document.getElementById('name').value.toUpperCase(),
             fname: document.getElementById('fname').value,
             email: document.getElementById('email').value,
             tel: document.getElementById('tel').value,
@@ -113,13 +115,17 @@ if (data.success) {
         pi.style.backgroundColor = "var(--primary)";
         pi.style.color = "var(--secondary)";
     cv.addEventListener('click', function (){ // charger le cv
+        document.getElementById('PImgVerso').style.display = "none";
+        document.getElementById('PImg').style.display = "none";
+        document.getElementById('cv-frame').style.display = "block";
+        
         const cvUrl = `${user.cv}`;
         fetch(cvUrl, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + localStorage.getItem('token')
             }
-            })
+        })
         .then(response => {
             if (!response.ok) throw new Error("Accès refusé au CV");
             return response.blob();
@@ -139,25 +145,47 @@ if (data.success) {
     });
     
     pi.addEventListener('click', function (){ // charger la pi
-        const cvUrl = `${user.id_doc}`;
-        fetch(cvUrl, {
+        document.getElementById('cv-frame').style.display = "none";
+        document.getElementById('PImg').style.display = "block";
+        document.getElementById('PImgVerso').style.display = "block";
+
+        const rectoUrl = `${user.id_doc}`;
+        const versoUrl = `${user.id_doc_verso}`;
+        const headers = {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + localStorage.getItem('token')
             }
+        };
+        // Charger le recto
+        fetch(rectoUrl, headers)
+            .then(response => {
+                if (!response.ok) throw new Error("Accès refusé au recto de la PI");
+                return response.blob();
             })
-        .then(response => {
-            if (!response.ok) throw new Error("Accès refusé a la pièce d'id");
-            return response.blob();
-        })
-        .then(blob => {
-            const url = URL.createObjectURL(blob);
-            document.getElementById('cv-frame').src = url;
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Impossible de charger la PI.");
-        });
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('PImg').src = url;
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Impossible de charger le recto de la PI.");
+            });
+
+        // Charger le verso
+        fetch(versoUrl, headers)
+            .then(response => {
+                if (!response.ok) throw new Error("Accès refusé au verso de la PI");
+                return response.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('PImgVerso').src = url;
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Impossible de charger le verso de la PI.");
+            });
         cv.style.backgroundColor = "var(--primary)";
         cv.style.color = "var(--secondary)";
         pi.style.backgroundColor = "var(--secondary)";
@@ -231,7 +259,7 @@ function renderTagsAndSkills() {
                 confirming = true;
             } else {
                 currentTags = currentTags.filter(tag => tag !== t);
-                renderTagsAndSkills(); // now handled locally
+                renderTagsAndSkills();
             }
         };
         tagList.appendChild(span);

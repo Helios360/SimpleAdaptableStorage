@@ -10,7 +10,7 @@
 
     <title>Cloud-testing</title>
     <link rel="stylesheet" href="styles/main.css">
-    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="icon" type="image/png" href="/sources/favicon.ico">
 
     <meta property="og:title" content="Cloud-testing">
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
@@ -22,7 +22,7 @@
         <a id="toggle-theme"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/></svg></a>
     </header>
     <main>
-        <img src="sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
+        <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
         <form action="/submit-form" method="POST" enctype="multipart/form-data" class="form">
             <div style="display:flex; justify-content: space-around;">
                 <div>
@@ -62,17 +62,17 @@
             <div style="display:flex; justify-content: space-around;">
                 <ul class="form2">
                     <p>Documents :</p>
-                    <li>
-                        <label for="cv">CV</label>
+                    <li class="file-upload">
+                        <label for="cv" id="cvFileName">CV +</label>
                         <input type="file" id="cv" name="cv" accept=".pdf" required class="docin">
                     </li>
-                    <li>
-                        <label for="id_doc">Pièce d'identité (recto)</label>
+                    <li class="file-upload">
+                        <label for="id_doc" id="piRectoFilename">Pièce d'identité (recto) +</label>
                         <input type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required class="docin">
                     </li>
-                    <li>
-                        <label for="id_doc">Pièce d'identité (verso)</label>
-                        <input type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required class="docin">
+                    <li class="file-upload">
+                        <label for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) +</label>
+                        <input type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required class="docin">
                     </li>
                 </ul>
                 <div>

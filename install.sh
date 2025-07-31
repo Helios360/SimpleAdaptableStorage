@@ -31,7 +31,7 @@ echo ":3 Setting up MySQL database and table..."
 mysql -u root -p$MYSQL_PASSWORD <<EOF
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
 USE \`$DB_NAME\`;
-CREATE TABLE IF NOT EXISTS Candidats (
+CREATE TABLE IF NOT EXISTS Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
     fname VARCHAR(100),
@@ -43,21 +43,28 @@ CREATE TABLE IF NOT EXISTS Candidats (
     birth DATE,
     cv VARCHAR(255),
     id_doc VARCHAR(255),
+    id_doc_verso VARCHAR(255),
     password VARCHAR(100),
     agree BOOLEAN DEFAULT FALSE,
     date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     tags JSON,
     skills JSON,
     status TINYINT DEFAULT 0,
-    is_admin TINYINT DEFAULT 0,
-    tests JSON,
-    gen_score INT,
+    is_admin TINYINT DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS Test (
+CREATE TABLE IF NOT EXISTS Tests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     question VARCHAR(200),
     type VARCHAR(50),
-
+    exemple VARCHAR(500),
+    hint VARCHAR(255)
+);
+CREATE TABLE IF NOT EXISTS Histories (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    gen_score INT,
+    data JSON,
+    FOREIGN KEY (user_id) REFERENCES Users(id)
 );
 EOF
 # tests = [Frontend score/100 coef.1, Backend score/100 coef.0,70, Psychotechnical score/100 coef.1,5]
@@ -66,7 +73,7 @@ if [ $? -ne 0 ]; then
   echo ":( Failed to set up database. Check your MySQL credentials and try again."
   exit 1
 fi
-echo ":D MySQL database '$DB_NAME' and table 'Candidats' are ready."
+echo ":D MySQL database '$DB_NAME' and tables are ready."
 
 # 6. Create .env file (optional – for future config)
 echo "OwO Creating .env file..."

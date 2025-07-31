@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/styles/main.css">
     <link rel="stylesheet" href="/styles/prism.css" />
     <link rel="stylesheet" href="/styles/test.css">
-    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="icon" type="image/png" href="/public/sources/LogoBleuOmbre-edited.png">
     <link rel="stylesheet" href="https://esm.sh/@codemirror/view@6/style.css">
     <meta property="og:title" content="Cloud-testing">
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
@@ -21,31 +21,23 @@
 
 </head>
 <body>
+    <div class="ready-popup" id="popup">
+      <div>
+        <h1>Pret ?</h1>
+        <p>&nbsp&nbspVous allez passer un court test simple, la note finale (gardée secrete) n'est pas représentative de vos chances ou de votre parcour a venir il n'y a pas de temps imparti, le but est de réaliser le test avec vos connaissances actuelle pour un accompagnement plus adapté.<br>&nbsp&nbspLe test se compose de 9 question soit 3 question sur le theme du frontend (HTML,CSS,Javascript), 3 sur le backend (Javascript,Pseudocode) et 3 question psychotechniques a choix multiples.<br>&nbsp&nbspChaque question envoyé est corrigé par IA et stocké dans un historique privé definitif donc vous avez 1 essai et des indices en bas a gauche.<br><br> Bonne chance :D</p>
+        <button id="launch-test">Passer au test</button>
+      </div>
+    </div>
     <header>
         <img src="/sources/LogoBleuOmbre-edited.png" height="80px">
-        <h1 id="test_id">TEST ° 1</h1>
+        <h1>TEST ° <a id="test_count"></a></h1>
         <a id="toggle-theme"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/></svg></a>
     </header>
     <main>
-        <h2 id="question">Quel est le nombre de canard dans le monde pouet :</h2>
+        <h2 id="question"></h2>
         <div class="exercise">
             <div class="exemple">
-<pre><code class="language-js" id="exemple">function isPrime(number) {
-    if (number <= 1) return false;
-
-    for (let i = 2; i <= Math.sqrt(number); i++) {
-        if (number % i === 0) {
-        return false;
-        }
-    }
-
-    return true;
-}
-
-// Example usage
-const num = 17;
-console.log(`${num} is prime?`, isPrime(num));
-</code></pre>
+            <pre><code class="language-js" id="exemple"></code></pre>
             </div>
             <div class="response" id="editor"></div>
         </div>

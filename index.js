@@ -53,7 +53,7 @@ app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(__dirname
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
-  db.query('SELECT * FROM Candidats WHERE email = ?', [email], (err, results) => {
+  db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
     if (err) return res.status(500).send('DB error');
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Email not found' });
 
@@ -61,8 +61,7 @@ app.post('/login', (req, res) => {
     bcrypt.compare(password, user.password, (err, isMatch) => {
       if (err) return res.status(500).send('Password error');
       if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
-
-      const token = jwt.sign({email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
+      const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
       res.json({ success: true, token, user: {email: user.email, name: user.name} });
     });
   });
@@ -71,7 +70,7 @@ app.post('/login', (req, res) => {
 // === /api/profile (Protected Route) ===
 app.get('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
-  db.query('SELECT * FROM Candidats WHERE email = ?', [userId], (err, results) => {
+  db.query('SELECT * FROM Users WHERE email = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
@@ -79,36 +78,32 @@ app.get('/api/profile', authMiddleware, (req, res) => {
 });
 // === Admin full sql api ===
 app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
-  db.query('SELECT * FROM Candidats', (err, results)=>{
+  db.query('SELECT * FROM Users', (err, results)=>{
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
     res.json({ success: true, users: results});
   });
 });
-// === test route ===
-app.get('/api', authMiddleware, (req, res) => {});
 // === Single user profile (admin) ===
 app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
   const userId = req.params.id;
-  db.query('SELECT * FROM Candidats WHERE id = ?', [userId], (err, results) => {
+  db.query('SELECT * FROM Users WHERE id = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   });
 });
-
 // Only accessible by authenticated admins
 app.get('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   const email = decodeURIComponent(req.params.email);
 
-  db.query('SELECT * FROM Candidats WHERE email = ?', [email], (err, results) => {
+  db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
 
     res.json({ success: true, student: results[0] });
   });
 });
-
 
 // === PDF access ===
 app.get('/uploads/:folder/:filename', authMiddleware, (req, res) => {
@@ -119,7 +114,6 @@ app.get('/uploads/:folder/:filename', authMiddleware, (req, res) => {
     if (err) {
       return res.status(404).send('File not found');
     }
-
     res.sendFile(filePath);
   });
 });
@@ -130,7 +124,7 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
     email, name, fname, tel, birth, addr, city, postal, tags, skills, status
   } = req.body;
   db.query(
-    'UPDATE Candidats SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
+    'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
     [name, fname, tel, birth, addr, city, postal, JSON.stringify(tags), JSON.stringify(skills), status, email],
     (err, result) => {
       if (err) return res.status(500).json({ success: false, message: 'Database error' });
@@ -141,9 +135,8 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
 // === update status from list (admin) ===
 app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
   const { id, status } = req.body;
-
   db.query(
-    'UPDATE Candidats SET status = ? WHERE id = ?',
+    'UPDATE Users SET status = ? WHERE id = ?',
     [status, id],
     (err, result) => {
       if (err) {
@@ -169,7 +162,7 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
   const skillsJSON = JSON.stringify(skills);
 
   db.query(
-    `UPDATE Candidats 
+    `UPDATE Users 
      SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?, status=?
      WHERE email = ?`,
     [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, status, userEmail],
@@ -226,9 +219,9 @@ app.post('/submit-form', (req, res) => {
       return path.relative(__dirname, newPath);
     };
 
-
     const cvPath = moveFile(files.cv);
     const idDocPath = moveFile(files.id_doc);
+    const idDocPathVerso = moveFile(files.id_doc_verso);
 
     // Hash password
     const saltRounds = 10;
@@ -236,14 +229,14 @@ app.post('/submit-form', (req, res) => {
 
     // Insert into DB
     const sql = `
-      INSERT INTO Candidats
-        (name, fname, email, tel, addr, city, postal, birth, cv, id_doc, password, agree)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO Users
+        (name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, agree)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       name, fname, email, tel, addr, city, postal, birth,
-      cvPath, idDocPath, hashedPassword, agree ? 1 : 0
+      cvPath, idDocPath, idDocPathVerso, hashedPassword, agree ? 1 : 0
     ];
 
     db.query(sql, values, (err, result) => {
@@ -257,14 +250,95 @@ app.post('/submit-form', (req, res) => {
   });
 });
 
-app.post('/api/test', authMiddleware, (req, res) => {
-  const userEmail = req.user.email;
-  const { answer } = req.body;
-  console.log(userEmail);
-  console.log(answer);
-  res.json({ message: "Answer received", success: true });
+// === GET a random test (READ-ONLY) ===
+app.get('/api/test/next', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+
+  db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, historyResults) => {
+    if (err) {
+      console.error('DB error on history check:', err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    let completedTests = [];
+    let numbOfTest = 0;
+
+    if (historyResults.length > 0) {
+      let historyData = historyResults[0].data;
+      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
+
+      completedTests = Object.values(historyData.tests).map(t => t.question);
+      numbOfTest = completedTests.length;
+
+      if (numbOfTest >= 9) {
+          return res.status(200).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
+      }
+    }
+
+    let servType = '';
+    console.log(numbOfTest);
+    if (numbOfTest < 3) servType = 'frontend';
+    else if (numbOfTest < 6) servType = 'backend';
+    else servType = 'psychotechnique';
+
+    db.query(
+      `SELECT * FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
+      [servType, completedTests.length ? completedTests : [0]],
+      (err, testResults) => {
+        if (err || testResults.length === 0) {
+          return res.status(404).json({ success: false, message: 'No available test found' });
+        }
+
+        return res.status(200).json({ success: true, test: testResults[0] });
+      }
+    );
+  });
 });
 
+app.post('/api/test/response', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+  const { testId, type, answer } = req.body;
+
+  if (!testId || !type || !answer) {
+    return res.status(400).json({ success: false, message: 'Missing test data' });
+  }
+
+  db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, historyResults) => {
+    if (err) {
+      console.error('DB error:', err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+
+    let historyData = null;
+    if (historyResults.length > 0) {
+      historyData = historyResults[0].data;
+      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
+    }
+
+    const newTestKey = historyData ? `test${Object.keys(historyData.tests).length + 1}` : 'test1';
+
+    const newTestEntry = {
+      type,
+      question: testId,
+      response: answer,
+      score: null
+    };
+
+    if (!historyData) {
+      historyData = { tests: { [newTestKey]: newTestEntry } };
+      db.query('INSERT INTO Histories (user_id, data) VALUES (?, ?)', [userId, JSON.stringify(historyData)], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Insert error' });
+        res.json({ success: true });
+      });
+    } else {
+      historyData.tests[newTestKey] = newTestEntry;
+      db.query('UPDATE Histories SET data = ? WHERE user_id = ?', [JSON.stringify(historyData), userId], (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Update error' });
+        res.json({ success: true });
+      });
+    }
+  });
+});
 
 // === Fallback route ===
 app.use((req, res) => {
