@@ -9,6 +9,14 @@
     <meta name="robots" content="noindex, nofollow">
 
     <title>Cloud-testing</title>
+    <script>
+      (function () {
+        const isDark = localStorage.getItem('dark') === 'true';
+        const root = document.documentElement;
+        root.style.setProperty('--primary', isDark ? '#141414' : '#F1F4F4');
+        root.style.setProperty('--secondary', isDark ? '#F1F4F4' : '#141414');
+      })();
+    </script>
     <link rel="stylesheet" href="/styles/main.css">
     <link rel="stylesheet" href="/styles/profile.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
@@ -17,7 +25,6 @@
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
     <meta property="og:image" content="assets/preview.png">
     <meta property="og:type" content="website">
-
 </head>
 <body>
   <header>
@@ -97,7 +104,7 @@
           </li>
         </ul>
         <div class="plus">
-          <div>
+          <div class="wrapper" id="tagsWrapper">
             <p>Tags</p>
             <input class="taging" id="add_tags" list="tagList" placeholder=". . .">
               <datalist id="tagList">
@@ -109,7 +116,7 @@
             <div class="box" id="tags">
             </div>
           </div>
-          <div>
+          <div class="wrapper"²>
             <p>Compétences</p>
             <input class="taging" id="add_skills" list="skillList" placeholder=". . .">
             <datalist id="skillList">
@@ -215,7 +222,7 @@
           <a id="pi">PI</a>
         </div>
         <iframe id="cv-frame" src=""></iframe>
-        <div class="imgs">
+        <div class="imgs" id="pis">
           <img src="" alt="PI Innaccessible..." id="PImg">
           <hr style="color:var(--secondary)">
           <img src="" alt="PI Innaccessible..." id="PImgVerso">

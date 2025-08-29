@@ -1,3 +1,4 @@
+--Just a file to use for tests on the database
 INSERT INTO Tests (question, type, exemple, hint) VALUES ("What is the capital of France?", "frontend", "Paris", "Think about major European cities");
 INSERT INTO Tests (question, type, exemple, hint) VALUES ("How do you center a div in CSS?", "frontend", "Use flexbox or margin: auto;", "Consider modern layout techniques");
 INSERT INTO Tests (question, type, exemple, hint) VALUES ("What is the output of console.log(2 + '2') in JavaScript?", "frontend", "22", "Think about type coercion");
@@ -18,3 +19,64 @@ INSERT INTO Tests (question, type, exemple, hint) VALUES ("A farmer has 17 sheep
 INSERT INTO Tests (question, type, exemple, hint) VALUES ("If you're running a race and you pass the person in 2nd place, what place are you in?", "psychotechnique", "2nd place", "Visualize the positions in the race");
 
 select * from Tests\G select * from Users\G select * from Histories\G
+
+INSERT INTO Users (
+  name, fname, email, tel, addr, city,
+  postal, birth, password, agree,
+  date_inscription, tags, skills, status, is_admin
+) VALUES (
+  'Barakat',
+  'Abdelkader',
+  'barakat123@example.com',
+  '0612345678',
+  '123 Rue du Cloud',
+  'Casablanca',
+  '20000',
+  '1990-08-01',
+  '$2b$10$abc123fakehashedpass',
+  1,
+  NOW(),
+  '["informatique", "cloud"]',
+  '["Node.js", "SQL", "DevOps"]',
+  1,
+  0
+);
+INSERT INTO Users (
+  name, fname, email, tel, addr, city,
+  postal, birth, password, agree,
+  date_inscription, tags, skills, status, is_admin
+) VALUES (
+  'Labbé', 'Louise', 'louise.labbé0@example.com', '0803300868', '89, chemin Élisabeth Bernier', 'Françoisboeuf',
+  '20527', '2001-01-13', '1f489582f7ea4c208b70219a2bb6a322227a7516630530a10ed7f2710cfbe447', 1,
+  NOW(), '["finance", "cloud"]', '["Node.js", "SQL", "Docker"]', 1, 0
+);
+
+INSERT INTO Users (
+  name, fname, email, tel, addr, city,
+  postal, birth, password, agree,
+  date_inscription, tags, skills, status, is_admin
+) VALUES (
+  'Daniel', 'Jérôme', 'jérôme.daniel1@example.com', '0650392816', '1, avenue Gérard Étienne', 'Lemoine',
+  '72612', '1993-01-14', '0b14d501a594442a01c6859541bcb3e8164d183d32937b851835442f69d5c94e', 0,
+  NOW(), '["finance", "business"]', '["Node.js", "DevOps", "Docker"]', 0, 0
+);
+
+INSERT INTO Users (
+  name, fname, email, tel, addr, city,
+  postal, birth, password, agree,
+  date_inscription, tags, skills, status, is_admin
+) VALUES (
+  'Masse', 'Yves', 'yves.masse2@example.com', '+33571521886', '45, chemin Lombard', 'Saint Augustin',
+  '09844', '2000-04-10', '6cf615d5bcaac778352a8f1f3360d23f02f34ec182e259897fd6ce485d7870d4', 1,
+  NOW(), '["informatique", "marketing"]', '["DevOps", "SQL", "Node.js"]', 1, 0
+);
+
+INSERT INTO Users (
+  name, fname, email, tel, addr, city,
+  postal, birth, password, agree,
+  date_inscription, tags, skills, status, is_admin
+) VALUES (
+  'Lejeune', 'Michelle', 'michelle.lejeune3@example.com', '0309675630', '624, boulevard Hardy', 'Pereira',
+  '78570', '1991-10-29', '5906ac361a137e2d286465cd6588ebb5ac3f5ae955001100bc41577c3d751764', 0,
+  NOW(), '["finance", "marketing"]', '["DevOps", "React", "SQL"]', 0, 0
+);

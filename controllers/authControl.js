@@ -1,19 +1,22 @@
 const jwt = require('jsonwebtoken');
-const SECRET = process.env.JWT_SECRET || 'your-secret-key';
+require('dotenv').config();
+const SECRET = process.env.JWT_SECRET;
 
 function authMiddleware(req, res, next) {
-  const cookieHeader = req.headers.cookie || '';
-  const match = cookieHeader.match(/token=([^;]+)/);
+  const token = req.cookies.token;
 
-  if (!match) return res.status(401).json({ message: 'Missing token' });
-
-  const token = match[1];
-  if (!token) return res.status(401).json({ message: 'Invalid token format' });
+  if (!token) {
+    console.warn('Missing token in cookies');
+    return res.status(401).json({ message: 'Missing token' });
+  }
 
   jwt.verify(token, SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ message: 'Invalid token' });
+    if (err) {
+      console.warn('Token verification failed:', err.message);
+      return res.status(401).json({ message: 'Invalid token' });
+    }
 
-    req.user = decoded; // { email, name, is_admin }
+    req.user = decoded;
     next();
   });
 }

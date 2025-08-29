@@ -6,8 +6,6 @@ const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
 const token = localStorage.getItem('token');
-document.getElementById('PImg').style.display = "none";
-document.getElementById('PImgVerso').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
@@ -17,9 +15,7 @@ const fetchUrl = targetEmail
   : '/api/profile';
 
 fetch(fetchUrl, {
-  headers: {
-    Authorization: `Bearer ${token}`
-  }
+    credentials: 'include'
 })
 .then(res => res.json())
 .then(data => {
@@ -36,17 +32,13 @@ if (data.success) {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {age--;}
     document.getElementById('birth').value = user.birth.split("T")[0];
     document.getElementById('age').textContent = age+ ' ans ';
     document.getElementById('city').value = user.city;
     document.getElementById('postal').value = user.postal;
-
     document.getElementById('addr').value = user.addr;
-    // Data save logic
+
     document.getElementById('saveBtn').addEventListener('click', () => {
         const emailInput = document.getElementById('email').value.trim();
         if (!emailInput || !emailInput.includes('@')) {
@@ -74,8 +66,7 @@ if (data.success) {
         fetch(endpoint, {
             method: 'POST',
             headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
         })
@@ -115,8 +106,7 @@ if (data.success) {
         pi.style.backgroundColor = "var(--primary)";
         pi.style.color = "var(--secondary)";
     cv.addEventListener('click', function (){ // charger le cv
-        document.getElementById('PImgVerso').style.display = "none";
-        document.getElementById('PImg').style.display = "none";
+        document.getElementById('pis').style.display = "none";
         document.getElementById('cv-frame').style.display = "block";
         
         const cvUrl = `${user.cv}`;
@@ -146,8 +136,7 @@ if (data.success) {
     
     pi.addEventListener('click', function (){ // charger la pi
         document.getElementById('cv-frame').style.display = "none";
-        document.getElementById('PImg').style.display = "block";
-        document.getElementById('PImgVerso').style.display = "block";
+        document.getElementById('pis').style.display = "block";
 
         const rectoUrl = `${user.id_doc}`;
         const versoUrl = `${user.id_doc_verso}`;
@@ -191,8 +180,14 @@ if (data.success) {
         pi.style.backgroundColor = "var(--secondary)";
         pi.style.color = "var(--primary)";
     });
-    currentTags = Array.isArray(user.tags) ? user.tags : JSON.parse(user.tags || '[]');
     currentSkills = Array.isArray(user.skills) ? user.skills : JSON.parse(user.skills || '[]');
+    if (user.tags !== undefined) {
+        currentTags = Array.isArray(user.tags) ? user.tags : JSON.parse(user.tags || '[]');
+        document.getElementById('tagsWrapper').style.display = 'flex';
+    } else {
+        currentTags = [];
+        document.getElementById('tagsWrapper').style.display = 'none';
+    }
     renderTagsAndSkills();
     
     const tagInput = document.getElementById('add_tags');
@@ -201,27 +196,27 @@ if (data.success) {
     // When tag input loses focus or user presses Enter
     tagInput.addEventListener('change', () => {
     const tag = tagInput.value.trim();
-    if (tag && !currentTags.includes(tag)) {
-        currentTags.push(tag);
-        renderTagsAndSkills();
-    }
-    tagInput.value = '';
+        if (tag && !currentTags.includes(tag)) {
+            currentTags.push(tag);
+            renderTagsAndSkills();
+        }
+        tagInput.value = '';
     });
 
     // When skill input loses focus or user presses Enter
     skillInput.addEventListener('change', () => {
-    const skill = skillInput.value.trim();
-    if (skill && !currentSkills.includes(skill)) {
-        currentSkills.push(skill);
-        renderTagsAndSkills();
-    }
-    skillInput.value = '';
-    });
-    } else {
-        alert('Non autorisé');
-        window.location.href = '/signin';
-    }
-})
+        const skill = skillInput.value.trim();
+        if (skill && !currentSkills.includes(skill)) {
+            currentSkills.push(skill);
+            renderTagsAndSkills();
+        }
+        skillInput.value = '';
+        });
+        } else {
+            alert('Non autorisé');
+            window.location.href = '/signin';
+        }
+    })
 .catch(err => {
     console.error(err);
     alert("Erreur lors de la récupération du profil");
