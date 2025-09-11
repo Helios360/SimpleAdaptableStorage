@@ -15,6 +15,7 @@ h2{font-size: 25px;font-weight: 500;}
 }
 .exemple{
     position: relative;
+    min-width:20%;
 }
 .exemple pre{
     font-size: 15px;

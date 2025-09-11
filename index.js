@@ -9,8 +9,12 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const client = require('openai');
 const fs = require('fs');
 require('dotenv').config();
+const OpenAI = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const { json } = require('stream/consumers');
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
@@ -222,10 +226,8 @@ app.post('/submit-form', (req, res) => {
       const oldPath = file[0].filepath;
       const newName = file[0].newFilename;
       const newPath = path.join(uploadDir, newName);
-
       await fs.promises.copyFile(oldPath, newPath);
       await fs.promises.unlink(oldPath);
-
       return path.relative(__dirname, newPath);
     };
 
@@ -236,36 +238,29 @@ app.post('/submit-form', (req, res) => {
         moveFile(files.id_doc),
         moveFile(files.id_doc_verso)
       ]);
-
       // Hash du mot de passe
       const hashedPassword = bcrypt.hashSync(String(password), 10);
-
       const sql = `
         INSERT INTO Users
           (name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, agree)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-
       const values = [
         name, fname, email, tel, addr, city, postal, birth,
         cvPath, idDocPath, idDocPathVerso, hashedPassword, agree ? 1 : 0
       ];
-
       db.query(sql, values, (err, result) => {
         if (err) {
           console.error('DB Insert Error:', err);
           return res.status(500).send('Database Error');
         }
-
         res.redirect('/signin');
       });
-
     } catch (fileErr) {
       console.error("File move error:", fileErr);
       res.status(500).send("File move error");
     }
   });
-
 });
 
 // === GET a random test (READ-ONLY) ===
@@ -304,27 +299,96 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
       (err, testResults) => {
         if (err || testResults.length === 0) {
           return res.status(404).json({ success: false, message: 'No available test found' });
-        }
-
+        };
         return res.status(200).json({ success: true, test: testResults[0] });
       }
     );
   });
 });
+function q(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+}
 
-app.post('/api/test/response', authMiddleware, (req, res) => {
+app.post('/api/test/response', authMiddleware, async (req, res) => {
   const userId = req.user.id;
   const { testId, type, answer } = req.body;
-
   if (!testId || !type || !answer) {
     return res.status(400).json({ success: false, message: 'Missing test data' });
   }
+  const rows = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
+  if (!rows.length) return res.status(404).json({ success: false, message: 'Test not found' });
 
-  db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, historyResults) => {
-    if (err) {
-      console.error('DB error:', err);
-      return res.status(500).json({ success: false, message: 'Database error' });
+  const { question, answer: official_answer } = rows[0];
+
+  const response = await openai.responses.create({
+    model: "gpt-4o-mini",
+    input: [
+      { role: "system", content: `System:
+      You are a strict, detail-oriented grader. Score student answers using the rubric. 
+      Never add commentary. Do not justify.`},
+      { role:"user", content: `User:
+      Grade the student’s answer and return only a numeric score from 0 to 100 (integers only).
+      Use this rubric strictly:
+      - 100 = fully correct and complete per rubric
+      - 70–99 = mostly correct; minor omissions or errors
+      - 40–69 = partially correct; significant gaps
+      - 1–39 = mostly incorrect; minimal correct elements
+      - 0 = blank, off-topic, or copied question
+
+      Important rules:
+      - If the rubric lists point weights, respect them and scale to 0–100.
+      - If multiple parts exist, weight each part as specified; if unspecified, weight equally.
+      - Penalize fabricated facts or contradictions with the provided references.
+      - If the answer is not in the requested language or format, deduct up to 10 points.
+      - Clamp final result to 0–100 and round to nearest integer.
+
+      Question:
+      ${question}
+
+      Rubric / Correct answer or key points (use this, not your own knowledge):
+      ${official_answer}
+
+      Student answer:
+      ${answer}
+
+      Return only the final integer score.
+      `},
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "score_only",
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            score: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            }
+          },
+          required: ["score"]
+        },
+        strict: true
+      }
     }
+  });
+  const raw = response.output[0].content[0].text;
+  let score;
+  try {
+    ({ score } = JSON.parse(raw));
+  } catch {
+    score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10)));
+  } try {
+    const historyResults = await new Promise((resolve, reject) => {
+      db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, results) => {
+        if (err) return reject(err);
+        resolve(results);
+      });
+    });
 
     let historyData = null;
     if (historyResults.length > 0) {
@@ -333,27 +397,30 @@ app.post('/api/test/response', authMiddleware, (req, res) => {
     }
 
     const newTestKey = historyData ? `test${Object.keys(historyData.tests).length + 1}` : 'test1';
-    const newTestEntry = {
-      type,
-      question: testId,
-      response: answer,
-      score: null
-    };
+    const newTestEntry = { type, question: testId, response: answer, score };
 
     if (!historyData) {
       historyData = { tests: { [newTestKey]: newTestEntry } };
-      db.query('INSERT INTO Histories (user_id, data) VALUES (?, ?)', [userId, JSON.stringify(historyData)], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Insert error' });
-        res.json({ success: true });
+      await new Promise((resolve, reject) => {
+        db.query('INSERT INTO Histories (user_id, data) VALUES (?, ?)', [userId, JSON.stringify(historyData)], (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
       });
     } else {
       historyData.tests[newTestKey] = newTestEntry;
-      db.query('UPDATE Histories SET data = ? WHERE user_id = ?', [JSON.stringify(historyData), userId], (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Update error' });
-        res.json({ success: true });
+      await new Promise((resolve, reject) => {
+        db.query('UPDATE Histories SET data = ? WHERE user_id = ?', [JSON.stringify(historyData), userId], (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
       });
     }
-  });
+    res.json({ success: true, score });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 // === Rate limit, anti ddos ===
 app.use(rateLimit({

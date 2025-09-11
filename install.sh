@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS Tests (
     question VARCHAR(200),
     type VARCHAR(50),
     exemple VARCHAR(500),
-    hint VARCHAR(255)
+    hint VARCHAR(255),
+    answer VARCHAR(1000)
 );
 CREATE TABLE IF NOT EXISTS Histories (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,7 +76,9 @@ if [ $? -ne 0 ]; then
 fi
 echo ":D MySQL database '$DB_NAME' and tables are ready."
 
-# 6. Create .env file (optional – for future config)
+read -p "Enter a secret for .env file:" SECRET
+
+# 6. Create .env file
 echo "OwO Creating .env file..."
 cat <<EOT > .env
 DB_HOST=localhost
@@ -83,6 +86,7 @@ DB_USER=root
 DB_PASSWORD=$MYSQL_PASSWORD
 DB_NAME=$DB_NAME
 PORT=8080
+JWT_SECRET=$SECRET
 EOT
 
 # 7. Start the server

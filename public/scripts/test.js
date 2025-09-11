@@ -41,8 +41,9 @@ start.addEventListener('click', () => {
 });
 
 // === Step 2: Submit test
-submit.addEventListener("click", event => {
+submit.addEventListener("click", async event => {
   event.preventDefault();
+
   const answerText = editor.state.doc.toString();
   const testId = localStorage.getItem('current_test_id');
   const type = localStorage.getItem('current_test_type');
@@ -52,34 +53,38 @@ submit.addEventListener("click", event => {
     return;
   }
 
-  fetch('/api/test/response', {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ testId, type, answer: answerText })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert("Test submitted!");
-      localStorage.removeItem("current_test_id");
-      localStorage.removeItem("current_test_type");
-    } else {
+  try {
+    // 1) send answer
+    const res = await fetch('/api/test/response', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ testId, type, answer: answerText })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
       alert("Error submitting test: " + data.message);
+      return;
     }
-  });
-  fetch('/api/test/next', {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      const test = data.test;
+
+    alert("Test submitted!");
+
+    // clear old
+    localStorage.removeItem("current_test_id");
+    localStorage.removeItem("current_test_type");
+
+    // 2) now fetch next test
+    const nextRes = await fetch('/api/test/next', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const nextData = await nextRes.json();
+
+    if (nextData.success) {
+      const test = nextData.test;
       localStorage.setItem('current_test_id', test.id);
       localStorage.setItem('current_test_type', test.type);
       localStorage.setItem('test_count', i++);
@@ -88,7 +93,10 @@ submit.addEventListener("click", event => {
       document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
     } else {
-      redirectAfterDelay(data);
+      redirectAfterDelay(nextData);
     }
-  });
+  } catch (err) {
+    console.error(err);
+    alert("Network error during submit.");
+  }
 });
