@@ -295,6 +295,15 @@ function renderTagsAndSkills() {
     });
 }
 
+
+const testFacile = document.getElementById('testFacile');
+const testMoyen = document.getElementById('testMoyen');
+const testDifficile = document.getElementById('testDifficile');
+
+testFacile.addEventListener('click',()=>{
+    window.location
+})
+
 const skillTypes = {
   // Languages
   'C': 'language',
@@ -394,7 +403,6 @@ const skillTypes = {
   'Prettier': 'other',
   'Storybook': 'other'
 };
-
 
 const typeColors = {
   language: '#43a4b1ff',

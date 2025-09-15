@@ -157,3 +157,10 @@ li{
 #saveBtn{
     width: 100%;
 }
+.tests div{
+    display: flex;
+    gap: 1rem;
+}
+.tests div button{
+    width: 100%;
+}
