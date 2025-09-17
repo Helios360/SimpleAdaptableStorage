@@ -296,12 +296,9 @@ function renderTagsAndSkills() {
 }
 
 
-const testFacile = document.getElementById('testFacile');
-const testMoyen = document.getElementById('testMoyen');
-const testDifficile = document.getElementById('testDifficile');
-
-testFacile.addEventListener('click',()=>{
-    window.location
+const test = document.getElementById('test');
+test.addEventListener('click',()=>{
+    window.location.href= "/test";
 })
 
 const skillTypes = {

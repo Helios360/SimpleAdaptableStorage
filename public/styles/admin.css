@@ -48,13 +48,11 @@ select{
     flex-direction: row;
     flex-wrap: nowrap;
 }
-
 .place :nth-child(1) {
     flex: 1 1 0;
     min-width: 0;
     border-radius:6px 0 0 6px;
 }
-
 .place :nth-child(2) {
     flex: 0 0 auto;
     width: 80px;
