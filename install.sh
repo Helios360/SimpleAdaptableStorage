@@ -77,7 +77,7 @@ fi
 echo ":D MySQL database '$DB_NAME' and tables are ready."
 
 read -p "Enter a secret for .env file:" SECRET
-
+read -p "Enter OpenAi test correction api key" API
 # 6. Create .env file
 echo "OwO Creating .env file..."
 cat <<EOT > .env
@@ -87,6 +87,7 @@ DB_PASSWORD=$MYSQL_PASSWORD
 DB_NAME=$DB_NAME
 PORT=8080
 JWT_SECRET=$SECRET
+OPENAI_API_KEY=$API
 EOT
 
 # 7. Start the server
