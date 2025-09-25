@@ -5,9 +5,7 @@ main{
     align-items: start;
     gap: 2%;
 }
-a{
-    color:var(--secondary)
-}
+a{ color:var(--secondary); }
 .inputInfo{
     min-width:350px;
     border:2px solid var(--secondary);

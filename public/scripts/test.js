@@ -69,8 +69,7 @@ submit.addEventListener("click", async event => {
       alert("Error submitting test: " + data.message);
       return;
     }
-
-    alert("Test submitted!");
+    alert("Test envoyé ! Passage au suivant...");
 
     // clear old
     localStorage.removeItem("current_test_id");

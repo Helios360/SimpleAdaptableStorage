@@ -9,7 +9,6 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const client = require('openai');
 const fs = require('fs');
 require('dotenv').config();
 const OpenAI = require('openai');
@@ -172,7 +171,6 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
   if (req.user.is_admin) {
     tags = Array.isArray(req.body.tags) ? req.body.tags : [];
   }
-
   const tagsJSON = JSON.stringify(tags);
   const skillsJSON = JSON.stringify(skills);
 
@@ -263,39 +261,30 @@ app.post('/submit-form', (req, res) => {
   });
 });
 
-// === GET a random test (READ-ONLY) ===
+// === GET a random test (READ-ONLY) WITH OPENAI ===
 app.get('/api/test/next', authMiddleware, (req, res) => {
   const userId = req.user.id;
 
-  db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, historyResults) => {
+  db.query('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId], (err, historyResults) => {
     if (err) {
       console.error('DB error on history check:', err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
-    let completedTests = [];
-    let numbOfTest = 0;
-
-    if (historyResults.length > 0) {
-      let historyData = historyResults[0].data;
-      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
-
-      completedTests = Object.values(historyData.tests).map(t => t.question);
-      numbOfTest = completedTests.length;
-
-      if (numbOfTest >= 9) {
-        return res.status(200).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
-      }
+    
+    // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
+    // difficulty = (1 : easy; 2 : medium; 3 : hard)
+    const type = historyResults[0]?.cnt ?? 0;
+    if(Number(type) >= 27){
+      return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     }
-
-    let servType = '';
-    if (numbOfTest < 3) servType = 'frontend';
-    else if (numbOfTest < 6) servType = 'backend';
-    else servType = 'psychotechnique';
-
+    const cycleIndex = type % 27;
+    const bucket = Math.floor(cycleIndex / 3);
+    const difficulty = Math.floor(bucket / 3) + 1;
+    const servType = (bucket % 3) + 1;
+    console.log(difficulty);
     db.query(
-      `SELECT * FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
-      [servType, completedTests.length ? completedTests : [0]],
+      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND difficulty = ? ORDER BY RAND() LIMIT 1`,
+      [servType, difficulty],
       (err, testResults) => {
         if (err || testResults.length === 0) {
           return res.status(404).json({ success: false, message: 'No available test found' });
@@ -305,6 +294,7 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     );
   });
 });
+
 function q(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
@@ -313,8 +303,8 @@ function q(sql, params = []) {
 
 app.post('/api/test/response', authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const { testId, type, answer } = req.body;
-  if (!testId || !type || !answer) {
+  const { testId, answer } = req.body;
+  if (!testId || !answer) {
     return res.status(400).json({ success: false, message: 'Missing test data' });
   }
   const rows = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
@@ -383,39 +373,12 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
   } catch {
     score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10)));
   } try {
-    const historyResults = await new Promise((resolve, reject) => {
-      db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, results) => {
+    await new Promise((resolve, reject) => {
+      db.query('INSERT INTO TestAttempts (user_id, test_id, response) VALUES (?, ?, ?)', [userId, testId, answer], (err) => {
         if (err) return reject(err);
-        resolve(results);
+        resolve();
       });
     });
-
-    let historyData = null;
-    if (historyResults.length > 0) {
-      historyData = historyResults[0].data;
-      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
-    }
-
-    const newTestKey = historyData ? `test${Object.keys(historyData.tests).length + 1}` : 'test1';
-    const newTestEntry = { type, question: testId, response: answer, score };
-
-    if (!historyData) {
-      historyData = { tests: { [newTestKey]: newTestEntry } };
-      await new Promise((resolve, reject) => {
-        db.query('INSERT INTO Histories (user_id, data) VALUES (?, ?)', [userId, JSON.stringify(historyData)], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-    } else {
-      historyData.tests[newTestKey] = newTestEntry;
-      await new Promise((resolve, reject) => {
-        db.query('UPDATE Histories SET data = ? WHERE user_id = ?', [JSON.stringify(historyData), userId], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-    }
     res.json({ success: true, score });
   } catch (err) {
     console.error(err);

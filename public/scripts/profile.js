@@ -7,6 +7,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
 const token = localStorage.getItem('token');
 
+document.getElementById('pis').style.display = "none";
+
 let currentTags = [];
 let currentSkills = [];
 // Load profile data
