@@ -28,7 +28,7 @@ DB_NAME=${DB_NAME:-Main}
 
 # 5. Create database and table if needed
 echo ":3 Setting up MySQL database and table..."
-mysql -u root -p$MYSQL_PASSWORD <<EOF
+mysql -u root -p $MYSQL_PASSWORD <<EOF
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
 USE \`$DB_NAME\`;
 CREATE TABLE IF NOT EXISTS Users (

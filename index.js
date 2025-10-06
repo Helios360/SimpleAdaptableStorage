@@ -79,13 +79,10 @@ app.post('/login', (req, res) => {
 // === /api/profile (Protected Route) ===
 app.get('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
-  db.query('SELECT * FROM Users WHERE email = ?', [userId], (err, results) => {
+  db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills,status FROM Users WHERE email = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
-    if (!req.user.is_admin) {
-        delete user.tags;
-    }
     res.json({ success: true, user });
   });
 });

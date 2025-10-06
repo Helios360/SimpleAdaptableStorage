@@ -24,7 +24,7 @@ fetch(fetchUrl, {
 if (data.success) {
     const user = data.user || data.student;
     // Remplir les infos
-    document.getElementById('name').value = user.name;
+    document.getElementById('name').value = user.name.toUpperCase();
     document.getElementById('fname').value = user.fname;
     document.getElementById('email').value = user.email;
     document.getElementById('tel').value = user.tel;
@@ -48,7 +48,7 @@ if (data.success) {
             return;
         }
         const data = {
-            name: document.getElementById('name').value.toUpperCase(),
+            name: document.getElementById('name').value,
             fname: document.getElementById('fname').value,
             email: document.getElementById('email').value,
             tel: document.getElementById('tel').value,
