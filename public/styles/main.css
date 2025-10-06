@@ -4,12 +4,15 @@
     --tertiary:#1c1c68;
     transition: all 0.5s ease;
 }
+@font-face {
+    font-family: main-font;
+    src: url('../sources/Raleway/Raleway-VariableFont_wght.ttf');
+}
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-
 /* Firefox */
 input[type=number] {
   -moz-appearance: textfield;
@@ -25,7 +28,7 @@ html{
     background-color: var(--primary);
     color:var(--secondary);
     height:100%;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: main-font;
 }
 header{
     height:90px;

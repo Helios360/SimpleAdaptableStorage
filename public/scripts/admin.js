@@ -18,7 +18,7 @@ function renderUser (users) {
     <div class="user" data-user-id="${user.id}">
     <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name}</p><p>${user.fname}</p></a></span>
     <span></span>
-    <span><p>${user.city}</p><p>${user.postal}</p></span>
+    <span style="line-break:loose">${user.city}, ${user.postal}</span>
     <span>
         <select class="status-select" data-user-id="${user.id}">
             <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>

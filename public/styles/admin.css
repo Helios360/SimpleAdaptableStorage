@@ -3,7 +3,7 @@ main{
     flex-direction: row;
     justify-content: center;
     align-items: start;
-    gap: 2%;
+    gap: 2rem;
 }
 a{ color:var(--secondary); }
 .inputInfo{
@@ -24,6 +24,8 @@ input{
     padding:10px;
     background-color: transparent;
     color:var(--secondary);
+    font-size: 1rem;
+    font-family: main-font;
 }
 textarea{
     color:var(--secondary);
@@ -32,6 +34,7 @@ textarea{
     border-radius: 6px;
     padding:10px;
     background-color: transparent;
+    font-family: main-font;
     resize: none;
 }
 select{
@@ -39,7 +42,9 @@ select{
     border:2px solid var(--secondary);
     border-radius: 6px;
     padding:10px;
+    font-family: main-font;
     background-color: transparent;
+    font-size: 1rem;
 }
 .place {
     display: flex;
@@ -53,7 +58,7 @@ select{
 }
 .place :nth-child(2) {
     flex: 0 0 auto;
-    width: 80px;
+    width: 100px;
     border-radius:0 6px 6px 0;
     border-left: none;
 }
@@ -103,7 +108,6 @@ p{padding: 0; margin:0;}
 .user span{
     width:25%;
 }
-
 .rotated {
   transform: rotate(180deg);
   transition: transform 0.3s ease;
@@ -111,4 +115,25 @@ p{padding: 0; margin:0;}
 .unrotate {
   transform: rotate(0deg);
   transition: transform 0.3s ease;
+}
+@media (max-width:1530px){
+    main{
+        flex-direction: column;
+        gap:2rem;
+        padding:2rem;
+    }
+    .list{
+        width: 100%;
+    }
+    .inputInfo{
+        width: 100%;
+    }
+    textarea{height:5rem;}
+}
+@media (max-height:742px){
+    main{
+        gap: 1rem;
+        padding:1rem;
+    }
+    textarea{height:3rem;}
 }
