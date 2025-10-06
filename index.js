@@ -88,10 +88,22 @@ app.get('/api/profile', authMiddleware, (req, res) => {
 });
 // === Admin full sql api ===
 app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
-  db.query('SELECT * FROM Users', (err, results)=>{
+  db.query('SELECT * FROM Users', (err, users)=>{
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
-    res.json({ success: true, users: results});
+    if (users.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
+
+    db.query('SELECT user_id, score FROM TestAttempts WHERE id = ?', (err2, attemps) => {
+      if (err2) return res.status(500).json({ success: false, message: 'DB error (scores)' });
+      const scoresByUser = {};
+      attemps.forEach(a=>{
+        scoresByUser[a.user_id] = (scoresByUser[a.user_id] || 0) + a.score;
+      });
+      const userWithScores = users.map(user=>({
+        ...user,
+        totalScore:scoresByUser[user.id] || 0
+      }));
+      res.json({ success: true, users: userWithScores});
+    });
   });
 });
 // === Single user profile (admin) ===
@@ -153,7 +165,6 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
         console.error('DB error on status update:', err);
         return res.status(500).json({ success: false, message: 'Database error' });
       }
-
       res.json({ success: true });
     }
   );

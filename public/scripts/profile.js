@@ -12,9 +12,17 @@ document.getElementById('pis').style.display = "none";
 let currentTags = [];
 let currentSkills = [];
 // Load profile data
+
+const test = document.getElementById('test');
+test.addEventListener('click',()=>{
+    window.location.href= "/test";
+})
+
 const fetchUrl = targetEmail
   ? `/api/admin/student/${encodeURIComponent(targetEmail)}`
   : '/api/profile';
+
+if (fetchUrl!= '/api/profile'){ test.style.display="none";};
 
 fetch(fetchUrl, {
     credentials: 'include'
@@ -298,10 +306,7 @@ function renderTagsAndSkills() {
 }
 
 
-const test = document.getElementById('test');
-test.addEventListener('click',()=>{
-    window.location.href= "/test";
-})
+
 
 const skillTypes = {
   // Languages

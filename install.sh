@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS TestAttempts (
     user_id INT NOT NULL,
     test_id INT NOT NULL,
     response TEXT,
+    score INT,
     creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id),
     FOREIGN KEY (test_id) REFERENCES Tests(id)
