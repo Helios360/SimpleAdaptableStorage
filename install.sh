@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS TestAttempts (
     response TEXT,
     score INT,
     creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id),
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (test_id) REFERENCES Tests(id)
 );
 EOF

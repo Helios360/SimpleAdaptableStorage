@@ -25,3 +25,56 @@ button.addEventListener('click', () => {
     localStorage.setItem('dark', newTheme.toString());
     applyTheme(newTheme);
 });
+function notif(message){
+    const popup = document.createElement('div');
+    popup.className="popup";
+    const popupContent = document.createElement('div');
+    popupContent.className="popup-content";
+    popupContent.textContent=message;
+    popup.appendChild(popupContent);
+    document.body.appendChild(popup);
+
+    setTimeout(()=>{
+        popup.remove();
+    }, 3000);
+}
+function notifAlert(message){
+    const popup = document.createElement('div');
+    popup.className = 'notif-alert';
+    popup.id = 'alertnotif';
+    popup.innerHTML=`
+    <div>
+        <h1>${message}</h1>
+        <button id="suivant">Suivant...</button>
+    </div>
+    `
+    popup.querySelector('#suivant').addEventListener('click', () => { popup.remove();});
+    document.body.appendChild(popup);
+}
+function alertChoice(message){
+    return new Promise ((resolve) => {
+        const popup = document.createElement('div');
+        popup.className = 'notif-alert';
+        popup.id = 'alertnotif';
+        popup.innerHTML=`
+        <div>
+            <h1>${message}</h1>
+            <span style="width:100%;display:flex;flex-direction:row;justify-content:space-between">
+                <button id="yes">Je confirme</button>
+                <button id="no">Annuler et retour en arrière</button>
+            </span>
+        </div>
+        `
+        popup.querySelector('#no').addEventListener('click', () => { popup.remove(); resolve(false);});
+        popup.querySelector('#yes').addEventListener('click', async () => { 
+            popup.remove(); 
+            resolve(true);
+            await wait(3000);
+            //window.location.href="/signin";
+        });
+        document.body.appendChild(popup);
+    }) 
+}
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

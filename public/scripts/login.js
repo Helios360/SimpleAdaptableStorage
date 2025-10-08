@@ -17,6 +17,6 @@ document.getElementById('sub').addEventListener('submit', async (e) => {
   if (data.success) {
     window.location.href = '/profile';
   } else {
-    alert(data.message || 'Login failed');
+    notif(data.message || 'Login failed');
   }
 });

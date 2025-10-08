@@ -86,11 +86,6 @@ app.get('/api/profile', authMiddleware, (req, res) => {
     res.json({ success: true, user });
   });
 });
-// SELECT Users.id, TestAttempts.score 
-//  FROM Users 
-//  LEFT JOIN TestAttempts 
-//  ON Users.id = TestAttempts.user_id 
-//  WHERE Users.id=1;
 // === Admin full sql api ===
 app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
   db.query(`
@@ -300,7 +295,7 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
         if (err || testResults.length === 0) {
           return res.status(404).json({ success: false, message: 'No available test found' });
         };
-        return res.status(200).json({ success: true, test: testResults[0] });
+        return res.status(200).json({ success: true, test: testResults[0], count: type });
       }
     );
   });
@@ -398,6 +393,17 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+// === CRUD delete route ===
+app.delete('/api/delete', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+  db.query('DELETE * FROM Users WHERE id = ?',[userId], (err) => {
+    if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    return res.status(200).json({ success: true, message: `User ${userId} succesfully delete from the database` });
+  })
+});
+
+
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,

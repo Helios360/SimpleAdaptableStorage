@@ -16,7 +16,7 @@ function renderUser (users) {
   users.forEach(user => {
     const rawScore = user.gen_score;
     const displayScore = rawScore == null ? "N/A" : rawScore;
-    if (rawScore == null) scoreColor = "#FFF";
+    if (rawScore == null) scoreColor = "var(--secondary)";
     else if (rawScore < 20) scoreColor="#E02424";
     else if (rawScore < 40) scoreColor="#F54927";
     else if (rawScore < 60) scoreColor="#D5DB1F";
@@ -24,7 +24,7 @@ function renderUser (users) {
     list.innerHTML+=`
     <div class="user" data-user-id="${user.id}">
     <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
-    <span style="font-weight:600; color:${scoreColor}">${displayScore}</span>
+    <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
     <span style="line-break:loose">${user.city}, ${user.postal}</span>
     <span>
         <select class="status-select" data-user-id="${user.id}">
@@ -68,7 +68,7 @@ function renderUser (users) {
       })
       .catch(err => {
         console.error(`Failed to update status for user ${userId}:`, err);
-        alert("Erreur lors de la mise à jour du statut.");
+        notif("Erreur lors de la mise à jour du statut.");
       });
     });
   });

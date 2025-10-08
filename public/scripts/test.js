@@ -5,11 +5,9 @@ const start = document.getElementById('launch-test');
 const popup = document.getElementById('popup');
 let i = 0;
 
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+
 async function redirectAfterDelay(data) {
-  alert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous etes arrété... Redirection ...');
+  notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous êtes arrété... Redirection ...');
   await wait(3000);
   window.location.href = '/profile';
 }
@@ -28,9 +26,8 @@ start.addEventListener('click', () => {
       const test = data.test;
       localStorage.setItem('current_test_id', test.id);
       localStorage.setItem('current_test_type', test.type);
-      localStorage.setItem('test_count', i++);
       console.log("New test fetched:", test);
-      document.getElementById('test_count').innerText = i;
+      document.getElementById('test_count').innerText = data.count;
       document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
     } else {
@@ -49,12 +46,12 @@ submit.addEventListener("click", async event => {
   const type = localStorage.getItem('current_test_type');
 
   if (!testId || !type) {
-    alert("No test loaded.");
+    notifAlert("No test loaded.");
     return;
   }
 
   try {
-    // 1) send answer
+    // send answer
     const res = await fetch('/api/test/response', {
       method: "POST",
       headers: {
@@ -66,16 +63,14 @@ submit.addEventListener("click", async event => {
     const data = await res.json();
 
     if (!data.success) {
-      alert("Error submitting test: " + data.message);
+      notifAlert("Error submitting test: " + data.message);
       return;
     }
-    alert("Test envoyé ! Passage au suivant...");
-
-    // clear old
+    notifAlert("Test envoyé ! Passage au suivant...");
     localStorage.removeItem("current_test_id");
     localStorage.removeItem("current_test_type");
 
-    // 2) now fetch next test
+    // fetch next test
     const nextRes = await fetch('/api/test/next', {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` }
@@ -86,9 +81,8 @@ submit.addEventListener("click", async event => {
       const test = nextData.test;
       localStorage.setItem('current_test_id', test.id);
       localStorage.setItem('current_test_type', test.type);
-      localStorage.setItem('test_count', i++);
       console.log("New test fetched:", test);
-      document.getElementById('test_count').innerText = i;
+      document.getElementById('test_count').innerText = nextData.count;
       document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
     } else {
@@ -96,6 +90,6 @@ submit.addEventListener("click", async event => {
     }
   } catch (err) {
     console.error(err);
-    alert("Network error during submit.");
+    notifAlert("Network error during submit.");
   }
 });

@@ -11,7 +11,6 @@ document.getElementById('pis').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
-// Load profile data
 
 const test = document.getElementById('test');
 test.addEventListener('click',()=>{
@@ -52,7 +51,7 @@ if (data.success) {
     document.getElementById('saveBtn').addEventListener('click', () => {
         const emailInput = document.getElementById('email').value.trim();
         if (!emailInput || !emailInput.includes('@')) {
-            alert('Email invalide. Annulation de la sauvegarde.');
+            notif('Email invalide. Sauvegarde annulé.');
             return;
         }
         const data = {
@@ -83,12 +82,12 @@ if (data.success) {
         .then(res => res.json())
         .then(result => {
             if (!result.success) throw new Error(result.message);
-            alert('Profil mis à jour avec succès');
+            notif('Profil mis à jour avec succès');
             renderTagsAndSkills();
         })
         .catch(err => {
             console.error('Erreur lors de la sauvegarde', err);
-            alert('Échec de la mise à jour');
+            notif('Échec de la mise à jour');
         });
     });
 
@@ -109,7 +108,7 @@ if (data.success) {
         })
         .catch(err => {
             console.error(err);
-            alert("Impossible de charger le CV.");
+            notif("Impossible de charger le CV.");
         });
         cv.style.backgroundColor = "var(--secondary)";
         cv.style.color = "var(--primary)";
@@ -136,7 +135,7 @@ if (data.success) {
         })
         .catch(err => {
             console.error(err);
-            alert("Impossible de charger le CV.");
+            notif("Impossible de charger le CV.");
         });
         cv.style.backgroundColor = "var(--secondary)";
         cv.style.color = "var(--primary)";
@@ -168,7 +167,7 @@ if (data.success) {
             })
             .catch(err => {
                 console.error(err);
-                alert("Impossible de charger le recto de la PI.");
+                notif("Impossible de charger le recto de la PI.");
             });
 
         // Charger le verso
@@ -183,13 +182,14 @@ if (data.success) {
             })
             .catch(err => {
                 console.error(err);
-                alert("Impossible de charger le verso de la PI.");
+                notif("Impossible de charger le verso de la PI.");
             });
         cv.style.backgroundColor = "var(--primary)";
         cv.style.color = "var(--secondary)";
         pi.style.backgroundColor = "var(--secondary)";
         pi.style.color = "var(--primary)";
     });
+    // No tags and reset button display for non admins
     currentSkills = Array.isArray(user.skills) ? user.skills : JSON.parse(user.skills || '[]');
     if (user.tags !== undefined) {
         currentTags = Array.isArray(user.tags) ? user.tags : JSON.parse(user.tags || '[]');
@@ -197,6 +197,7 @@ if (data.success) {
     } else {
         currentTags = [];
         document.getElementById('tagsWrapper').style.display = 'none';
+        document.getElementById('resetBtn').style.display = 'none';
     }
     renderTagsAndSkills();
     
@@ -223,13 +224,13 @@ if (data.success) {
         skillInput.value = '';
         });
         } else {
-            alert('Non autorisé');
+            notif('Non autorisé');
             window.location.href = '/signin';
         }
     })
 .catch(err => {
     console.error(err);
-    alert("Erreur lors de la récupération du profil");
+    notif("Erreur lors de la récupération du profil");
     window.location.href = '/signin';
 });
 function renderTagsAndSkills() {
@@ -305,7 +306,32 @@ function renderTagsAndSkills() {
     });
 }
 
+//account deleting part
+const accountDelete = document.getElementById('deleteBtn');
 
+function deleteUser() {
+    notifAlert("Au revoir ! :D");
+    fetch('/api/delete',{
+        credentials:'include',
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            notifAlert("Le compte a bien été supprimé a bientot chez cloud campus.")
+        } 
+    })
+    .catch(err => {
+        console.error(err);
+        notif("Erreur lors de la récupération du profil");
+        //window.location.href = '/signin';
+    });
+}
+
+accountDelete.addEventListener('click', async () => {
+    let choice = await alertChoice('Etes vous sûr de vouloir supprimer votre compte ? La récupération est impossible...');
+    console.log(choice);
+    if (choice) deleteUser();
+})
 
 
 const skillTypes = {
