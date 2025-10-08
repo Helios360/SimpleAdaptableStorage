@@ -86,24 +86,27 @@ app.get('/api/profile', authMiddleware, (req, res) => {
     res.json({ success: true, user });
   });
 });
+// SELECT Users.id, TestAttempts.score 
+//  FROM Users 
+//  LEFT JOIN TestAttempts 
+//  ON Users.id = TestAttempts.user_id 
+//  WHERE Users.id=1;
 // === Admin full sql api ===
 app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
-  db.query('SELECT * FROM Users', (err, users)=>{
+  db.query(`
+  SELECT 
+      Users.*,
+    ROUND(AVG(TestAttempts.score)) AS gen_score
+    FROM Users
+    LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
+    GROUP BY Users.id
+  ;`, 
+  (err, results)=>{
+    console.log(results);
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
-    if (users.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
-
-    db.query('SELECT user_id, score FROM TestAttempts WHERE id = ?', (err2, attemps) => {
-      if (err2) return res.status(500).json({ success: false, message: 'DB error (scores)' });
-      const scoresByUser = {};
-      attemps.forEach(a=>{
-        scoresByUser[a.user_id] = (scoresByUser[a.user_id] || 0) + a.score;
-      });
-      const userWithScores = users.map(user=>({
-        ...user,
-        totalScore:scoresByUser[user.id] || 0
-      }));
-      res.json({ success: true, users: userWithScores});
-    });
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
+    
+    res.json({ success: true, users: results});
   });
 });
 // === Single user profile (admin) ===
@@ -380,9 +383,11 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
     ({ score } = JSON.parse(raw));
   } catch {
     score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10)));
+    console.log(score);
   } try {
+    console.log(score);
     await new Promise((resolve, reject) => {
-      db.query('INSERT INTO TestAttempts (user_id, test_id, response) VALUES (?, ?, ?)', [userId, testId, answer], (err) => {
+      db.query('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score], (err) => {
         if (err) return reject(err);
         resolve();
       });

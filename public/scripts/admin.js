@@ -14,10 +14,17 @@ function renderUser (users) {
   const list = document.getElementById('list');
   list.innerHTML='';
   users.forEach(user => {
+    const rawScore = user.gen_score;
+    const displayScore = rawScore == null ? "N/A" : rawScore;
+    if (rawScore == null) scoreColor = "#FFF";
+    else if (rawScore < 20) scoreColor="#E02424";
+    else if (rawScore < 40) scoreColor="#F54927";
+    else if (rawScore < 60) scoreColor="#D5DB1F";
+    else scoreColor="#32DB1F";
     list.innerHTML+=`
     <div class="user" data-user-id="${user.id}">
-    <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name}</p><p>${user.fname}</p></a></span>
-    <span></span>
+    <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+    <span style="font-weight:600; color:${scoreColor}">${displayScore}</span>
     <span style="line-break:loose">${user.city}, ${user.postal}</span>
     <span>
         <select class="status-select" data-user-id="${user.id}">
@@ -76,7 +83,14 @@ function sortUsers(by, ascending = true) {
     if (by === 'date_inscription') {
       valA = new Date(valA);
       valB = new Date(valB);
-    } else if (typeof valA === 'string') {
+    }
+    if (by === "gen_score") {
+      valA = Number(valA);
+      valB = Number(valB);
+      if (isNaN(valA)) valA = -Infinity;
+      if (isNaN(valB)) valB = -Infinity;
+    }
+    if (typeof valA === 'string') {
       valA = valA.toLowerCase();
       valB = valB.toLowerCase();
     }
@@ -123,6 +137,32 @@ fetch('/api/admin-panel', {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
             sortUsers("name",false);
+          }
+        }
+      }
+    });
+    document.addEventListener('click', (e) => {
+      const wrapper = e.target.closest('#score');
+      if (wrapper) {
+        const clickedSvg = wrapper.querySelector('svg');
+        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
+          .forEach(svg => {
+            if (svg !== clickedSvg) {
+              svg.classList.remove('rotated');
+              svg.classList.add('unrotate');
+            }
+          });
+
+        if (clickedSvg) {
+          const isRotated = clickedSvg.classList.contains('rotated');
+          if(isRotated == false) {
+            clickedSvg.classList.toggle('rotated', !isRotated);
+            clickedSvg.classList.toggle('unrotate', isRotated);
+            sortUsers("gen_score",true);
+          } else {
+            clickedSvg.classList.toggle('rotated', !isRotated);
+            clickedSvg.classList.toggle('unrotate', isRotated);
+            sortUsers("gen_score",false);
           }
         }
       }

@@ -188,8 +188,8 @@ INSERT INTO Tests (question, answer, type, exemple, hint, difficulty) VALUES
  'Use total sum divided by number of rows.',
  3);
 
-select * from Tests\G select * from Users\G select * from TestAttemps\G
-
+select * from Tests\G select * from Users\G select * from TestAttempts\G
+DESCRIBE Tests; DESCRIBE Users; DESCRIBE TestAttempts;
 INSERT INTO Users (
   name, fname, email, tel, addr, city,
   postal, birth, password, agree,
@@ -250,3 +250,11 @@ INSERT INTO Users (
   '78570', '1991-10-29', '5906ac361a137e2d286465cd6588ebb5ac3f5ae955001100bc41577c3d751764', 0,
   NOW(), '["finance", "marketing"]', '["DevOps", "React", "SQL"]', 0, 0
 );
+
+SELECT 
+  Users.*,
+  ROUND(AVG(TestAttempts.score))
+  FROM Users
+  LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
+  GROUP BY Users.id
+  ;
