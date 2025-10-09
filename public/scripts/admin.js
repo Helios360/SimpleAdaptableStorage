@@ -246,7 +246,7 @@ function filterUsers() {
   const placeValue = document.getElementById('place').value.toLowerCase();
   const ageValue = document.getElementById('age').value;
   const trancheValue = document.getElementById('trancheAge').value;
-  const tagsValue = document.getElementById('tags').value.toLowerCase();
+  const skillsValue = document.getElementById('skills').value.toLowerCase();
   const aiSearchValue = document.getElementById('aiSearch').value.toLowerCase();
   
   const filtered = allUsers.filter(user => {
@@ -267,10 +267,10 @@ function filterUsers() {
       age >= parseInt(trancheValue.slice(0,2)) &&
       age <= parseInt(trancheValue.slice(2))
     );
-    const matchTags = tagsValue === '' || (user.tags || []).some(tag => tag.toLowerCase().includes(tagsValue));
+    const matchskills = skillsValue === '' || (user.skills || []).some(tag => tag.toLowerCase().includes(skillsValue));
     const matchAI = aiSearchValue === '' || JSON.stringify(user).toLowerCase().includes(aiSearchValue); // simple AI full-text
 
-    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchTags && matchAI;
+    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchskills && matchAI;
   });
   renderUser(filtered);
 }

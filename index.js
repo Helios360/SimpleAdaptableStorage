@@ -193,7 +193,6 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
   );
 });
 
-
 // === Register route ===
 app.post('/submit-form', (req, res) => {
   const form = formidable({
