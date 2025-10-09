@@ -13,7 +13,6 @@ const fs = require('fs');
 require('dotenv').config();
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const { json } = require('stream/consumers');
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
@@ -97,7 +96,6 @@ app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
     GROUP BY Users.id
   ;`, 
   (err, results)=>{
-    console.log(results);
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
     
@@ -397,12 +395,33 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
 // === CRUD delete route ===
 app.delete('/api/delete', authMiddleware, (req, res) => {
   const userId = req.user.id;
-  db.query('DELETE * FROM Users WHERE id = ?',[userId], (err) => {
-    if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
-    return res.status(200).json({ success: true, message: `User ${userId} succesfully delete from the database` });
-  })
+  db.query('SELECT cv FROM Users WHERE id=?;', [userId], (err,rows) => {
+    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
+    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
+      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
+    });
+    db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
+      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    })
+    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
+    return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
+  });
 });
-
+// === CRUD delete route (admin)===
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
+  const targetId = req.params.id;
+  db.query('SELECT cv FROM Users WHERE id=?;', [targetId], (err,rows) => {
+    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
+    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
+      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
+    });
+    db.query('DELETE FROM Users WHERE id = ?',[targetId], (err) => {
+      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    })
+    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
+    return res.status(200).json({ success: true, message: `User ${targetId} succesfully deleted from the database` });
+  });
+});
 
 // === Rate limit, anti ddos ===
 app.use(rateLimit({

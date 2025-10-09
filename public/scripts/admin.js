@@ -1,10 +1,6 @@
 const token = localStorage.getItem('token');
 if (token) {
-  fetch('/admin-panel', {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  })
+  fetch('/admin-panel', { headers: { Authorization: `Bearer ${token}` }})
   .then(res => res.text())
   .catch(err => console.error('Erreur admin fetch:', err));
 }
@@ -103,12 +99,7 @@ function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 
-fetch('/api/admin-panel', {
-    method: 'GET',
-    headers: {
-        'Authorization': 'Bearer ' + localStorage.getItem('token')
-    }
-})
+fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
 .then(res => res.json())
 .then(data => {
   if (data.success) {
@@ -247,9 +238,7 @@ fetch('/api/admin-panel', {
     });
   }
 })
-.catch(err => {
-  console.error('Error fetching users:', err);
-});
+.catch(err => { console.error('Error fetching users:', err); });
 
 function filterUsers() {
   const nameValue = document.getElementById('nomPrenom').value.toLowerCase();
@@ -259,7 +248,6 @@ function filterUsers() {
   const trancheValue = document.getElementById('trancheAge').value;
   const tagsValue = document.getElementById('tags').value.toLowerCase();
   const aiSearchValue = document.getElementById('aiSearch').value.toLowerCase();
-  
   
   const filtered = allUsers.filter(user => {
     // Calculate age
@@ -284,7 +272,6 @@ function filterUsers() {
 
     return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchTags && matchAI;
   });
-
   renderUser(filtered);
 }
 
@@ -296,12 +283,7 @@ function attachFormListeners() {
   });
 }
 function refreshUserList() {
-  fetch('/api/admin-panel', {
-    method: 'GET',
-    headers: {
-      'Authorization': 'Bearer ' + localStorage.getItem('token')
-    }
-  })
+  fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token')}})
   .then(res => res.json())
   .then(data => {
     if (data.success) {
@@ -310,9 +292,7 @@ function refreshUserList() {
       renderUser(data.users);
     }
   })
-  .catch(err => {
-    console.error('Erreur lors du refresh:', err);
-  });
+  .catch(err => {console.error('Erreur lors du refresh:', err);});
 }
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {

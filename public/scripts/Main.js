@@ -13,11 +13,7 @@ function applyTheme(isDark) {
         root.style.setProperty('--tertiary', '#1c1c68');
     }
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-    const isDark = localStorage.getItem('dark') === 'true';
-    applyTheme(isDark);
-});
+window.addEventListener('DOMContentLoaded', () => { applyTheme(localStorage.getItem('dark') === 'true'); });
 
 button.addEventListener('click', () => {
     const isDark = localStorage.getItem('dark') === 'true';
@@ -34,9 +30,7 @@ function notif(message){
     popup.appendChild(popupContent);
     document.body.appendChild(popup);
 
-    setTimeout(()=>{
-        popup.remove();
-    }, 3000);
+    setTimeout(()=>{ popup.remove(); }, 3000);
 }
 function notifAlert(message){
     const popup = document.createElement('div');
@@ -75,6 +69,4 @@ function alertChoice(message){
         document.body.appendChild(popup);
     }) 
 }
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+function wait(ms) {return new Promise(resolve => setTimeout(resolve, ms));}
