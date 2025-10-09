@@ -76,7 +76,7 @@ app.post('/login', (req, res) => {
 });
 
 // === /api/profile (Protected Route) ===
-app.get('/api/profile', authMiddleware, (req, res) => {
+app.post('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
   db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills,status FROM Users WHERE email = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
@@ -86,7 +86,7 @@ app.get('/api/profile', authMiddleware, (req, res) => {
   });
 });
 // === Admin full sql api ===
-app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
+app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
   db.query(`
   SELECT 
       Users.*,
@@ -112,7 +112,7 @@ app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
   });
 });
 // Only accessible by authenticated admins
-app.get('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
+app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   const email = decodeURIComponent(req.params.email);
 
   db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {

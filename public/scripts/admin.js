@@ -99,7 +99,7 @@ function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 
-fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
+fetch('/api/admin-panel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
 .then(res => res.json())
 .then(data => {
   if (data.success) {

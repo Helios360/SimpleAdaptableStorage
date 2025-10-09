@@ -28,7 +28,7 @@ async function deleteAsAdmin(userId){
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
 }
-fetch(fetchUrl, { credentials: 'include'})
+fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
 .then(res => res.json())
 .then(data => {
 if (data.success) {
