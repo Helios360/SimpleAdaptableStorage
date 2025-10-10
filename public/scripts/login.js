@@ -13,9 +13,13 @@ document.getElementById('sub').addEventListener('submit', async (e) => {
   });
 
   const data = await response.json();
-
+  
   if (data.success) {
-    window.location.href = '/profile';
+    if (data.user.sec == 1){
+      window.location.href = '/admin-panel';
+    } else {
+      window.location.href = '/profile';
+    } 
   } else {
     notif(data.message || 'Login failed');
   }

@@ -80,7 +80,7 @@ fi
 echo ":D MySQL database '$DB_NAME' and tables are ready."
 
 read -p "Enter a secret for .env file:" SECRET
-read -p "Enter openAI API key:" API
+read -p "Enter OpenAi test correction api key" API
 # 6. Create .env file
 echo "OwO Creating .env file..."
 cat <<EOT > .env

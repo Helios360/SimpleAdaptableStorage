@@ -70,7 +70,7 @@ app.post('/login', (req, res) => {
         sameSite: 'Strict', // ou 'Lax' selon ton setup
         maxAge: 2 * 60 * 60 * 1000 // 2h
       });
-      res.json({ success: true, user: { email: user.email, name: user.name } });
+      res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
     });
   });
 });
@@ -286,8 +286,8 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     const servType = (bucket % 3) + 1;
     console.log(difficulty);
     db.query(
-      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND difficulty = ? ORDER BY RAND() LIMIT 1`,
-      [servType, difficulty],
+      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
+      [servType, completedTests.length ? completedTests : [0]],
       (err, testResults) => {
         if (err || testResults.length === 0) {
           return res.status(404).json({ success: false, message: 'No available test found' });
