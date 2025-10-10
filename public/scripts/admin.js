@@ -1,10 +1,6 @@
 const token = localStorage.getItem('token');
 if (token) {
-  fetch('/admin-panel', {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  })
+  fetch('/admin-panel', { headers: { Authorization: `Bearer ${token}` }})
   .then(res => res.text())
   .catch(err => console.error('Erreur admin fetch:', err));
 }
@@ -14,18 +10,26 @@ function renderUser (users) {
   const list = document.getElementById('list');
   list.innerHTML='';
   users.forEach(user => {
+    const rawScore = user.gen_score;
+    const displayScore = rawScore == null ? "N/A" : rawScore;
+    if (rawScore == null) scoreColor = "var(--secondary)";
+    else if (rawScore < 20) scoreColor="#E02424";
+    else if (rawScore < 40) scoreColor="#F54927";
+    else if (rawScore < 60) scoreColor="#D5DB1F";
+    else scoreColor="#32DB1F";
     list.innerHTML+=`
     <div class="user" data-user-id="${user.id}">
-    <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name}</p><p>${user.fname}</p></a></span>
-    <span><p>${user.city}</p><p>${user.postal}</p></span>
-      <span>
-          <select class="status-select" data-user-id="${user.id}">
-              <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>
-              <option value="1" ${user.status == 1 ? 'selected' : ''}>En recherche</option>
-              <option value="2" ${user.status == 2 ? 'selected' : ''}>Recherche active</option>
-          </select>
-      </span>
-      <span><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
+    <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+    <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
+    <span style="line-break:loose">${user.city}, ${user.postal}</span>
+    <span>
+        <select class="status-select" data-user-id="${user.id}">
+            <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>
+            <option value="1" ${user.status == 1 ? 'selected' : ''}>En recherche</option>
+            <option value="2" ${user.status == 2 ? 'selected' : ''}>Recherche active</option>
+        </select>
+    </span>
+    <span><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
     </div>
     `;
   });
@@ -60,7 +64,7 @@ function renderUser (users) {
       })
       .catch(err => {
         console.error(`Failed to update status for user ${userId}:`, err);
-        alert("Erreur lors de la mise à jour du statut.");
+        notif("Erreur lors de la mise à jour du statut.");
       });
     });
   });
@@ -75,7 +79,14 @@ function sortUsers(by, ascending = true) {
     if (by === 'date_inscription') {
       valA = new Date(valA);
       valB = new Date(valB);
-    } else if (typeof valA === 'string') {
+    }
+    if (by === "gen_score") {
+      valA = Number(valA);
+      valB = Number(valB);
+      if (isNaN(valA)) valA = -Infinity;
+      if (isNaN(valB)) valB = -Infinity;
+    }
+    if (typeof valA === 'string') {
       valA = valA.toLowerCase();
       valB = valB.toLowerCase();
     }
@@ -88,12 +99,7 @@ function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 
-fetch('/api/admin-panel', {
-    method: 'GET',
-    headers: {
-        'Authorization': 'Bearer ' + localStorage.getItem('token')
-    }
-})
+fetch('/api/admin-panel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
 .then(res => res.json())
 .then(data => {
   if (data.success) {
@@ -122,6 +128,32 @@ fetch('/api/admin-panel', {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
             sortUsers("name",false);
+          }
+        }
+      }
+    });
+    document.addEventListener('click', (e) => {
+      const wrapper = e.target.closest('#score');
+      if (wrapper) {
+        const clickedSvg = wrapper.querySelector('svg');
+        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
+          .forEach(svg => {
+            if (svg !== clickedSvg) {
+              svg.classList.remove('rotated');
+              svg.classList.add('unrotate');
+            }
+          });
+
+        if (clickedSvg) {
+          const isRotated = clickedSvg.classList.contains('rotated');
+          if(isRotated == false) {
+            clickedSvg.classList.toggle('rotated', !isRotated);
+            clickedSvg.classList.toggle('unrotate', isRotated);
+            sortUsers("gen_score",true);
+          } else {
+            clickedSvg.classList.toggle('rotated', !isRotated);
+            clickedSvg.classList.toggle('unrotate', isRotated);
+            sortUsers("gen_score",false);
           }
         }
       }
@@ -206,9 +238,7 @@ fetch('/api/admin-panel', {
     });
   }
 })
-.catch(err => {
-  console.error('Error fetching users:', err);
-});
+.catch(err => { console.error('Error fetching users:', err); });
 
 function filterUsers() {
   const nameValue = document.getElementById('nomPrenom').value.toLowerCase();
@@ -216,9 +246,8 @@ function filterUsers() {
   const placeValue = document.getElementById('place').value.toLowerCase();
   const ageValue = document.getElementById('age').value;
   const trancheValue = document.getElementById('trancheAge').value;
-  const tagsValue = document.getElementById('tags').value.toLowerCase();
+  const skillsValue = document.getElementById('skills').value.toLowerCase();
   const aiSearchValue = document.getElementById('aiSearch').value.toLowerCase();
-  
   
   const filtered = allUsers.filter(user => {
     // Calculate age
@@ -238,12 +267,11 @@ function filterUsers() {
       age >= parseInt(trancheValue.slice(0,2)) &&
       age <= parseInt(trancheValue.slice(2))
     );
-    const matchTags = tagsValue === '' || (user.tags || []).some(tag => tag.toLowerCase().includes(tagsValue));
+    const matchskills = skillsValue === '' || (user.skills || []).some(tag => tag.toLowerCase().includes(skillsValue));
     const matchAI = aiSearchValue === '' || JSON.stringify(user).toLowerCase().includes(aiSearchValue); // simple AI full-text
 
-    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchTags && matchAI;
+    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchskills && matchAI;
   });
-
   renderUser(filtered);
 }
 
@@ -255,12 +283,7 @@ function attachFormListeners() {
   });
 }
 function refreshUserList() {
-  fetch('/api/admin-panel', {
-    method: 'GET',
-    headers: {
-      'Authorization': 'Bearer ' + localStorage.getItem('token')
-    }
-  })
+  fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token')}})
   .then(res => res.json())
   .then(data => {
     if (data.success) {
@@ -269,9 +292,7 @@ function refreshUserList() {
       renderUser(data.users);
     }
   })
-  .catch(err => {
-    console.error('Erreur lors du refresh:', err);
-  });
+  .catch(err => {console.error('Erreur lors du refresh:', err);});
 }
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {

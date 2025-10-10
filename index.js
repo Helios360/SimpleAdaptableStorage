@@ -9,12 +9,10 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const client = require('openai');
 const fs = require('fs');
 require('dotenv').config();
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const { json } = require('stream/consumers');
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
@@ -78,23 +76,29 @@ app.post('/login', (req, res) => {
 });
 
 // === /api/profile (Protected Route) ===
-app.get('/api/profile', authMiddleware, (req, res) => {
+app.post('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
-  db.query('SELECT * FROM Users WHERE email = ?', [userId], (err, results) => {
+  db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills,status FROM Users WHERE email = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
-    if (!req.user.is_admin) {
-        delete user.tags;
-    }
     res.json({ success: true, user });
   });
 });
 // === Admin full sql api ===
-app.get('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
-  db.query('SELECT * FROM Users', (err, results)=>{
+app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
+  db.query(`
+  SELECT 
+      Users.*,
+    ROUND(AVG(TestAttempts.score)) AS gen_score
+    FROM Users
+    LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
+    GROUP BY Users.id
+  ;`, 
+  (err, results)=>{
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
+    
     res.json({ success: true, users: results});
   });
 });
@@ -108,7 +112,7 @@ app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
   });
 });
 // Only accessible by authenticated admins
-app.get('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
+app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   const email = decodeURIComponent(req.params.email);
 
   db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
@@ -157,7 +161,6 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
         console.error('DB error on status update:', err);
         return res.status(500).json({ success: false, message: 'Database error' });
       }
-
       res.json({ success: true });
     }
   );
@@ -172,7 +175,6 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
   if (req.user.is_admin) {
     tags = Array.isArray(req.body.tags) ? req.body.tags : [];
   }
-
   const tagsJSON = JSON.stringify(tags);
   const skillsJSON = JSON.stringify(skills);
 
@@ -190,7 +192,6 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
     }
   );
 });
-
 
 // === Register route ===
 app.post('/submit-form', (req, res) => {
@@ -263,36 +264,27 @@ app.post('/submit-form', (req, res) => {
   });
 });
 
-// === GET a random test (READ-ONLY) ===
+// === GET a random test (READ-ONLY) WITH OPENAI ===
 app.get('/api/test/next', authMiddleware, (req, res) => {
   const userId = req.user.id;
 
-  db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, historyResults) => {
+  db.query('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId], (err, historyResults) => {
     if (err) {
       console.error('DB error on history check:', err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-
-    let completedTests = [];
-    let numbOfTest = 0;
-
-    if (historyResults.length > 0) {
-      let historyData = historyResults[0].data;
-      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
-
-      completedTests = Object.values(historyData.tests).map(t => t.question);
-      numbOfTest = completedTests.length;
-
-      if (numbOfTest >= 9) {
-        return res.status(200).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
-      }
+    
+    // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
+    // difficulty = (1 : easy; 2 : medium; 3 : hard)
+    const type = historyResults[0]?.cnt ?? 0;
+    if(Number(type) >= 27){
+      return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     }
-
-    let servType = '';
-    if (numbOfTest < 3) servType = 'frontend';
-    else if (numbOfTest < 6) servType = 'backend';
-    else servType = 'psychotechnique';
-
+    const cycleIndex = type % 27;
+    const bucket = Math.floor(cycleIndex / 3);
+    const difficulty = Math.floor(bucket / 3) + 1;
+    const servType = (bucket % 3) + 1;
+    console.log(difficulty);
     db.query(
       `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
       [servType, completedTests.length ? completedTests : [0]],
@@ -300,11 +292,12 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
         if (err || testResults.length === 0) {
           return res.status(404).json({ success: false, message: 'No available test found' });
         };
-        return res.status(200).json({ success: true, test: testResults[0] });
+        return res.status(200).json({ success: true, test: testResults[0], count: type });
       }
     );
   });
 });
+
 function q(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
@@ -313,8 +306,8 @@ function q(sql, params = []) {
 
 app.post('/api/test/response', authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const { testId, type, answer } = req.body;
-  if (!testId || !type || !answer) {
+  const { testId, answer } = req.body;
+  if (!testId || !answer) {
     return res.status(400).json({ success: false, message: 'Missing test data' });
   }
   const rows = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
@@ -382,46 +375,53 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
     ({ score } = JSON.parse(raw));
   } catch {
     score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10)));
+    console.log(score);
   } try {
-    const historyResults = await new Promise((resolve, reject) => {
-      db.query('SELECT * FROM Histories WHERE user_id = ?', [userId], (err, results) => {
+    console.log(score);
+    await new Promise((resolve, reject) => {
+      db.query('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score], (err) => {
         if (err) return reject(err);
-        resolve(results);
+        resolve();
       });
     });
-
-    let historyData = null;
-    if (historyResults.length > 0) {
-      historyData = historyResults[0].data;
-      if (typeof historyData === 'string') historyData = JSON.parse(historyData);
-    }
-
-    const newTestKey = historyData ? `test${Object.keys(historyData.tests).length + 1}` : 'test1';
-    const newTestEntry = { type, question: testId, response: answer, score };
-
-    if (!historyData) {
-      historyData = { tests: { [newTestKey]: newTestEntry } };
-      await new Promise((resolve, reject) => {
-        db.query('INSERT INTO Histories (user_id, data) VALUES (?, ?)', [userId, JSON.stringify(historyData)], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-    } else {
-      historyData.tests[newTestKey] = newTestEntry;
-      await new Promise((resolve, reject) => {
-        db.query('UPDATE Histories SET data = ? WHERE user_id = ?', [JSON.stringify(historyData), userId], (err) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-    }
     res.json({ success: true, score });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+// === CRUD delete route ===
+app.delete('/api/delete', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+  db.query('SELECT cv FROM Users WHERE id=?;', [userId], (err,rows) => {
+    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
+    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
+      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
+    });
+    db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
+      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    })
+    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
+    return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
+  });
+});
+// === CRUD delete route (admin)===
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
+  const targetId = req.params.id;
+  db.query('SELECT cv FROM Users WHERE id=?;', [targetId], (err,rows) => {
+    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
+    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
+      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
+    });
+    db.query('DELETE FROM Users WHERE id = ?',[targetId], (err) => {
+      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    })
+    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
+    return res.status(200).json({ success: true, message: `User ${targetId} succesfully deleted from the database` });
+  });
+});
+
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,

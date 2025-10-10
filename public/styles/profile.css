@@ -8,11 +8,12 @@ input{
     border: 2px var(--secondary) solid;
     color:var(--secondary);
     border-radius: 8px;
-    padding:7px;
+    padding:0.4rem;
     cursor:pointer;
     background-color: transparent;
-    font-size: 20px;
+    font-size: 1.5rem;
     width: 100%;
+    font-family: main-font;
 }
 select{
     border: 2px var(--secondary) solid;
@@ -24,6 +25,7 @@ select{
     font-size: 20px;
     width: 30%;
     height:40px;
+    font-family: main-font;
 }
 .imgs{
     border-radius: 8px;
@@ -48,12 +50,14 @@ select{
     flex-direction: column;
     width: 100%;
     gap:20px;
+    padding: 1rem 0;
 }
 .doc-view{
     display: flex;
     flex-direction: column;
     width:100%;
     gap:10px;
+    padding: 1rem 0;
 }
 iframe{
     width: 100%;
@@ -106,23 +110,24 @@ li{
     cursor: pointer;
 }
 .info-list li {
-  display: grid;
-  grid-template-columns: 40px 19% 1fr;
-  align-items: center;
-  max-width: 100%;
+    display: grid;
+    grid-template-columns: 40px 19% 1fr;
+    align-items: center;
+    max-width: 100%;
 }
 .info-list li:nth-child(1) {
-  display: flex;
-  justify-content: right;
-  gap:10px;
-  align-items: center;
-  max-width:100%;
+    display: flex;
+    justify-content: right;
+    gap:10px;
+    align-items: center;
+    max-width:100%;
 }
 .city-postal {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 10px;
-  width: 100%;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+    width: 100%;
+    font-family: main-font;
 }
 .box{
     border: 2px var(--secondary) solid;
@@ -153,7 +158,33 @@ li{
     align-items: center;
     padding: 0;
     margin: 0;
+    font-family: main-font;
 }
-#saveBtn{
+.tests div{
+    display: flex;
+    gap: 1rem;
+}
+.tests div button{
     width: 100%;
+    font-family: main-font;
+}
+.button-wrap{
+    display: flex;
+    gap:1rem;
+}
+.button-wrap button{ font-family: main-font; width:100%;}
+@media (max-width:1179px){
+    .contain{
+        flex-direction: column;
+    }
+    .doc-view{min-height:1000px;}
+}
+@media (max-width:500px){
+    .info-list > li > label{
+        display: none;
+    }
+    .info-list > li{
+        grid-template-columns: 40px 1fr ;
+    }
+    .button-wrap{flex-direction: column;}
 }

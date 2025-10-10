@@ -32,7 +32,7 @@
     <main>
         <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
         <form action="/submit-form" method="POST" enctype="multipart/form-data" class="form">
-            <div style="display:flex; justify-content: space-around;">
+            <div class="register">
                 <div>
                     <label for="name">Nom</label>
                     <input type="text" id="name" name="name" required>
@@ -68,28 +68,28 @@
             </div>
             <hr>
             <div style="display:flex; justify-content: space-around;">
-                <ul class="form2">
+                <ul class="form2 inputs" >
                     <p>Documents :</p>
-                    <li class="file-upload">
-                        <label for="cv" id="cvFileName">CV +</label>
-                        <input type="file" id="cv" name="cv" accept=".pdf" required class="docin">
+                    <li class="file-upload inputs">
+                        <label class="inputs" for="cv" id="cvFileName">CV +</label>
+                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
                     </li>
                     <li class="file-upload">
-                        <label for="id_doc" id="piRectoFilename">Pièce d'identité (recto) +</label>
-                        <input type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required class="docin">
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) +</label>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
                     </li>
                     <li class="file-upload">
-                        <label for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) +</label>
-                        <input type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required class="docin">
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) +</label>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
                     </li>
                 </ul>
                 <div>
                     <label for="password">Mot de passe</label>
-                    <input type="password" id="password" name="password" required>
+                    <input class="inputs" type="password" id="password" name="password" required>
                 </div>
                 <div>
                     <label for="confirm">Confirmer le mot de passe</label>
-                    <input type="password" id="confirm" name="confirm" required>
+                    <input class="inputs" type="password" id="confirm" name="confirm" required>
                 </div>
                 <div class="checkbox">
                     <label for="agree">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>

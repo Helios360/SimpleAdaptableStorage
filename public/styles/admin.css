@@ -3,11 +3,9 @@ main{
     flex-direction: row;
     justify-content: center;
     align-items: start;
-    gap: 2%;
+    gap: 2rem;
 }
-a{
-    color:var(--secondary)
-}
+a{ color:var(--secondary); }
 .inputInfo{
     min-width:350px;
     border:2px solid var(--secondary);
@@ -26,6 +24,8 @@ input{
     padding:10px;
     background-color: transparent;
     color:var(--secondary);
+    font-size: 1rem;
+    font-family: main-font;
 }
 textarea{
     color:var(--secondary);
@@ -34,6 +34,7 @@ textarea{
     border-radius: 6px;
     padding:10px;
     background-color: transparent;
+    font-family: main-font;
     resize: none;
 }
 select{
@@ -41,23 +42,23 @@ select{
     border:2px solid var(--secondary);
     border-radius: 6px;
     padding:10px;
+    font-family: main-font;
     background-color: transparent;
+    font-size: 1rem;
 }
 .place {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
 }
-
 .place :nth-child(1) {
     flex: 1 1 0;
     min-width: 0;
     border-radius:6px 0 0 6px;
 }
-
 .place :nth-child(2) {
     flex: 0 0 auto;
-    width: 80px;
+    width: 100px;
     border-radius:0 6px 6px 0;
     border-left: none;
 }
@@ -82,10 +83,11 @@ p{padding: 0; margin:0;}
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    width:50vw;
+    width:55vw;
 }
 .header{
     display: flex;
+    justify-content: space-between;
     gap: 10%;
     padding:10px 10px;
     border-bottom: 2px solid var(--secondary);
@@ -93,21 +95,20 @@ p{padding: 0; margin:0;}
 .header span{
     display: flex;
     align-items: center;
-    gap:7px;
-    width:25%;
+    width:7rem;
 }
 .user{
     align-items: center;
-    padding:5px 10px;
+    padding:30px 10px;
     border-bottom: 2px solid var(--secondary);
     display:flex;
+    justify-content: space-between;
     height:50px;
-    gap:10%;
+    text-align: left;
 }
 .user span{
-    width:25%;
+    width:7rem;
 }
-
 .rotated {
   transform: rotate(180deg);
   transition: transform 0.3s ease;
@@ -115,4 +116,25 @@ p{padding: 0; margin:0;}
 .unrotate {
   transform: rotate(0deg);
   transition: transform 0.3s ease;
+}
+@media (max-width:1530px){
+    main{
+        flex-direction: column;
+        gap:2rem;
+        padding:2rem;
+    }
+    .list{
+        width: 100%;
+    }
+    .inputInfo{
+        width: 100%;
+    }
+    textarea{height:5rem;}
+}
+@media (max-height:742px){
+    main{
+        gap: 1rem;
+        padding:1rem;
+    }
+    textarea{height:3rem;}
 }
