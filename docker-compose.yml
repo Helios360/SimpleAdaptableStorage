@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+mysql:
+  image: mysql:latest
+  restart: always
+  env_file:
+    - .env
+  ports:
+    - "3306:3306"
+  volumes:
+    - db-data:/var/lib/mysql
+volumes:
+  db-data:
