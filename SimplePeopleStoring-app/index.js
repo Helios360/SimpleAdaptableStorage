@@ -16,8 +16,8 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 // Setting up important consts
-const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || 'localhost';
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const SECRET = process.env.JWT_SECRET;
 // === Middleware ===
 app.use(cors({origin: 'http://localhost:8080',credentials:true}));
@@ -27,10 +27,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 // === MySQL ===
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
   dateStrings: true,
 });
 
@@ -125,13 +125,20 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
 // === PDF access ===
 app.get('/uploads/:folder/:filename', authMiddleware, (req, res) => {
   const { folder, filename } = req.params;
-  const filePath = path.join(__dirname, 'uploads', folder, filename);
+  const filePath = path.join(__dirname, 'uploads');
+  const requested = path.normalize(path.join(filePath, folder, filename));
+  if (!requested.startsWith(filePath + path.sep)) return res.status(400).send('Invalid path');
 
-  fs.access(filePath, fs.constants.F_OK, (err) => {
-    if (err) {
-      return res.status(404).send('File not found');
-    }
-    res.sendFile(filePath);
+  db.query('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id], (err, rows)=>{
+    if(err || !rows.length) return res.status(404).send('Not Found');
+    const allowed = [rows[0].cv, rows[0].id_doc, rows[0].id_doc_verso].filter(Boolean).map(p=>path.normalize(path.join(__dirname, p)));
+    const isOwner = allowed.some(p=>p===requested);
+    if(!isOwner && !req.user.is_admin) return res.status(403).send('Forbidden');
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) return res.status(404).send('File not found');
+      res.sendFile(requested, { headers: { 'X-Content-Type-Options': 'nosniff' } });
+    });
   });
 });
 
@@ -194,11 +201,17 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
 
 // === Register route ===
 app.post('/submit-form', (req, res) => {
+  const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
+  const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
   const form = formidable({
     keepExtensions: true,
     maxFileSize: 10 * 1024 * 1024,       // Limite par fichier
     maxTotalFileSize: 30 * 1024 * 1024,  // Limite cumulée
     multiples: true,
+    filter: ({mimetype, originalFilename})=>{
+      const ext=path.extname(originalFilename || '').toLowerCase();
+      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
+    }
   });
 
   form.parse(req, async (err, fields, files) => {
@@ -266,13 +279,11 @@ app.post('/submit-form', (req, res) => {
 // === GET a random test (READ-ONLY) WITH OPENAI ===
 app.get('/api/test/next', authMiddleware, (req, res) => {
   const userId = req.user.id;
-
   db.query('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId], (err, historyResults) => {
     if (err) {
       console.error('DB error on history check:', err);
       return res.status(500).json({ success: false, message: 'Database error' });
     }
-    
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
     const type = historyResults[0]?.cnt ?? 0;
@@ -283,14 +294,12 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     const bucket = Math.floor(cycleIndex / 3);
     const difficulty = Math.floor(bucket / 3) + 1;
     const servType = (bucket % 3) + 1;
-    console.log(difficulty);
+    //Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
     db.query(
       `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
       [servType, completedTests.length ? completedTests : [0]],
       (err, testResults) => {
-        if (err || testResults.length === 0) {
-          return res.status(404).json({ success: false, message: 'No available test found' });
-        };
+        if (err || testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
         return res.status(200).json({ success: true, test: testResults[0], count: type });
       }
     );

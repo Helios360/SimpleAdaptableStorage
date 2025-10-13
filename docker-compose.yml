@@ -1,5 +1,19 @@
-version: '3.8'
 services:
+  mysql:
+      image: mysql:latest
+      restart: always
+      env_file:
+        - .env
+      ports:
+        - "3307:3306"
+      volumes:
+        - db-data:/var/lib/mysql
+        - ./db/init:/docker-entrypoint-initdb.d:ro
+      healthcheck:
+        test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
   app:
     build: .
     ports:
@@ -7,15 +21,9 @@ services:
     env_file:
       - .env
     depends_on:
-      - mysql
-mysql:
-  image: mysql:latest
-  restart: always
-  env_file:
-    - .env
-  ports:
-    - "3306:3306"
-  volumes:
-    - db-data:/var/lib/mysql
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./SimplePeopleStoring-app/uploads:/usr/src/app/uploads 
 volumes:
   db-data:

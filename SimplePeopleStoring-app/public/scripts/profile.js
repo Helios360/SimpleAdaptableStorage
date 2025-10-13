@@ -120,7 +120,7 @@ if (data.success) {
         document.getElementById('pis').style.display = "none";
         document.getElementById('cv-frame').style.display = "block";
         const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'GET', credentials: include })
+        fetch(cvUrl, { method: 'GET', credentials: 'include' })
         .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
         .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url;})
         .catch(() => { notif("Impossible de charger le CV.");});
