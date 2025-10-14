@@ -33,6 +33,6 @@ EOT
 
 echo "[TIPS] Don't hesitate to modify .env to suit your needs"
 
-echo "Fresh:"
+echo "Fresh :"
 echo "  Start = docker compose up -d" 
-echo "  Stop = docker compose down -v" 
+echo "  Stop = docker compose down" 

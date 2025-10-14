@@ -34,9 +34,30 @@ select{
     background-color: transparent;
     overflow: scroll;
 }
-.imgs > img{
+.pi{
     width:100%;
-    height:auto;
+    height:100%;
+    min-height:300px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap:1rem;
+}
+.pi > a {
+    display:none;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    opacity: 0.8;
+    padding:1rem;
+    background-color: var(--primary);
+    width:5rem;
+    height:5rem;
+    border-radius: 50%;
 }
 .contain{
     width:95%;
@@ -95,7 +116,7 @@ li{
 }
 .docs {
     display: flex;
-    gap:10px;
+    gap:0.8rem;
 }
 .docs a{
     height: 40px;

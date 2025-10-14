@@ -1,5 +1,7 @@
 const CV = document.getElementById('cv');
 const PI = document.getElementById('pi');
+const pimg = document.getElementById('PImg');
+const pimgverso = document.getElementById('PImgVerso');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
 const cv_frame = document.getElementById('cv_frame');
@@ -107,7 +109,7 @@ if (data.success) {
     });
 
     const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } })
+        fetch(cvUrl, { method: 'GET', credentials : 'include' })
         .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
         .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url; })
         .catch(() => { notif("Impossible de charger le CV."); });
@@ -134,16 +136,16 @@ if (data.success) {
         document.getElementById('pis').style.display = "block";
         const rectoUrl = `${user.id_doc}`;
         const versoUrl = `${user.id_doc_verso}`;
-        const headers = { method: 'GET', headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}};
+        const headers = { method: 'GET', credentials : 'include'};
         // Charger le recto
         fetch(rectoUrl, headers)
         .then(response => { if (!response.ok) throw new Error("Accès refusé au recto de la PI"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImg').src = url; })
+        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImg').style.backgroundImage = "url('"+url+"')"; })
         .catch(() => { notif("Impossible de charger le recto de la PI."); });
         // Charger le verso
         fetch(versoUrl, headers)
         .then(response => { if (!response.ok) throw new Error("Accès refusé au verso de la PI"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImgVerso').src = url; })
+        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImgVerso').style.backgroundImage = "url('"+url+"')"; })
         .catch(() => { notif("Impossible de charger le verso de la PI."); });
 
         CV.style.backgroundColor = "var(--primary)";
@@ -254,6 +256,29 @@ function renderTagsAndSkills() {
         skillList.appendChild(span);
     });
 }
+
+const imgBtns = document.querySelectorAll('.img-btn');
+const imgBtnsV = document.querySelectorAll('.img-btn-v');
+pimg.addEventListener('mouseover', ()=>{
+    imgBtns.forEach(btn =>{
+        btn.style.display="flex";
+    })
+})
+pimg.addEventListener('mouseout', ()=>{
+    imgBtns.forEach(btn =>{
+        btn.style.display="none";
+    })
+})
+pimgverso.addEventListener('mouseover', ()=>{
+    imgBtnsV.forEach(btn =>{
+        btn.style.display="flex";
+    })
+})
+pimgverso.addEventListener('mouseout', ()=>{
+    imgBtnsV.forEach(btn =>{
+        btn.style.display="none";
+    })
+})
 
 const skillTypes = {
   // Languages

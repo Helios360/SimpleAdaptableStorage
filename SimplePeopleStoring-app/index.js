@@ -414,7 +414,10 @@ app.delete('/api/delete', authMiddleware, (req, res) => {
     return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
   });
 });
-// === CRUD delete route (admin)===
+// === CRUD change/delete files only route ===
+
+
+// === CRUD delete route (admin) ===
 app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
   const targetId = req.params.id;
   db.query('SELECT cv FROM Users WHERE id=?;', [targetId], (err,rows) => {
@@ -429,6 +432,8 @@ app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
     return res.status(200).json({ success: true, message: `User ${targetId} succesfully deleted from the database` });
   });
 });
+// === CRUD change/delete files only route (admin) ===
+
 
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
