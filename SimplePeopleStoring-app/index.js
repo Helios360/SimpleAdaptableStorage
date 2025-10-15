@@ -398,10 +398,8 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
-// === CRUD delete route ===
-app.delete('/api/delete', authMiddleware, (req, res) => {
-  const userId = req.user.id;
+// === CRUD ===
+function deleteUser(userId, res){
   db.query('SELECT cv FROM Users WHERE id=?;', [userId], (err,rows) => {
     const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
     fs.rm(userFolder, { recursive: true, force: true}, (e) => {
@@ -413,27 +411,44 @@ app.delete('/api/delete', authMiddleware, (req, res) => {
     if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
     return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
   });
+}
+// === CRUD delete route ===
+app.delete('/api/delete', authMiddleware, (req, res) => {
+  deleteUser(req.user.id, res);
 });
-// === CRUD change/delete files only route ===
-
-
 // === CRUD delete route (admin) ===
 app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
-  const targetId = req.params.id;
-  db.query('SELECT cv FROM Users WHERE id=?;', [targetId], (err,rows) => {
-    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
-    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
-      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
-    });
-    db.query('DELETE FROM Users WHERE id = ?',[targetId], (err) => {
-      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
-    })
-    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
-    return res.status(200).json({ success: true, message: `User ${targetId} succesfully deleted from the database` });
-  });
+  deleteUser(req.params.id, res);
 });
-// === CRUD change/delete files only route (admin) ===
-
+// === CRUD change/delete files only route ===
+function deleteFile(dir){
+  fs.rm(dir, { recursive: false, force: true}, (e) => {
+    if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
+  });
+}
+app.post('/api/files',authMiddleware, (req,res)=>{
+  try{
+    db.query('SELECT id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id], (err, rows) => {
+      if (err) return res.status(500).json({success: false, message: "BDD: Impossible de trouver le fichier..."});
+      const userFolder = path.resolve(__dirname, rows[0].id_doc);
+      const userFolderVerso = path.resolve(__dirname, rows[0].id_doc_verso);
+      if (req.body.action === 'del') {
+          deleteFile(userFolder);
+          db.query('DELETE id_doc FROM Users WHERE id=?', [req.user.id], (err) =>{
+            if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
+          });
+      } else if (req.body.action === 'delV'){
+          deleteFile(userFolderVerso);
+          db.query('DELETE id_doc_verso FROM Users WHERE id=?', [req.user.id], (err) =>{
+            if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
+          });
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({error: 'Server Error'})
+  }
+})
 
 // === Rate limit, anti ddos ===
 app.use(rateLimit({

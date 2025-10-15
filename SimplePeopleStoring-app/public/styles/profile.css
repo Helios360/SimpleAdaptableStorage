@@ -58,6 +58,10 @@ select{
     width:5rem;
     height:5rem;
     border-radius: 50%;
+    transition: all 0.2s ease;
+}
+.pi > a:hover{
+    opacity: 1;
 }
 .contain{
     width:95%;

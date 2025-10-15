@@ -280,6 +280,28 @@ pimgverso.addEventListener('mouseout', ()=>{
     })
 })
 
+const change = document.getElementById('change');
+const del = document.getElementById('delete');
+const download = document.getElementById('download');
+const changeV = document.getElementById('change-v');
+const delV = document.getElementById('delete-v');
+const downloadV = document.getElementById('download-v');
+change.addEventListener('click', () => action('change'));
+del.addEventListener('click', () => action('del'));
+delV.addEventListener('click', () => action('delV'));
+
+function action(name) {
+    fetch('/api/files',{
+        method: 'POST',
+        credentials: 'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action: name })
+    })
+    .then(r=>r.json())
+    .then(console.log)
+    .catch(console.error)
+}
+
 const skillTypes = {
   // Languages
   'C': 'language',
