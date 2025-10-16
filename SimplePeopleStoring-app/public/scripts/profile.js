@@ -286,9 +286,11 @@ const download = document.getElementById('download');
 const changeV = document.getElementById('change-v');
 const delV = document.getElementById('delete-v');
 const downloadV = document.getElementById('download-v');
-change.addEventListener('click', () => action('change'));
+
 del.addEventListener('click', () => action('del'));
 delV.addEventListener('click', () => action('delV'));
+download.addEventListener('click', () => action('download'));
+downloadV.addEventListener('click', () => action('downloadV'));
 
 function action(name) {
     fetch('/api/files',{
@@ -301,6 +303,41 @@ function action(name) {
     .then(console.log)
     .catch(console.error)
 }
+
+const fileUpload = document.getElementById('file-change'); 
+const fileUploadV = document.getElementById('file-change-v'); 
+
+change.addEventListener('click', (e) => {
+    e.preventDefault();
+    fileUpload.click();
+});
+changeV.addEventListener('click', (e) => {
+    e.preventDefault();
+    fileUploadV.click();
+});
+
+fileUpload.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', 'id_doc');
+    try{
+        const res = await fetch('/api/upload',{
+            method : 'POST',
+            credentials: 'include',
+            body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
+        notif("Piece d'identité recto mise a jour ...");
+    } catch (e) {
+        console.error(e);
+        notif("Erreur pendant l'upload");
+    } finally {
+        e.target.value ='';
+    }
+})
 
 const skillTypes = {
   // Languages

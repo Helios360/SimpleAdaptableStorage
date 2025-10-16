@@ -34,6 +34,9 @@ const db = mysql.createConnection({
   dateStrings: true,
 });
 
+const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
+const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
+
 db.connect(err => {
   if (err) {
     console.error('DB Error:', err.stack);
@@ -201,8 +204,6 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
 
 // === Register route ===
 app.post('/submit-form', (req, res) => {
-  const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
-  const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
   const form = formidable({
     keepExtensions: true,
     maxFileSize: 10 * 1024 * 1024,       // Limite par fichier
@@ -437,7 +438,7 @@ app.post('/api/files',authMiddleware, (req,res)=>{
           db.query('DELETE id_doc FROM Users WHERE id=?', [req.user.id], (err) =>{
             if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
           });
-      } else if (req.body.action === 'delV'){
+      } else if (req.body.action === 'delV') {
           deleteFile(userFolderVerso);
           db.query('DELETE id_doc_verso FROM Users WHERE id=?', [req.user.id], (err) =>{
             if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
@@ -448,6 +449,9 @@ app.post('/api/files',authMiddleware, (req,res)=>{
     console.error(e);
     return res.status(500).json({error: 'Server Error'})
   }
+})
+app.post('/api/upload', authMiddleware, (req,res)=>{
+  
 })
 
 // === Rate limit, anti ddos ===
