@@ -33,9 +33,12 @@ const db = mysql.createConnection({
   database: process.env.MYSQL_DATABASE,
   dateStrings: true,
 });
-
+// Helpers
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
+const UPLOADS_ROOT = path.join(__dirname, 'uploads');
+const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
+const relFromAbs = (abs) => '/' + path.relative(__dirname, abs).replace(/\\/g, '/');
 
 db.connect(err => {
   if (err) {
@@ -138,7 +141,7 @@ app.get('/uploads/:folder/:filename', authMiddleware, (req, res) => {
     const isOwner = allowed.some(p=>p===requested);
     if(!isOwner && !req.user.is_admin) return res.status(403).send('Forbidden');
 
-    fs.access(filePath, fs.constants.F_OK, (err) => {
+    fs.access(requested, fs.constants.F_OK, (err) => {
       if (err) return res.status(404).send('File not found');
       res.sendFile(requested, { headers: { 'X-Content-Type-Options': 'nosniff' } });
     });
@@ -214,65 +217,78 @@ app.post('/submit-form', (req, res) => {
       return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
     }
   });
-
+  const copyInto = async (file, destDir) => {
+    if (!file) return null;
+    const ext = path.extname(file.originalFilename || '').toLowerCase();
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    await fs.promises.mkdir(destDir, {recursive: true});
+    const destAbs = path.join(destDir, safeName);
+    await fs.promises.copyFile(file.filepath, destAbs);
+    return destAbs;
+  };
   form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error('Formidable error:', err);
-      return res.status(500).send('Form parsing error');
+      return res.status(400).send('Form parsing error');
     }
-
-    const {
-      name, fname, email, tel, addr, city,
-      postal, birth, id, password, agree,
-    } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-
-    // Création du dossier utilisateur
-    const userFolderName = `user_${Date.now()}_${email.replace(/[@.]/g, '_')}`;
-    const uploadDir = path.join(__dirname, 'uploads', userFolderName);
-
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    // Fonction utilitaire pour déplacer les fichiers
-    const moveFile = async (file) => {
-      if (!file) return null;
-      const oldPath = file[0].filepath;
-      const newName = file[0].newFilename;
-      const newPath = path.join(uploadDir, newName);
-      await fs.promises.copyFile(oldPath, newPath);
-      await fs.promises.unlink(oldPath);
-      return path.relative(__dirname, newPath);
-    };
-
     try {
-      // Attente des chemins de fichiers
-      const [cvPath, idDocPath, idDocPathVerso] = await Promise.all([
-        moveFile(files.cv),
-        moveFile(files.id_doc),
-        moveFile(files.id_doc_verso)
+      const {
+        name, fname, email, tel, addr, city,
+        postal, birth, password, agree,
+      } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
+      if (!email || !password || !name) return res.status(400).send('Missing required fields');
+      const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      await fs.promises.mkdir(tmpDir, {recursive: true});
+      const f_cv = files.cv?.[0] || null;
+      const f_idr = files.id_doc?.[0] || null;
+      const f_idv = files.id_doc_verso?.[0] || null;
+
+      const [cvTmpAbs, idrTmpAbs, idvTmpAbs] = await Promise.all([
+        copyInto(f_cv, tmpDir),
+        copyInto(f_idr, tmpDir),
+        copyInto(f_idv, tmpDir)
       ]);
-      // Hash du mot de passe
-      const hashedPassword = bcrypt.hashSync(String(password), 10);
-      const sql = `
+
+      const insertSql = `
         INSERT INTO Users
           (name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, agree)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      const values = [
-        name, fname, email, tel, addr, city, postal, birth,
-        cvPath, idDocPath, idDocPathVerso, hashedPassword, agree ? 1 : 0
-      ];
-      db.query(sql, values, (err, result) => {
-        if (err) {
-          console.error('DB Insert Error:', err);
-          return res.status(500).send('Database Error');
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const insertValues = [name, fname, email, tel, addr, city, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
+      db.query(insertSql, insertValues, async (err, results) => {
+        if (err){
+          console.error('DB insert Error: ', err);
+          fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
+          return res.status(500).send('Database error');
         }
-        res.redirect('/signin');
-      });
-    } catch (fileErr) {
-      console.error("File move error:", fileErr);
-      res.status(500).send("File move error");
+        const newId = results.insertId;
+        const finalDir = userDir(newId);
+        await fs.promises.mkdir(finalDir, {recursive: true});
+        const moveToFinal = async (absPath) => {
+          if(!absPath) return null;
+          const base = path.basename(absPath);
+          const dest = path.join(finalDir, base);
+          await fs.promises.rename(absPath, dest);
+          return relFromAbs(dest);
+        };
+        const [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
+          moveToFinal(cvTmpAbs),
+          moveToFinal(idrTmpAbs),
+          moveToFinal(idvTmpAbs)
+        ])
+        db.query('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId], (err)=>{
+          fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
+          if(err){
+            console.error('DB Update Error (final paths) : ', err);
+            return res.status(500).send('Database error after insert');
+          }
+          return res.redirect('/signin');
+        });
+      })
+    } catch (e) {
+      console.error('Registration handler fault : ', e);
+      return res.status(500).send('Server Error');
     }
   });
 });
@@ -435,12 +451,12 @@ app.post('/api/files',authMiddleware, (req,res)=>{
       const userFolderVerso = path.resolve(__dirname, rows[0].id_doc_verso);
       if (req.body.action === 'del') {
           deleteFile(userFolder);
-          db.query('DELETE id_doc FROM Users WHERE id=?', [req.user.id], (err) =>{
+          db.query('UPDATE Users SET id_doc = NULL WHERE id=?', [req.user.id], (err) =>{
             if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
           });
       } else if (req.body.action === 'delV') {
           deleteFile(userFolderVerso);
-          db.query('DELETE id_doc_verso FROM Users WHERE id=?', [req.user.id], (err) =>{
+          db.query('UPDATE Users SET id_doc_verso = NULL WHERE id=?', [req.user.id], (err) =>{
             if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
           });
       }
@@ -451,7 +467,32 @@ app.post('/api/files',authMiddleware, (req,res)=>{
   }
 })
 app.post('/api/upload', authMiddleware, (req,res)=>{
-  
+  const form = formidable({
+    keepExtensions: true,
+    maxFileSize: 10 * 10 * 1024,
+    filter: ({mimetype, originalFilename}) => {
+      const ext = path.extname(originalFilename || '').toLowerCase();
+      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
+    }
+  });
+  form.parse(req, async (err, fields, files) => {
+    try{
+      if(err){
+        console.error('Formidable error: ', err);
+        return res.status(400).json({success: false, message: "Bad upload"});
+      }
+      const kind = String((fields.kind || [])[0] || '').trim();
+      if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+      
+      const f = files.file?.[0];
+      if (!f) return res.status(400).json({success: false, message: 'No file'});
+
+      const ext = path.extname(originalFilename || '').toLowerCase();
+      if (!ALLOWED_MIME.has(f.mimetype) || !ALLOWED_EXT.has(ext)) {
+        return res.status(415).json({success: false, message: 'Unsupported file type'});
+      }
+    } catch(e){}
+  });
 })
 
 // === Rate limit, anti ddos ===

@@ -4,8 +4,8 @@ echo ":D Starting minimal configuration . . ."
 
 echo "Docker setup . . ."
 sudo pacman -Syu docker docker-compose
-sudo systemctl enable docker.service
-sudo systemctl start docker.service
+sudo sudo systemctl enable docker.service
+sudo sudo systemctl start docker.service
 echo
 
 read -p "Enter a db name for .env file: " DB_NAME
@@ -34,5 +34,8 @@ EOT
 echo "[TIPS] Don't hesitate to modify .env to suit your needs"
 
 echo "Fresh :"
-echo "  Start = docker compose up -d" 
-echo "  Stop = docker compose down" 
+echo "  Start = sudo docker compose up --build" 
+echo "  Stop = sudo docker compose down" 
+
+echo "Database :"
+echo "  Access = mysql -h 127.0.0.1 -P 3307 -u root -p $DB_NAME"

@@ -323,11 +323,25 @@ fileUpload.addEventListener('change', async (e) => {
     fd.append('file', file);
     fd.append('kind', 'id_doc');
     try{
-        const res = await fetch('/api/upload',{
-            method : 'POST',
-            credentials: 'include',
-            body: fd,
-        });
+        const res = await fetch('/api/upload',{ method : 'POST', credentials: 'include', body: fd });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
+        notif("Piece d'identité recto mise a jour ...");
+    } catch (e) {
+        console.error(e);
+        notif("Erreur pendant l'upload");
+    } finally {
+        e.target.value ='';
+    }
+})
+fileUploadV.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', 'id_doc_verso');
+    try{
+        const res = await fetch('/api/upload',{ method : 'POST', credentials: 'include', body: fd });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
         notif("Piece d'identité recto mise a jour ...");
