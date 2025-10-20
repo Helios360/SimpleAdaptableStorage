@@ -109,20 +109,21 @@ if (data.success) {
     });
 
     const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'GET', credentials : 'include' })
-        .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url; })
-        .catch(() => { notif("Impossible de charger le CV."); });
-        CV.style.backgroundColor = "var(--secondary)";
-        CV.style.color = "var(--primary)";
-        PI.style.backgroundColor = "var(--primary)";
-        PI.style.color = "var(--secondary)";
+    fetch(cvUrl, { method: 'POST', credentials : 'include' })
+    .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
+    .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url; })
+    .catch(() => { notif("Impossible de charger le CV."); });
+    CV.style.backgroundColor = "var(--secondary)";
+    CV.style.color = "var(--primary)";
+    PI.style.backgroundColor = "var(--primary)";
+    PI.style.color = "var(--secondary)";
 
     CV.addEventListener('click', function (){ // charger le cv
         document.getElementById('pis').style.display = "none";
         document.getElementById('cv-frame').style.display = "block";
+        document.getElementById('cv-action').style.display = "flex";
         const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'GET', credentials: 'include' })
+        fetch(cvUrl, { method: 'POST', credentials: 'include' })
         .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
         .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url;})
         .catch(() => { notif("Impossible de charger le CV.");});
@@ -134,9 +135,10 @@ if (data.success) {
     PI.addEventListener('click', function (){ // charger la pi
         document.getElementById('cv-frame').style.display = "none";
         document.getElementById('pis').style.display = "block";
+        document.getElementById('cv-action').style.display = "none";
         const rectoUrl = `${user.id_doc}`;
         const versoUrl = `${user.id_doc_verso}`;
-        const headers = { method: 'GET', credentials : 'include'};
+        const headers = { method: 'POST', credentials : 'include'};
         // Charger le recto
         fetch(rectoUrl, headers)
         .then(response => { if (!response.ok) throw new Error("Accès refusé au recto de la PI"); return response.blob(); })
@@ -286,11 +288,16 @@ const download = document.getElementById('download');
 const changeV = document.getElementById('change-v');
 const delV = document.getElementById('delete-v');
 const downloadV = document.getElementById('download-v');
+const changeCV = document.getElementById('change-cv');
+const delCV = document.getElementById('delete-cv');
+const downloadCV = document.getElementById('download-cv');
 
 del.addEventListener('click', () => action('del'));
 delV.addEventListener('click', () => action('delV'));
+delCV.addEventListener('click', () => action('delCV'));
 download.addEventListener('click', () => action('download'));
 downloadV.addEventListener('click', () => action('downloadV'));
+downloadCV.addEventListener('click', () => action('downloadCV'));
 
 function action(name) {
     fetch('/api/files',{
@@ -306,6 +313,7 @@ function action(name) {
 
 const fileUpload = document.getElementById('file-change'); 
 const fileUploadV = document.getElementById('file-change-v'); 
+const fileUploadCV = document.getElementById('file-change-cv'); 
 
 change.addEventListener('click', (e) => {
     e.preventDefault();
@@ -315,18 +323,26 @@ changeV.addEventListener('click', (e) => {
     e.preventDefault();
     fileUploadV.click();
 });
+changeCV.addEventListener('click', (e) => {
+    e.preventDefault();
+    fileUploadCV.click();
+});
+
+async function uploadKind(kind, file){
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`/api/upload/${encodeURIComponent(kind)}`,{ method : 'POST', credentials: 'include', body: fd });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
+    return data;
+}
 
 fileUpload.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('kind', 'id_doc');
     try{
-        const res = await fetch('/api/upload',{ method : 'POST', credentials: 'include', body: fd });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
-        notif("Piece d'identité recto mise a jour ...");
+        await uploadKind('id_doc', file);
+        notif("Piece d'identité recto mise à jour ...");
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
@@ -337,14 +353,22 @@ fileUpload.addEventListener('change', async (e) => {
 fileUploadV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('kind', 'id_doc_verso');
     try{
-        const res = await fetch('/api/upload',{ method : 'POST', credentials: 'include', body: fd });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
-        notif("Piece d'identité recto mise a jour ...");
+        await uploadKind('id_doc_verso', file);
+        notif("Piece d'identité verso mise à jour ...");
+    } catch (e) {
+        console.error(e);
+        notif("Erreur pendant l'upload");
+    } finally {
+        e.target.value ='';
+    }
+})
+fileUploadCV.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+        await uploadKind('cv', file);
+        notif("CV mis à jour ...");
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");

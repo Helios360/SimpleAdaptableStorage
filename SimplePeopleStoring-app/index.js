@@ -38,14 +38,23 @@ const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const UPLOADS_ROOT = path.join(__dirname, 'uploads');
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
-const relFromAbs = (abs) => '/' + path.relative(__dirname, abs).replace(/\\/g, '/');
+const relFromAbs = (abs) => path.relative(__dirname, abs).replace(/\\/g, '/');
+const toAbsFromStored = (stored) => {
+  if (!stored) return null;
+  const rel = stored.replace(/^[\\/]+/,'');
+  const abs = path.normalize(path.join(__dirname,rel));
+  if(!abs.startsWith(UPLOADS_ROOT + path.sep)){
+    throw new Error('Path escapes uploads root');
+  }
+  return abs;
+}
 
 db.connect(err => {
   if (err) {
-    console.error('DB Error:', err.stack);
+    console.error('DB Error: ', err.stack);
     return;
   }
-  console.log(':3 Connected to DB');
+  console.log(':3 Connected to MySQL . . .');
 });
 
 // === HTML Routes ===
@@ -103,7 +112,6 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
   (err, results)=>{
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
-    
     res.json({ success: true, users: results});
   });
 });
@@ -128,19 +136,16 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   });
 });
 
-// === PDF access ===
-app.get('/uploads/:folder/:filename', authMiddleware, (req, res) => {
+// === File display access ===
+app.post('/uploads/:folder/:filename', authMiddleware, (req, res) => {
   const { folder, filename } = req.params;
-  const filePath = path.join(__dirname, 'uploads');
-  const requested = path.normalize(path.join(filePath, folder, filename));
-  if (!requested.startsWith(filePath + path.sep)) return res.status(400).send('Invalid path');
-
+  const requested = path.normalize(path.join(UPLOADS_ROOT, folder, filename));
+  if (!requested.startsWith(UPLOADS_ROOT + path.sep)) return res.status(400).send('Invalid path');
   db.query('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id], (err, rows)=>{
     if(err || !rows.length) return res.status(404).send('Not Found');
-    const allowed = [rows[0].cv, rows[0].id_doc, rows[0].id_doc_verso].filter(Boolean).map(p=>path.normalize(path.join(__dirname, p)));
+    const allowed = [rows[0].cv, rows[0].id_doc, rows[0].id_doc_verso].filter(Boolean).map(p=>{try{return toAbsFromStored(p);}catch{return null}}).filter(Boolean);
     const isOwner = allowed.some(p=>p===requested);
     if(!isOwner && !req.user.is_admin) return res.status(403).send('Forbidden');
-
     fs.access(requested, fs.constants.F_OK, (err) => {
       if (err) return res.status(404).send('File not found');
       res.sendFile(requested, { headers: { 'X-Content-Type-Options': 'nosniff' } });
@@ -228,7 +233,7 @@ app.post('/submit-form', (req, res) => {
   };
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error('Formidable error:', err);
+      console.error('Formidable error: ', err);
       return res.status(400).send('Form parsing error');
     }
     try {
@@ -437,61 +442,91 @@ app.delete('/api/delete', authMiddleware, (req, res) => {
 app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
   deleteUser(req.params.id, res);
 });
-// === CRUD change/delete files only route ===
-function deleteFile(dir){
-  fs.rm(dir, { recursive: false, force: true}, (e) => {
-    if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
-  });
-}
-app.post('/api/files',authMiddleware, (req,res)=>{
+// === CRUD change(upload)/delete files only route ===
+app.post('/api/files',authMiddleware, async (req,res)=>{
   try{
-    db.query('SELECT id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id], (err, rows) => {
-      if (err) return res.status(500).json({success: false, message: "BDD: Impossible de trouver le fichier..."});
-      const userFolder = path.resolve(__dirname, rows[0].id_doc);
-      const userFolderVerso = path.resolve(__dirname, rows[0].id_doc_verso);
-      if (req.body.action === 'del') {
-          deleteFile(userFolder);
-          db.query('UPDATE Users SET id_doc = NULL WHERE id=?', [req.user.id], (err) =>{
-            if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
-          });
-      } else if (req.body.action === 'delV') {
-          deleteFile(userFolderVerso);
-          db.query('UPDATE Users SET id_doc_verso = NULL WHERE id=?', [req.user.id], (err) =>{
-            if (err) return res.status(500).json({success: false, message: 'Impossible de supprimer le chemin de la base de données'});
-          });
-      }
-    })
+    const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id]);
+    if (!rows || !rows[0]) return res.status(500).json({success : false, message : 'User not found'});
+    const user = rows[0];
+    let filename = null;
+    let nullTheColumn = null;
+    if(req.body.action === 'del' && user.id_doc){
+      filename = toAbsFromStored(user.id_doc);
+      nullTheColumn = 'id_doc';
+    } else if(req.body.action === 'delV' && user.id_doc_verso){
+      filename = toAbsFromStored(user.id_doc_verso);
+      nullTheColumn = 'id_doc_verso';
+    } else if(req.body.action === 'delCV' && user.cv) {
+      filename = toAbsFromStored(user.cv);
+      nullTheColumn = 'cv';
+    } else { return res.status(400).json({ success : false, message: "No file to delete or invalid parameters"}) }
+    try{
+      await fs.promises.unlink(filename);
+      console.log(`deleted file : ${filename}`);
+    } catch (e){
+      if (e.code !== 'ENOENT'){
+        console.warn('Unlink error:', e);
+        return res.status(500).json({success : false, message : "File can't be deleted"});
+      } else {console.log('File already deleted');}
+    }
+    await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [req.user.id]);
+    return res.json({success: true});
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({error: 'Server Error'})
+    console.error('Delete Route Error: ', e);
+    return res.status(500).json({error: 'Server Error'});
   }
 })
-app.post('/api/upload', authMiddleware, (req,res)=>{
+app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
+  const kind = String(req.params.kind || '').trim();
+  if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+  const userFolder = userDir(req.user.id);
+  await fs.promises.mkdir(userFolder, {recursive : true});
+  try {
+    const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
+    const current = rows[0]?.[kind];
+    if (current){
+      const oldAbs = toAbsFromStored(current);
+      try { await fs.promises.unlink(oldAbs);} 
+      catch (e) {if (e.code !== 'ENOENT') console.warn('Old file delete error: ', e);}
+    }
+  } catch (e) {
+    console.error('Pre check error: ', e);
+    return res.status(500).json({success: false, message: 'server error'});
+  }
   const form = formidable({
+    uploadDir: userFolder,
     keepExtensions: true,
-    maxFileSize: 10 * 10 * 1024,
+    multiples: false,
+    maxFileSize: 10 * 1024 * 1024,
     filter: ({mimetype, originalFilename}) => {
       const ext = path.extname(originalFilename || '').toLowerCase();
       return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
+    },
+    filename: (name, ext, part, form) => {
+      const lowerExt = (ext || path.extname(name || '')).toLowerCase();
+      return `u_${req.user.id}_${kind}${lowerExt}`;
     }
   });
-  form.parse(req, async (err, fields, files) => {
-    try{
-      if(err){
-        console.error('Formidable error: ', err);
-        return res.status(400).json({success: false, message: "Bad upload"});
-      }
-      const kind = String((fields.kind || [])[0] || '').trim();
-      if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
-      
-      const f = files.file?.[0];
-      if (!f) return res.status(400).json({success: false, message: 'No file'});
 
-      const ext = path.extname(originalFilename || '').toLowerCase();
-      if (!ALLOWED_MIME.has(f.mimetype) || !ALLOWED_EXT.has(ext)) {
-        return res.status(415).json({success: false, message: 'Unsupported file type'});
-      }
-    } catch(e){}
+  form.parse(req, async (err, fields, files) => {
+    if(err){
+      console.error('Formidable error: ', err);
+      return res.status(400).json({success: false, message: "Bad upload"});
+    }
+    const f = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!f) return res.status(400).json({success: false, message: 'No file'});
+    const ext = path.extname(f.originalFilename || '').toLowerCase();
+    if (!ALLOWED_MIME.has(f.mimetype) || !ALLOWED_EXT.has(ext)) {
+      return res.status(415).json({success: false, message: 'Unsupported file type'});
+    }
+    try{
+      const storedPath = relFromAbs(f.filepath);
+      await q(`UPDATE Users SET ${kind}=? WHERE id=?`, [storedPath, req.user.id]);
+      return res.json({success: true, path : storedPath});
+    } catch (e) {
+      console.error('Erreur upload: ', e);
+      return res.status(500).json({success: false, message: 'Server error'});
+    }
   });
 })
 

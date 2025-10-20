@@ -1,4 +1,4 @@
-FROM node:latest
+FROM mirror.gcr.io/library/node:24-bookworm
 WORKDIR /usr/src/app
 COPY SimplePeopleStoring-app/package*.json ./
 RUN npm install
