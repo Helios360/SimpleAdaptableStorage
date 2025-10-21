@@ -19,7 +19,8 @@ test.addEventListener('click',()=>{ window.location.href= "/test";})
 
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
 if (fetchUrl!= '/api/profile') test.style.display="none";
-
+let targetId = null;
+const adminView = !!targetEmail;
 async function deleteSelf(){
     const res = await fetch('/api/delete', { method: 'DELETE', credentials: 'include'});
     const data = await res.json();
@@ -35,6 +36,7 @@ fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
+    targetId = user.id;
     if (targetEmail) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
         accountDelete.addEventListener('click', async ()=>{

@@ -424,37 +424,50 @@ app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
   deleteUser(req.params.id, res);
 });
 // === CRUD change(upload)/delete files only route ===
-app.post('/api/files',authMiddleware, async (req,res)=>{
-  try{
-    const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id]);
+async function deleteFile(userId, action) {
+  const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
     if (!rows || !rows[0]) return res.status(500).json({success : false, message : 'User not found'});
     const user = rows[0];
     let filename = null;
     let nullTheColumn = null;
-    if(req.body.action === 'del' && user.id_doc){
+    if(action === 'del' && user.id_doc){
       filename = toAbsFromStored(user.id_doc);
       nullTheColumn = 'id_doc';
-    } else if(req.body.action === 'delV' && user.id_doc_verso){
+    } else if(action === 'delV' && user.id_doc_verso){
       filename = toAbsFromStored(user.id_doc_verso);
       nullTheColumn = 'id_doc_verso';
-    } else if(req.body.action === 'delCV' && user.cv) {
+    } else if(action === 'delCV' && user.cv) {
       filename = toAbsFromStored(user.cv);
       nullTheColumn = 'cv';
     } else { return res.status(400).json({ success : false, message: "No file to delete or invalid parameters"}) }
     try{
       await fs.promises.unlink(filename);
-      console.log(`deleted file : ${filename}`);
+      console.log(`Deleted file : ${filename}`);
     } catch (e){
       if (e.code !== 'ENOENT'){
         console.warn('Unlink error:', e);
-        return res.status(500).json({success : false, message : "File can't be deleted"});
+        throw httpError(500, "File can't be deleted");
       } else {console.log('File already deleted');}
     }
-    await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [req.user.id]);
-    return res.json({success: true});
+    await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
+    return {success: true};
+}
+app.post('/api/files',authMiddleware, async (req,res)=>{
+  try{
+    const result = await deleteFile(req.user.id, req.body.action);
+    return res.json(result);
   } catch (e) {
     console.error('Delete Route Error: ', e);
-    return res.status(500).json({error: 'Server Error'});
+    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server Error'});
+  }
+})
+app.post('/api/files/:id',authMiddleware, async (req,res)=>{
+  try{
+    const result = await deleteFile(req.params.id, req.body.action);
+    return res.json(result);
+  } catch (e) {
+    console.error('Delete Route Error: ', e);
+    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server Error'});
   }
 })
 app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
