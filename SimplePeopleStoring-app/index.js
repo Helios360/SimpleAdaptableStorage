@@ -241,7 +241,7 @@ app.post('/submit-form', (req, res) => {
         name, fname, email, tel, addr, city,
         postal, birth, password, agree,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !agree) return res.status(400).send('Missing required fields');
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.promises.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
@@ -265,7 +265,7 @@ app.post('/submit-form', (req, res) => {
         if (err){
           console.error('DB insert Error: ', err);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-          return res.status(500).send('Database error');
+          return res.status(500).send('Database Error or invalid parameters');
         }
         const newId = results.insertId;
         const finalDir = userDir(newId);
@@ -422,17 +422,15 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
 });
 // === CRUD ===
 function deleteUser(userId, res){
-  db.query('SELECT cv FROM Users WHERE id=?;', [userId], (err,rows) => {
-    const userFolder = path.resolve(__dirname, path.dirname(rows[0].cv));
-    fs.rm(userFolder, { recursive: true, force: true}, (e) => {
-      if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
-    });
-    db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
-      if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
-    })
-    if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
-    return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
+  const userFolder = path.resolve(__dirname, `uploads/u_${userId}`);
+  fs.rm(userFolder, { recursive: true, force: true}, (e) => {
+    if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
   });
+  db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
+    if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+  })
+  if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
+  return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
 }
 // === CRUD delete route ===
 app.delete('/api/delete', authMiddleware, (req, res) => {

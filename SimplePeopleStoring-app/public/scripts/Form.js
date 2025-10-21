@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector("form");
-
     const password = document.getElementById("password");
     const confirm = document.getElementById("confirm");
     const message = document.createElement("span");
