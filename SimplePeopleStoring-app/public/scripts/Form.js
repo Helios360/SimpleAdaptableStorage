@@ -158,4 +158,14 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Erreurs trouvées :\n- " + errors.join("\n- "));
         }
     });
+    const cvUpload = document.getElementById('cv');
+    const pirUpload = document.getElementById('id_doc');
+    const pivUpload = document.getElementById('id_doc_verso');
+    const labelCV = document.getElementById('cvFileName');
+    const labelPir = document.getElementById('piRectoFilename');
+    const labelPiv = document.getElementById('piVersoFilename');
+    cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name;})
+    pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name;})
+    pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name;})
+
 });

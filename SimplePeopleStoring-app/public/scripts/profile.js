@@ -109,7 +109,7 @@ if (data.success) {
     });
 
     const cvUrl = `${user.cv}`;
-    fetch(cvUrl, { method: 'POST', credentials : 'include' })
+    fetch(cvUrl, { method: 'GET', credentials : 'include' })
     .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
     .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url; })
     .catch(() => { notif("Impossible de charger le CV."); });
@@ -123,7 +123,7 @@ if (data.success) {
         document.getElementById('cv-frame').style.display = "block";
         document.getElementById('cv-action').style.display = "flex";
         const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'POST', credentials: 'include' })
+        fetch(cvUrl, { method: 'GET', credentials: 'include' })
         .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
         .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url;})
         .catch(() => { notif("Impossible de charger le CV.");});
@@ -138,7 +138,7 @@ if (data.success) {
         document.getElementById('cv-action').style.display = "none";
         const rectoUrl = `${user.id_doc}`;
         const versoUrl = `${user.id_doc_verso}`;
-        const headers = { method: 'POST', credentials : 'include'};
+        const headers = { method: 'GET', credentials : 'include'};
         // Charger le recto
         fetch(rectoUrl, headers)
         .then(response => { if (!response.ok) throw new Error("Accès refusé au recto de la PI"); return response.blob(); })

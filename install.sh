@@ -20,6 +20,7 @@ echo "OwO Creating .env file..."
 cat <<EOT > .env
 PORT=3000
 HOST=0.0.0.0
+NODE_ENV=development
 
 MYSQL_HOST=mysql
 MYSQL_USER=mysql
@@ -29,6 +30,10 @@ MYSQL_ROOT_PASSWORD=$ROOT_PASS
 
 JWT_SECRET=$SECRET
 OPENAI_API_KEY=$API
+
+UPLOADS_DIR_HOST=./SimplePeopleStoring-app/uploads
+APP_UPLOADS_DIR=/usr/src/app/uploads
+APP_BASE_DIR=/usr/src/app
 EOT
 
 echo "[TIPS] Don't hesitate to modify .env to suit your needs"

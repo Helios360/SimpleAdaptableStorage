@@ -24,6 +24,6 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - ./SimplePeopleStoring-app/uploads:/usr/src/app/uploads 
+      - ${UPLOADS_DIR_HOST}:${APP_UPLOADS_DIR}
 volumes:
   db-data:

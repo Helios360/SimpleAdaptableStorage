@@ -13,18 +13,39 @@ const fs = require('fs');
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+
+// Helpers
+const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
+const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
+const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || BASE_DIR);
+const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR, path.join(BASE_DIR, 'uploads'));
+const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
+const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
+const toAbsFromStored = (stored) => {
+  if (!stored) return null;
+  const rel = stored.replace(/^[\\/]+/,'');
+  const abs = path.normalize(path.join(UPLOADS_ROOT,rel));
+  if(!abs.startsWith(UPLOADS_ROOT + path.sep)){
+    throw new Error('Path escapes uploads root');
+  }
+  return abs;
+}
+
+// === Security headers setup ===
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site'} }));
 app.use(cookieParser());
 
-// Setting up important consts
+// === Setting up important consts ===
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const SECRET = process.env.JWT_SECRET;
 // === Middleware ===
-app.use(cors({origin: 'http://localhost:8080',credentials:true}));
+app.use(cors({origin: 'http://localhost:8080', credentials: true}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // === Static Files ===
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(BASE_DIR, 'public')));
 // === MySQL ===
 const db = mysql.createConnection({
   host: process.env.MYSQL_HOST,
@@ -33,22 +54,19 @@ const db = mysql.createConnection({
   database: process.env.MYSQL_DATABASE,
   dateStrings: true,
 });
-// Helpers
-const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
-const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
-const UPLOADS_ROOT = path.join(__dirname, 'uploads');
-const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
-const relFromAbs = (abs) => path.relative(__dirname, abs).replace(/\\/g, '/');
-const toAbsFromStored = (stored) => {
-  if (!stored) return null;
-  const rel = stored.replace(/^[\\/]+/,'');
-  const abs = path.normalize(path.join(__dirname,rel));
-  if(!abs.startsWith(UPLOADS_ROOT + path.sep)){
-    throw new Error('Path escapes uploads root');
-  }
-  return abs;
-}
 
+function q(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+}
+// === Rate limit, anti ddos ===
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100 // max 100 requests per 15 minutes
+}));
+
+// === Database connection ===
 db.connect(err => {
   if (err) {
     console.error('DB Error: ', err.stack);
@@ -58,12 +76,12 @@ db.connect(err => {
 });
 
 // === HTML Routes ===
-app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
-app.get('/register', (_, res) => res.sendFile(path.join(__dirname, 'public/register.html')));
-app.get('/signin', (_, res) => res.sendFile(path.join(__dirname, 'public/signin.html')));
-app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(__dirname, 'views', 'profile.html'));});
-app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(__dirname,'views', 'admin.html'));});
-app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(__dirname,'views', 'test.html'));});
+app.get('/', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/index.html')));
+app.get('/register', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/register.html')));
+app.get('/signin', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/signin.html')));
+app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR, 'views', 'profile.html'));});
+app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'admin.html'));});
+app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
 
 // === /login Route ===
 app.post('/login', (req, res) => {
@@ -80,15 +98,14 @@ app.post('/login', (req, res) => {
       const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
       res.cookie('token', token, {
         httpOnly: true,
-        secure: false, // mettre `true` en production avec HTTPS
-        sameSite: 'Strict', // ou 'Lax' selon ton setup
+        secure: process.env.NODE_DEV === 'production',
+        sameSite: 'Strict',
         maxAge: 2 * 60 * 60 * 1000 // 2h
       });
       res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
     });
   });
 });
-
 // === /api/profile (Protected Route) ===
 app.post('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
@@ -124,36 +141,16 @@ app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
     res.json({ success: true, user: results[0] });
   });
 });
-// Only accessible by authenticated admins
+// === Only accessible by authenticated admins ===
 app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   const email = decodeURIComponent(req.params.email);
-
   db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
-
     res.json({ success: true, student: results[0] });
   });
 });
-
-// === File display access ===
-app.post('/uploads/:folder/:filename', authMiddleware, (req, res) => {
-  const { folder, filename } = req.params;
-  const requested = path.normalize(path.join(UPLOADS_ROOT, folder, filename));
-  if (!requested.startsWith(UPLOADS_ROOT + path.sep)) return res.status(400).send('Invalid path');
-  db.query('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id], (err, rows)=>{
-    if(err || !rows.length) return res.status(404).send('Not Found');
-    const allowed = [rows[0].cv, rows[0].id_doc, rows[0].id_doc_verso].filter(Boolean).map(p=>{try{return toAbsFromStored(p);}catch{return null}}).filter(Boolean);
-    const isOwner = allowed.some(p=>p===requested);
-    if(!isOwner && !req.user.is_admin) return res.status(403).send('Forbidden');
-    fs.access(requested, fs.constants.F_OK, (err) => {
-      if (err) return res.status(404).send('File not found');
-      res.sendFile(requested, { headers: { 'X-Content-Type-Options': 'nosniff' } });
-    });
-  });
-});
-
-// === update students (admin) ===
+// === Update students (admin) ===
 app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
   const {
     email, name, fname, tel, birth, addr, city, postal, tags, skills, status
@@ -167,13 +164,10 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
     }
   );
 });
-// === update status from list (admin) ===
+// === Update status from list (admin) ===
 app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
   const { id, status } = req.body;
-  db.query(
-    'UPDATE Users SET status = ? WHERE id = ?',
-    [status, id],
-    (err, result) => {
+  db.query('UPDATE Users SET status = ? WHERE id = ?',[status, id],(err, result) => {
       if (err) {
         console.error('DB error on status update:', err);
         return res.status(500).json({ success: false, message: 'Database error' });
@@ -183,18 +177,14 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
   );
 });
 
-// === from profile to db ===
+// === From profile to db ===
 app.post('/api/update-tags', authMiddleware, (req, res) => {
   const userEmail = req.user.email;
   const {name, fname, tel, birth, addr, city, postal, skills, status} = req.body;
   let tags = [];
-
-  if (req.user.is_admin) {
-    tags = Array.isArray(req.body.tags) ? req.body.tags : [];
-  }
+  if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
   const tagsJSON = JSON.stringify(tags);
   const skillsJSON = JSON.stringify(skills);
-
   db.query(
     `UPDATE Users 
      SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?, status=?
@@ -214,8 +204,8 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
 app.post('/submit-form', (req, res) => {
   const form = formidable({
     keepExtensions: true,
-    maxFileSize: 10 * 1024 * 1024,       // Limite par fichier
-    maxTotalFileSize: 30 * 1024 * 1024,  // Limite cumulée
+    maxFileSize: 10 * 1024 * 1024,
+    maxTotalFileSize: 30 * 1024 * 1024,
     multiples: true,
     filter: ({mimetype, originalFilename})=>{
       const ext=path.extname(originalFilename || '').toLowerCase();
@@ -316,7 +306,7 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     const bucket = Math.floor(cycleIndex / 3);
     const difficulty = Math.floor(bucket / 3) + 1;
     const servType = (bucket % 3) + 1;
-    //Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
+    // Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
     db.query(
       `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
       [servType, completedTests.length ? completedTests : [0]],
@@ -327,12 +317,6 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     );
   });
 });
-
-function q(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-  });
-}
 
 app.post('/api/test/response', authMiddleware, async (req, res) => {
   const userId = req.user.id;
@@ -422,14 +406,13 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
 });
 // === CRUD ===
 function deleteUser(userId, res){
-  const userFolder = path.resolve(__dirname, `uploads/u_${userId}`);
+  const userFolder = path.resolve(BASE_DIR, `uploads/u_${userId}`);
   fs.rm(userFolder, { recursive: true, force: true}, (e) => {
     if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
   });
   db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
     if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
   })
-  if(err) return res.status(500).json({success: false, message: "Couldn't delete user from database, contact superadmin"});
   return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
 }
 // === CRUD delete route ===
@@ -528,11 +511,6 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   });
 })
 
-// === Rate limit, anti ddos ===
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100 // max 100 requests per 15 minutes
-}));
 // === Global error handler ===
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
