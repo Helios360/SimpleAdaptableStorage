@@ -8,6 +8,7 @@ const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
 const token = localStorage.getItem('token');
+const cvFrame = document.getElementById('cv-frame');
 
 document.getElementById('pis').style.display = "none";
 
@@ -21,6 +22,7 @@ const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEm
 if (fetchUrl!= '/api/profile') test.style.display="none";
 let targetId = null;
 const adminView = !!targetEmail;
+const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
 async function deleteSelf(){
     const res = await fetch('/api/delete', { method: 'DELETE', credentials: 'include'});
     const data = await res.json();
@@ -109,49 +111,31 @@ if (data.success) {
         })
         .catch(err => { notif('Échec de la mise à jour' + err); });
     });
-
-    const cvUrl = `${user.cv}`;
-    fetch(cvUrl, { method: 'GET', credentials : 'include' })
-    .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
-    .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url; })
-    .catch(() => { notif("Impossible de charger le CV."); });
+    const pis = document.getElementById('pis');
+    const cvAction = document.getElementById('cv-action');
+    cvFrame.style.display = "block";
+    cvFrame.src = fileUrl('cv');
     CV.style.backgroundColor = "var(--secondary)";
     CV.style.color = "var(--primary)";
     PI.style.backgroundColor = "var(--primary)";
     PI.style.color = "var(--secondary)";
 
     CV.addEventListener('click', function (){ // charger le cv
-        document.getElementById('pis').style.display = "none";
-        document.getElementById('cv-frame').style.display = "block";
-        document.getElementById('cv-action').style.display = "flex";
-        const cvUrl = `${user.cv}`;
-        fetch(cvUrl, { method: 'GET', credentials: 'include' })
-        .then(response => { if (!response.ok) throw new Error("Accès refusé au CV"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('cv-frame').src = url;})
-        .catch(() => { notif("Impossible de charger le CV.");});
+        pis.style.display = "none";
+        cvAction.style.display = "flex";
+        cvFrame.style.display = "block";
+        cvFrame.src = fileUrl('cv');
         CV.style.backgroundColor = "var(--secondary)";
         CV.style.color = "var(--primary)";
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
     PI.addEventListener('click', function (){ // charger la pi
-        document.getElementById('cv-frame').style.display = "none";
-        document.getElementById('pis').style.display = "block";
-        document.getElementById('cv-action').style.display = "none";
-        const rectoUrl = `${user.id_doc}`;
-        const versoUrl = `${user.id_doc_verso}`;
-        const headers = { method: 'GET', credentials : 'include'};
-        // Charger le recto
-        fetch(rectoUrl, headers)
-        .then(response => { if (!response.ok) throw new Error("Accès refusé au recto de la PI"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImg').style.backgroundImage = "url('"+url+"')"; })
-        .catch(() => { notif("Impossible de charger le recto de la PI."); });
-        // Charger le verso
-        fetch(versoUrl, headers)
-        .then(response => { if (!response.ok) throw new Error("Accès refusé au verso de la PI"); return response.blob(); })
-        .then(blob => { const url = URL.createObjectURL(blob); document.getElementById('PImgVerso').style.backgroundImage = "url('"+url+"')"; })
-        .catch(() => { notif("Impossible de charger le verso de la PI."); });
-
+        cvFrame.style.display = "none";
+        pis.style.display = "block";
+        cvAction.style.display = "none";
+        pimg.style.backgroundImage = "url('"+fileUrl('id_doc')+"')";
+        pimgverso.style.backgroundImage = "url('"+fileUrl('id_doc_verso')+"')";
         CV.style.backgroundColor = "var(--primary)";
         CV.style.color = "var(--secondary)";
         PI.style.backgroundColor = "var(--secondary)";
@@ -175,7 +159,7 @@ if (data.success) {
 
     // When tag input loses focus or user presses Enter
     tagInput.addEventListener('change', () => {
-    const tag = tagInput.value.trim();
+        const tag = tagInput.value.trim();
         if (tag && !currentTags.includes(tag)) {
             currentTags.push(tag);
             renderTagsAndSkills();
@@ -191,23 +175,20 @@ if (data.success) {
             renderTagsAndSkills();
         }
         skillInput.value = '';
-        });
+    });
 } else { notif('Non autorisé'); window.location.href = '/signin'; }
 })
 .catch(() => { notif("Erreur lors de la récupération du profil"); window.location.href = '/signin'; });
-
 
 function renderTagsAndSkills() {
     const tagList = document.getElementById('tags');
     const skillList = document.getElementById('skills');
     tagList.innerHTML = '';
     skillList.innerHTML = '';
-
     currentTags.forEach(t => {
         const span = document.createElement('span');
         span.textContent = t;
         let confirming = false;
-
         span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
         span.onmouseleave = () => {
             span.style.textDecoration = 'none';
@@ -229,7 +210,6 @@ function renderTagsAndSkills() {
         };
         tagList.appendChild(span);
     });
-
     currentSkills.forEach(s => {
         const span = document.createElement('span');
         const type = skillTypes[s] || 'unknown';
@@ -237,7 +217,6 @@ function renderTagsAndSkills() {
         span.textContent = s;
         span.style.backgroundColor = bgColor;
         let confirming = false;
-
         span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
         span.onmouseleave = () => {
             span.style.textDecoration = 'none';
@@ -285,21 +264,15 @@ pimgverso.addEventListener('mouseout', ()=>{
 })
 
 const change = document.getElementById('change');
-const del = document.getElementById('delete');
-const download = document.getElementById('download');
 const changeV = document.getElementById('change-v');
-const delV = document.getElementById('delete-v');
-const downloadV = document.getElementById('download-v');
 const changeCV = document.getElementById('change-cv');
+const del = document.getElementById('delete');
+const delV = document.getElementById('delete-v');
 const delCV = document.getElementById('delete-cv');
-const downloadCV = document.getElementById('download-cv');
 
 del.addEventListener('click', () => action('del'));
 delV.addEventListener('click', () => action('delV'));
 delCV.addEventListener('click', () => action('delCV'));
-download.addEventListener('click', () => action('download'));
-downloadV.addEventListener('click', () => action('downloadV'));
-downloadCV.addEventListener('click', () => action('downloadCV'));
 
 function action(name) {
     fetch('/api/files',{
@@ -338,12 +311,25 @@ async function uploadKind(kind, file){
     if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
     return data;
 }
-
+function previewFile(el, file){
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror =()=> reject(new Error('Preview Failed'));
+        reader.onload =()=> {
+            const dataUrl = String(reader.result);
+            el.style.backgroundImage = `url("${dataUrl}")`;
+            resolve(dataUrl);
+        };
+        reader.readAsDataURL(file);
+    });
+}
 fileUpload.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
     try{
-        await uploadKind('id_doc', file);
+        previewFile(pimg, file);
+        const { url } = await uploadKind('id_doc', file);
+        if (url) pimg.style.backgroundImage = `url("${url}")`;
         notif("Piece d'identité recto mise à jour ...");
     } catch (e) {
         console.error(e);
@@ -356,7 +342,9 @@ fileUploadV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
     try{
-        await uploadKind('id_doc_verso', file);
+        previewFile(pimgverso, file);
+        const { url } = await uploadKind('id_doc_verso', file);
+        if (url) pimgverso.style.backgroundImage = `url("${url}")`;
         notif("Piece d'identité verso mise à jour ...");
     } catch (e) {
         console.error(e);
@@ -370,6 +358,7 @@ fileUploadCV.addEventListener('change', async (e) => {
     if(!file) return;
     try{
         await uploadKind('cv', file);
+        cvFrame.src = `${fileUrl('cv')}?t=${Date.now()}`;
         notif("CV mis à jour ...");
     } catch (e) {
         console.error(e);

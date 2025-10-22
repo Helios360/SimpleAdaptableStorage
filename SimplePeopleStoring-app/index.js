@@ -18,7 +18,7 @@ const helmet = require('helmet');
 // Helpers
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
-const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || BASE_DIR);
+const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
 const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR, path.join(BASE_DIR, 'uploads'));
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
 const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
@@ -30,6 +30,13 @@ const toAbsFromStored = (stored) => {
     throw new Error('Path escapes uploads root');
   }
   return abs;
+}
+function guessContentType(p){
+  const ext = (path.extname(p)||'').toLowerCase();
+  if(ext==='.pdf') return 'application/pdf';
+  if(ext==='.png') return 'image/png';
+  if(ext==='.jpg' || ext==='.jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
 }
 
 // === Security headers setup ===
@@ -115,6 +122,20 @@ app.post('/api/profile', authMiddleware, (req, res) => {
     const user = results[0];
     res.json({ success: true, user });
   });
+});
+// === Document display
+app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
+  const { kind } = req.params;
+  if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return res.sendStatus(400);
+  const [row] = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id]);
+  const rel = row?.[kind];
+  if (!rel) return res.sendStatus(400);
+
+  const abs = toAbsFromStored(rel);
+  await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
+  res.setHeader('Content-type', guessContentType(abs));
+  res.setHeader('Content-Disposition', 'inline');
+  res.sendFile(abs);
 });
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
@@ -288,7 +309,7 @@ app.post('/submit-form', (req, res) => {
   });
 });
 
-// === GET a random test (READ-ONLY) WITH OPENAI ===
+// === GET a random test (READ-ONLY) ===
 app.get('/api/test/next', authMiddleware, (req, res) => {
   const userId = req.user.id;
   db.query('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId], (err, historyResults) => {
@@ -299,9 +320,7 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
     const type = historyResults[0]?.cnt ?? 0;
-    if(Number(type) >= 27){
-      return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
-    }
+    if(Number(type) >= 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     const cycleIndex = type % 27;
     const bucket = Math.floor(cycleIndex / 3);
     const difficulty = Math.floor(bucket / 3) + 1;
@@ -413,7 +432,7 @@ function deleteUser(userId, res){
   db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
     if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
   })
-  return res.status(200).json({ success: true, message: `User ${userId} succesfully deleted from the database` });
+  return {success: true};
 }
 // === CRUD delete route ===
 app.delete('/api/delete', authMiddleware, (req, res) => {
@@ -426,7 +445,7 @@ app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
 // === CRUD change(upload)/delete files only route ===
 async function deleteFile(userId, action) {
   const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
-    if (!rows || !rows[0]) return res.status(500).json({success : false, message : 'User not found'});
+    if (!rows || !rows[0]) throw Object.assign(new Error('User not found'), {status : 404});
     const user = rows[0];
     let filename = null;
     let nullTheColumn = null;
@@ -439,7 +458,7 @@ async function deleteFile(userId, action) {
     } else if(action === 'delCV' && user.cv) {
       filename = toAbsFromStored(user.cv);
       nullTheColumn = 'cv';
-    } else { return res.status(400).json({ success : false, message: "No file to delete or invalid parameters"}) }
+    } else { return {success: false} }
     try{
       await fs.promises.unlink(filename);
       console.log(`Deleted file : ${filename}`);
@@ -461,7 +480,7 @@ app.post('/api/files',authMiddleware, async (req,res)=>{
     return res.status(e.status || 500).json({success: false, message: e.message ||  'Server Error'});
   }
 })
-app.post('/api/files/:id',authMiddleware, async (req,res)=>{
+app.post('/api/files/:id', authMiddleware, adminOnly, async (req,res)=>{
   try{
     const result = await deleteFile(req.params.id, req.body.action);
     return res.json(result);
