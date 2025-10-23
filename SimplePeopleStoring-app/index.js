@@ -343,15 +343,15 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
     const type = historyResults[0]?.cnt ?? 0;
+    
     if(Number(type) >= 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     const cycleIndex = type % 27;
     const bucket = Math.floor(cycleIndex / 3);
-    const difficulty = Math.floor(bucket / 3) + 1;
     const servType = (bucket % 3) + 1;
     // Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
     db.query(
-      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? AND id NOT IN (?) ORDER BY RAND() LIMIT 1`,
-      [servType, completedTests.length ? completedTests : [0]],
+      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,
+      [servType],
       (err, testResults) => {
         if (err || testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
         return res.status(200).json({ success: true, test: testResults[0], count: type });
@@ -484,7 +484,6 @@ async function deleteFile(userId, action) {
     } else { return {success: false} }
     try{
       await fs.promises.unlink(filename);
-      console.log(`Deleted file : ${filename}`);
     } catch (e){
       if (e.code !== 'ENOENT'){
         console.warn('Unlink error:', e);

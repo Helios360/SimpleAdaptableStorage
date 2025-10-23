@@ -17,10 +17,8 @@
       })();
     </script>
     <link rel="stylesheet" href="/styles/main.css">
-    <link rel="stylesheet" href="/styles/prism.css" />
     <link rel="stylesheet" href="/styles/test.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
-    <link rel="stylesheet" href="https://esm.sh/@codemirror/view@6/style.css">
     <meta property="og:title" content="Cloud-testing">
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
     <meta property="og:image" content="assets/preview.png">
@@ -45,7 +43,7 @@
             <div class="exemple">
             <p id="exemple"></p>
             </div>
-            <div class="response" id="editor"></div>
+            <div class="response"><textarea id="answer" class="text-response"></textarea></div>
         </div>
         <div class="submit">
             <a id="hint">
@@ -62,71 +60,7 @@
             <a id="submit">Envoyer et passer au test suivant</a>
         </div>
     </main>
-<script src="/scripts/prism.js"></script>
 <script src="/scripts/test.js"></script>
 <script src="/scripts/Main.js"></script>
-<script type="module">
-  import { EditorState } from "https://esm.sh/@codemirror/state";
-  import {
-    EditorView, keymap, highlightSpecialChars, drawSelection,
-    highlightActiveLine, dropCursor, rectangularSelection,
-    crosshairCursor, lineNumbers, highlightActiveLineGutter
-  } from "https://esm.sh/@codemirror/view";
-  import {
-    defaultHighlightStyle, syntaxHighlighting, indentOnInput,
-    bracketMatching, foldGutter, foldKeymap
-  } from "https://esm.sh/@codemirror/language";
-  import {
-    defaultKeymap, history, historyKeymap
-  } from "https://esm.sh/@codemirror/commands";
-  import {
-    searchKeymap, highlightSelectionMatches
-  } from "https://esm.sh/@codemirror/search";
-  import {
-    autocompletion, completionKeymap, closeBrackets,
-    closeBracketsKeymap
-  } from "https://esm.sh/@codemirror/autocomplete";
-  import { lintKeymap } from "https://esm.sh/@codemirror/lint";
-  const savedCode = localStorage.getItem("code") || "// 2 espaces pour des tabs";
-  const view = new EditorView({
-    doc: savedCode,
-    parent: document.getElementById("editor"),
-    extensions: [
-      lineNumbers(),
-      foldGutter(),
-      highlightSpecialChars(),
-      history(),
-      drawSelection(),
-      dropCursor(),
-      EditorState.allowMultipleSelections.of(true),
-      indentOnInput(),
-      syntaxHighlighting(defaultHighlightStyle),
-      bracketMatching(),
-      closeBrackets(),
-      autocompletion(),
-      rectangularSelection(),
-      crosshairCursor(),
-      highlightActiveLine(),
-      highlightActiveLineGutter(),
-      highlightSelectionMatches(),
-      keymap.of([
-        ...closeBracketsKeymap,
-        ...defaultKeymap,
-        ...searchKeymap,
-        ...historyKeymap,
-        ...foldKeymap,
-        ...completionKeymap,
-        ...lintKeymap
-      ]),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const currentCode = update.state.doc.toString();
-          localStorage.setItem("code", currentCode);
-        }
-      })
-    ]
-  });
-  window.editor = view;
-</script>
 </body>
 </html>

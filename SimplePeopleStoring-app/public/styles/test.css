@@ -60,3 +60,15 @@ h2{font-size: 25px;font-weight: 500;}
     border-radius: 8px;
     padding: 20px;
 }
+.text-response{
+    width: 100%;
+    min-height: 200px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+    background-color: var(--primary);
+    color: var(--secondary);
+}

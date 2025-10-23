@@ -1,4 +1,4 @@
-const answer = document.getElementById('editor');
+const answer = document.getElementById('answer');
 const submit = document.getElementById('submit')
 const token = localStorage.getItem('token');
 const start = document.getElementById('launch-test');
@@ -16,9 +16,8 @@ async function redirectAfterDelay(data) {
 start.addEventListener('click', () => {
   fetch('/api/test/next', {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
+    credentials: 'include',
+    headers:{'Content-Type':'application/json'},
   })
   .then(res => res.json())
   .then(data => {
@@ -41,12 +40,12 @@ start.addEventListener('click', () => {
 submit.addEventListener("click", async event => {
   event.preventDefault();
 
-  const answerText = editor.state.doc.toString();
+  const answerText = answer.value;
   const testId = localStorage.getItem('current_test_id');
   const type = localStorage.getItem('current_test_type');
 
   if (!testId || !type) {
-    notifAlert("No test loaded.");
+    notifAlert("Aucun test n'est chargé.");
     return;
   }
 
@@ -54,16 +53,14 @@ submit.addEventListener("click", async event => {
     // send answer
     const res = await fetch('/api/test/response', {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
+      credentials: 'include',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ testId, type, answer: answerText })
     });
     const data = await res.json();
 
     if (!data.success) {
-      notifAlert("Error submitting test: " + data.message);
+      notifAlert("Erreur d'envoi du test: " + data.message);
       return;
     }
     notifAlert("Test envoyé ! Passage au suivant...");
@@ -71,10 +68,7 @@ submit.addEventListener("click", async event => {
     localStorage.removeItem("current_test_type");
 
     // fetch next test
-    const nextRes = await fetch('/api/test/next', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const nextRes = await fetch('/api/test/next', {method: 'GET',credentials: 'include',});
     const nextData = await nextRes.json();
 
     if (nextData.success) {
@@ -90,6 +84,6 @@ submit.addEventListener("click", async event => {
     }
   } catch (err) {
     console.error(err);
-    notifAlert("Network error during submit.");
+    notifAlert("Erreur réseau pendant l'envoi.");
   }
 });
