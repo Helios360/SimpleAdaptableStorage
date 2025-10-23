@@ -7,7 +7,6 @@ const skills = document.getElementById('add_skills');
 const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
-const token = localStorage.getItem('token');
 const cvFrame = document.getElementById('cv-frame');
 
 document.getElementById('pis').style.display = "none";
@@ -33,6 +32,15 @@ async function deleteAsAdmin(userId){
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
 }
+async function api(url, opts = {}){ // Better, will update to this soon
+    const res = await fetch(url, {credentials: 'include', ...opts});
+    if (res.status === 401 || res.status === 403){
+        notif('Session expirée, Veuillez vous reconnecter...');
+        window.location.href = '/signin';
+        throw new Error('Unauthorized');
+    } return res;
+}
+if(!adminView)document.getElementById('status').disabled = true;
 fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
 .then(res => res.json())
 .then(data => {
@@ -72,7 +80,7 @@ if (data.success) {
     document.getElementById('fname').value = user.fname;
     document.getElementById('email').value = user.email;
     document.getElementById('tel').value = user.tel;
-    document.getElementById('status').value = user.status;
+    if (adminView)document.getElementById('status').value = user.status;
     //const dateOnly = user.birth.split("T")[0].replace(/-/g, "/");
     const birthDate = new Date(user.birth);
     const today = new Date();
@@ -97,19 +105,18 @@ if (data.success) {
             addr: document.getElementById('addr').value,
             city: document.getElementById('city').value,
             postal: document.getElementById('postal').value,
-            tags: currentTags,
             skills: currentSkills,
-            status: document.getElementById('status').value
         };
+        if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
         const endpoint = targetEmail ? '/api/admin/update-student' : '/api/update-tags';
-        fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        fetch(endpoint, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(res => res.json())
         .then(result => {
             if (!result.success) throw new Error(result.message);
             notif('Profil mis à jour avec succès');
             renderTagsAndSkills();
         })
-        .catch(err => { notif('Échec de la mise à jour' + err); });
+        .catch(() => { notif('Échec de la mise à jour'); });
     });
     const pis = document.getElementById('pis');
     const cvAction = document.getElementById('cv-action');
@@ -270,9 +277,9 @@ const del = document.getElementById('delete');
 const delV = document.getElementById('delete-v');
 const delCV = document.getElementById('delete-cv');
 
-del.addEventListener('click', () => action('del'));
-delV.addEventListener('click', () => action('delV'));
-delCV.addEventListener('click', () => action('delCV'));
+del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage=''});
+delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage=''});
+delCV.addEventListener('click', () => {action('delCV'); cvFrame.src=''});
 
 function action(name) {
     fetch('/api/files',{
@@ -358,7 +365,7 @@ fileUploadCV.addEventListener('change', async (e) => {
     if(!file) return;
     try{
         await uploadKind('cv', file);
-        cvFrame.src = `${fileUrl('cv')}?t=${Date.now()}`;
+        cvFrame.src = `${fileUrl('cv')}`;
         notif("CV mis à jour ...");
     } catch (e) {
         console.error(e);

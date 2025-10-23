@@ -47,6 +47,11 @@ app.use(cookieParser());
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const SECRET = process.env.JWT_SECRET;
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+// === Security boot features ===
+app.use(helmet.hsts({maxAge: 15552000, includeSubDomains: true, preload: true}));
+if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
 app.use(cors({origin: 'http://localhost:8080', credentials: true}));
 app.use(express.json());
@@ -72,6 +77,7 @@ app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100 // max 100 requests per 15 minutes
 }));
+const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false});
 
 // === Database connection ===
 db.connect(err => {
@@ -91,21 +97,19 @@ app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(p
 app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
 
 // === /login Route ===
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
-
   db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
     if (err) return res.status(500).send('DB error');
-    if (results.length === 0) return res.status(401).json({ success: false, message: 'Email not found' });
-
+    if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
     bcrypt.compare(password, user.password, (err, isMatch) => {
       if (err) return res.status(500).send('Password error');
-      if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
+      if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
       const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
       res.cookie('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_DEV === 'production',
+        secure: IS_PROD,
         sameSite: 'Strict',
         maxAge: 2 * 60 * 60 * 1000 // 2h
       });
@@ -124,25 +128,44 @@ app.post('/api/profile', authMiddleware, (req, res) => {
   });
 });
 // === Document display
+async function kindCheck(kind, userId){
+  if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return {ok: false, reason: 'bad-kind'};
+  const [row] = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
+  if (!row) return {ok: false, reason: 'no-user'};
+  return {ok: true, path: row[kind] || null};
+}
 app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
-  const { kind } = req.params;
-  if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return res.sendStatus(400);
-  const [row] = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [req.user.id]);
-  const rel = row?.[kind];
-  if (!rel) return res.sendStatus(400);
-
-  const abs = toAbsFromStored(rel);
-  await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
-  res.setHeader('Content-type', guessContentType(abs));
-  res.setHeader('Content-Disposition', 'inline');
-  res.sendFile(abs);
+  try {
+    const { kind } = req.params;
+    const result = await kindCheck(kind, req.user.id);
+    if(!result.ok) return res.sendStatus(400);
+    if(!result.path) return res.sendStatus(404);
+    const abs = toAbsFromStored(result.path);
+    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
+    res.setHeader('Content-type', guessContentType(abs));
+    res.setHeader('Content-Disposition', 'inline');
+    res.sendFile(abs);
+  } catch (e) {console.warn(e);}
+});
+app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { id, kind } = req.params;
+    const result = await kindCheck(kind, id);
+    if(!result.ok) return res.sendStatus(400);
+    if(!result.path) return res.sendStatus(404);
+    const abs = toAbsFromStored(result.path);
+    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
+    res.setHeader('Content-type', guessContentType(abs));
+    res.setHeader('Content-Disposition', 'inline');
+    res.sendFile(abs);
+  } catch (e) {console.warn(e);}
 });
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
   db.query(`
   SELECT 
-      Users.*,
-    ROUND(AVG(TestAttempts.score)) AS gen_score
+      name, fname, city, postal, date_inscription, birth, status,
+      ROUND(AVG(TestAttempts.score)) AS gen_score
     FROM Users
     LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
     GROUP BY Users.id
@@ -201,7 +224,7 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
 // === From profile to db ===
 app.post('/api/update-tags', authMiddleware, (req, res) => {
   const userEmail = req.user.email;
-  const {name, fname, tel, birth, addr, city, postal, skills, status} = req.body;
+  const {name, fname, tel, birth, addr, city, postal, skills} = req.body;
   let tags = [];
   if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
   const tagsJSON = JSON.stringify(tags);
@@ -517,7 +540,7 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
     },
     filename: (name, ext, part, form) => {
       const lowerExt = (ext || path.extname(name || '')).toLowerCase();
-      return `u_${req.user.id}_${kind}${lowerExt}`;
+      return `u_${req.user.id}_${kind}_${crypto.randomUUID()}${lowerExt}`;
     }
   });
 
