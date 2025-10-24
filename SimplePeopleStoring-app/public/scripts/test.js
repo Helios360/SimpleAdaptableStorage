@@ -3,8 +3,6 @@ const submit = document.getElementById('submit')
 const token = localStorage.getItem('token');
 const start = document.getElementById('launch-test');
 const popup = document.getElementById('popup');
-let i = 0;
-
 
 async function redirectAfterDelay(data) {
   notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous êtes arrété... Redirection ...');
@@ -48,7 +46,6 @@ submit.addEventListener("click", async event => {
     notifAlert("Aucun test n'est chargé.");
     return;
   }
-
   try {
     // send answer
     const res = await fetch('/api/test/response', {
@@ -68,7 +65,7 @@ submit.addEventListener("click", async event => {
     localStorage.removeItem("current_test_type");
 
     // fetch next test
-    const nextRes = await fetch('/api/test/next', {method: 'GET',credentials: 'include',});
+    const nextRes = await fetch('/api/test/next', {method: 'GET', credentials: 'include'});
     const nextData = await nextRes.json();
 
     if (nextData.success) {

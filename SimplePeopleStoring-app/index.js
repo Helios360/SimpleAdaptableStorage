@@ -342,9 +342,9 @@ app.get('/api/test/next', authMiddleware, (req, res) => {
     }
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
-    const type = historyResults[0]?.cnt ?? 0;
+    const type = historyResults[0]?.cnt === 0 || historyResults[0]?.cnt == null ? 1 : historyResults[0]?.cnt;
     
-    if(Number(type) >= 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
+    if(Number(type) >= 28) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     const cycleIndex = type % 27;
     const bucket = Math.floor(cycleIndex / 3);
     const servType = (bucket % 3) + 1;
