@@ -4,8 +4,8 @@ echo ":D Starting minimal configuration . . ."
 
 echo "Docker setup . . ."
 sudo pacman -Syu docker docker-compose
-sudo sudo systemctl enable docker.service
-sudo sudo systemctl start docker.service
+sudo systemctl enable docker.service
+sudo systemctl start docker.service
 echo
 
 read -p "Enter a db name for .env file: " DB_NAME

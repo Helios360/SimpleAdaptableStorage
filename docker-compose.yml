@@ -14,10 +14,9 @@ services:
         interval: 5s
         timeout: 3s
         retries: 10
+
   app:
     build: .
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     depends_on:
@@ -25,5 +24,33 @@ services:
         condition: service_healthy
     volumes:
       - ${UPLOADS_DIR_HOST}:${APP_UPLOADS_DIR}
+    expose:
+      - "3000"
+    networks: [web]
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/certbot/www:/var/www/certbot
+      - ./nginx/certbot/conf:/etc/letsencrypt
+    depends_on: [app]
+    networks: [web]
+  
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./nginx/certbot/www:/var/www/certbot
+      - ./nginx/certbot/conf:/etc/letsencrypt
+    networks: [web]
+
 volumes:
   db-data:
+
+networks:
+  web:
+    driver: bridge

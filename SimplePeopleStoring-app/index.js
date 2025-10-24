@@ -50,6 +50,7 @@ const SECRET = process.env.JWT_SECRET;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // === Security boot features ===
+app.set('trust proxy', 1);
 app.use(helmet.hsts({maxAge: 15552000, includeSubDomains: true, preload: true}));
 if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
