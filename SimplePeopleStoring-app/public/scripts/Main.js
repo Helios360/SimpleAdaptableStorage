@@ -21,6 +21,7 @@ button.addEventListener('click', () => {
     localStorage.setItem('dark', newTheme.toString());
     applyTheme(newTheme);
 });
+
 function notif(message){
     const popup = document.createElement('div');
     popup.className="popup";
@@ -29,7 +30,6 @@ function notif(message){
     popupContent.textContent=message;
     popup.appendChild(popupContent);
     document.body.appendChild(popup);
-
     setTimeout(()=>{ popup.remove(); }, 3000);
 }
 function notifAlert(message){

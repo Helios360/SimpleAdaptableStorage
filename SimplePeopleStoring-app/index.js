@@ -221,28 +221,7 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
   );
 });
 
-// === From profile to db ===
-app.post('/api/update-tags', authMiddleware, (req, res) => {
-  const userEmail = req.user.email;
-  const {name, fname, tel, birth, addr, city, postal, skills} = req.body;
-  let tags = [];
-  if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
-  const tagsJSON = JSON.stringify(tags);
-  const skillsJSON = JSON.stringify(skills);
-  db.query(
-    `UPDATE Users 
-     SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?, status=?
-     WHERE email = ?`,
-    [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, status, userEmail],
-    (err, result) => {
-      if (err) {
-        console.error('DB update error:', err);
-        return res.status(500).json({ success: false, message: 'Database error' });
-      }
-      res.json({ success: true, message: 'Profile updated successfully' });
-    }
-  );
-});
+
 
 // === Register route ===
 app.post('/submit-form', (req, res) => {
@@ -457,6 +436,28 @@ function deleteUser(userId, res){
   })
   return {success: true};
 }
+// === From profile to db users ===
+app.post('/api/update-tags', authMiddleware, (req, res) => {
+  const userEmail = req.user.email;
+  const {name, fname, tel, birth, addr, city, postal, skills} = req.body;
+  let tags = [];
+  if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
+  const tagsJSON = JSON.stringify(tags);
+  const skillsJSON = JSON.stringify(skills);
+  db.query(
+    `UPDATE Users 
+     SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?
+     WHERE email = ?`,
+    [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, userEmail],
+    (err, result) => {
+      if (err) {
+        console.error('DB update error:', err);
+        return res.status(500).json({ success: false, message: 'Database error' });
+      }
+      res.json({ success: true, message: 'Profile updated successfully' });
+    }
+  );
+});
 // === CRUD delete route ===
 app.delete('/api/delete', authMiddleware, (req, res) => {
   deleteUser(req.user.id, res);

@@ -1,24 +1,29 @@
 const answer = document.getElementById('answer');
 const submit = document.getElementById('submit')
-const token = localStorage.getItem('token');
 const start = document.getElementById('launch-test');
 const popup = document.getElementById('popup');
-
+const loader = document.getElementById('loader');
 async function redirectAfterDelay(data) {
   notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous êtes arrété... Redirection ...');
   await wait(3000);
   window.location.href = '/profile';
 }
-
+function setLoading(isLoading){
+  loader.style.display = isLoading ? 'flex' : 'none';
+  submit.style.pointerEvents = isLoading ? 'none' : 'auto';
+  start.style.pointerEvents = isLoading ? 'none' : 'auto';
+  document.body.style.cursor = isLoading ? 'wait' : 'default';
+}
 // === Step 1: Launch test (only fetch)
-start.addEventListener('click', () => {
-  fetch('/api/test/next', {
-    method: 'GET',
-    credentials: 'include',
-    headers:{'Content-Type':'application/json'},
-  })
-  .then(res => res.json())
-  .then(data => {
+start.addEventListener('click', async () => {
+  setLoading(true);
+  try {
+    const res = await fetch('/api/test/next', {
+      method: 'GET',
+      credentials: 'include',
+      headers:{'Content-Type':'application/json'},
+    })
+    const data = await res.json();
     if (data.success) {
       const test = data.test;
       localStorage.setItem('current_test_id', test.id);
@@ -27,11 +32,14 @@ start.addEventListener('click', () => {
       document.getElementById('test_count').innerText = data.count;
       document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
+      popup?.remove();
     } else {
-      redirectAfterDelay(data);
+      await redirectAfterDelay(data);
     }
-  });
-  popup.remove();
+  } catch(e){
+    console.error(e);
+    notifAlert('Erreur réseau pendant le chargement du test.')
+  } finally {setLoading(false);}
 });
 
 // === Step 2: Submit test
@@ -46,8 +54,9 @@ submit.addEventListener("click", async event => {
     notifAlert("Aucun test n'est chargé.");
     return;
   }
+  setLoading(true);
   try {
-    // send answer
+    // Send answer
     const res = await fetch('/api/test/response', {
       method: "POST",
       credentials: 'include',
@@ -60,7 +69,6 @@ submit.addEventListener("click", async event => {
       notifAlert("Erreur d'envoi du test: " + data.message);
       return;
     }
-    notifAlert("Test envoyé ! Passage au suivant...");
     localStorage.removeItem("current_test_id");
     localStorage.removeItem("current_test_type");
 
@@ -76,11 +84,12 @@ submit.addEventListener("click", async event => {
       document.getElementById('test_count').innerText = nextData.count;
       document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
+      answer.value='';
     } else {
       redirectAfterDelay(nextData);
     }
   } catch (err) {
     console.error(err);
     notifAlert("Erreur réseau pendant l'envoi.");
-  }
+  } finally {setLoading(false);}
 });
