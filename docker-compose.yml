@@ -24,9 +24,17 @@ services:
       mysql:
         condition: service_healthy
     volumes:
+      - ./SimplePeopleStoring-app:/usr/src/app
+      - /usr/src/app/node_modules
       - ${UPLOADS_DIR_HOST}:${APP_UPLOADS_DIR}
+    working_dir: /usr/src/app
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || curl -fsS http://127.0.0.1:3000 || exit 1"]
+      interval: 7s
+      timeout: 3s
+      retries: 40
     networks: [web]
 
   nginx:
@@ -39,7 +47,9 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/certbot/www:/var/www/certbot
       - ./nginx/certbot/conf:/etc/letsencrypt
-    depends_on: [app]
+    depends_on:
+      app:
+        condition: service_healthy
     networks: [web]
   
   certbot:

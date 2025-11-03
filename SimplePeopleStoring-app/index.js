@@ -118,10 +118,10 @@ app.post('/login', loginLimiter, (req, res) => {
     });
   });
 });
-// === /api/profile (Protected Route) ===
+// === /api/profile (Me profile user) ===
 app.post('/api/profile', authMiddleware, (req, res) => {
   const userId = req.user.email;
-  db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills,status FROM Users WHERE email = ?', [userId], (err, results) => {
+  db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ?', [userId], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
@@ -165,7 +165,7 @@ app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req
 app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
   db.query(`
   SELECT 
-      name, fname, city, postal, date_inscription, birth, status,
+      name, fname, email, city, postal, date_inscription, birth, status,
       ROUND(AVG(TestAttempts.score)) AS gen_score
     FROM Users
     LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id

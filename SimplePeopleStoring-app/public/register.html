@@ -9,14 +9,7 @@
     <meta name="robots" content="noindex, nofollow">
 
     <title>Cloud-testing</title>
-    <script>
-      (function () {
-        const isDark = localStorage.getItem('dark') === 'true';
-        const root = document.documentElement;
-        root.style.setProperty('--primary', isDark ? '#141414' : '#F1F4F4');
-        root.style.setProperty('--secondary', isDark ? '#F1F4F4' : '#141414');
-      })();
-    </script>
+    <script src="/scripts/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
 
@@ -100,6 +93,6 @@
         </form>
     </main>
 </body>
-<script src="/scripts/Main.js"></script>
-<script src="scripts/Form.js"></script>
+<script src="/scripts/Main.js" defer></script>
+<script src="scripts/Form.js" defer></script>
 </html>

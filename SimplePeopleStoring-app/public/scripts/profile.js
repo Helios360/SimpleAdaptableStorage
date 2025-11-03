@@ -18,7 +18,7 @@ const accountDelete = document.getElementById('deleteBtn');
 test.addEventListener('click',()=>{ window.location.href= "/test";})
 
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
-if (fetchUrl!= '/api/profile') test.style.display="none";
+if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;
 const adminView = !!targetEmail;
 const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
@@ -40,7 +40,7 @@ async function api(url, opts = {}){ // Better, will update to this soon
         throw new Error('Unauthorized');
     } return res;
 }
-if(!adminView)document.getElementById('status').disabled = true;
+if(!adminView)document.getElementById('status-parent').style.display = "none";
 fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
 .then(res => res.json())
 .then(data => {

@@ -38,7 +38,7 @@ function notifAlert(message){
     popup.id = 'alertnotif';
     popup.innerHTML=`
     <div>
-        <h1>${message}</h1>
+        <h1 style="font-size:1.5rem;">${message}</h1>
         <button id="suivant">Suivant...</button>
     </div>
     `
@@ -52,8 +52,8 @@ function alertChoice(message){
         popup.id = 'alertnotif';
         popup.innerHTML=`
         <div>
-            <h1>${message}</h1>
-            <span style="width:100%;display:flex;flex-direction:row;justify-content:space-between">
+            <h1 style="font-size:1.5rem;">${message}</h1>
+            <span style="width:100%;display:flex;flex-direction:row;justify-content:space-between;gap:1rem;">
                 <button id="yes">Je confirme</button>
                 <button id="no">Annuler et retour en arrière</button>
             </span>

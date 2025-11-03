@@ -26,6 +26,8 @@ Redemarer l'app seulement :
     >>> docker compose rm -f app
     >>> docker compose up -d app
 
+Pour voir les logs du container : sudo docker logs -f simplepeoplestoring-app-1
+
 !!! supprimer la base de donnée : sudo docker volume rm simplepeoplestoring_db-data !!!
 
 II/ Stockage et base de donnée
@@ -191,3 +193,8 @@ VALUES
 '2, 6, 12, 20, 30, 42',
 'Look for a polynomial pattern.',
 3);
+
+
+III/ Regen de CA
+(Don't forget CA regen is made in http not https)
+sudo docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d {nomDeDomaine} --email {adresseMail} --agree-tos --no-eff-email
