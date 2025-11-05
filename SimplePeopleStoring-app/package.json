@@ -1,0 +1,38 @@
+{
+  "name": "simplepeoplestoring",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Helios360/SimplePeopleStoring#readme",
+  "bugs": {
+    "url": "https://github.com/Helios360/SimplePeopleStoring/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Helios360/SimplePeopleStoring.git"
+  },
+  "license": "ISC",
+  "author": "Hellios",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "codemirror": "^6.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "formidable": "^3.5.4",
+    "fuzzball": "^2.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.14.1",
+    "node": "^22.17.0",
+    "node-bin-setup": "^1.1.4",
+    "openai": "^5.20.1",
+    "path-to-regexp": "^8.2.0",
+    "helmet": "^7.1.0"
+  }
+}
