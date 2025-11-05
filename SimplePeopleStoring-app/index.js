@@ -14,12 +14,12 @@ const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
-
+const crypto = require('crypto');
 // Helpers
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
-const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR, path.join(BASE_DIR, 'uploads'));
+const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR || path.join(BASE_DIR, 'uploads'));
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
 const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
 const toAbsFromStored = (stored) => {
@@ -189,7 +189,7 @@ app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
 // === Only accessible by authenticated admins ===
 app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
   const email = decodeURIComponent(req.params.email);
-  db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
+  db.query('SELECT  FROM Users WHERE email = ?', [email], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'DB error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, student: results[0] });
@@ -203,7 +203,7 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
   db.query(
     'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
     [name, fname, tel, birth, addr, city, postal, JSON.stringify(tags), JSON.stringify(skills), status, email],
-    (err, result) => {
+    (err) => {
       if (err) return res.status(500).json({ success: false, message: 'Database error' });
       res.json({ success: true });
     }
@@ -427,15 +427,15 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
   }
 });
 // === CRUD ===
-function deleteUser(userId, res){
+function deleteUser(userId){
   const userFolder = path.resolve(BASE_DIR, `uploads/u_${userId}`);
   fs.rm(userFolder, { recursive: true, force: true}, (e) => {
     if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
   });
   db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
-    if (err) return res.status(500).json({success : false, message: "Couldn't delete user from database"});
+    if (err) return reject(err);
+    resolve();
   })
-  return {success: true};
 }
 // === From profile to db users ===
 app.post('/api/update-tags', authMiddleware, (req, res) => {
@@ -460,12 +460,14 @@ app.post('/api/update-tags', authMiddleware, (req, res) => {
   );
 });
 // === CRUD delete route ===
-app.delete('/api/delete', authMiddleware, (req, res) => {
-  deleteUser(req.user.id, res);
+app.delete('/api/delete', authMiddleware, async (req, res) => {
+  try { await deleteUser(req.user.id); res.json({success: true});}
+  catch { res.status(500).json({success: false, message: "Couldn't delete user"});}
 });
 // === CRUD delete route (admin) ===
-app.delete('/api/admin/users/:id', authMiddleware, adminOnly, (req, res) => {
-  deleteUser(req.params.id, res);
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try { await deleteUser(req.params.id); res.json({success: true});}
+  catch { res.status(500).json({success: false, message: "Couldn't delete user"});}
 });
 // === CRUD change(upload)/delete files only route ===
 async function deleteFile(userId, action) {
@@ -489,7 +491,7 @@ async function deleteFile(userId, action) {
     } catch (e){
       if (e.code !== 'ENOENT'){
         console.warn('Unlink error:', e);
-        throw httpError(500, "File can't be deleted");
+        const err = new Error("File can't be deleted"); err.status=500; throw err;
       } else {console.log('File already deleted');}
     }
     await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);

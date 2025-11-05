@@ -14,7 +14,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks: [web]
+    networks:
+      - interBus
 
   app:
     build: .
@@ -35,33 +36,20 @@ services:
       interval: 7s
       timeout: 3s
       retries: 40
-    networks: [web]
-
-  nginx:
-    image: nginx:alpine
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/certbot/www:/var/www/certbot
-      - ./nginx/certbot/conf:/etc/letsencrypt
-    depends_on:
-      app:
-        condition: service_healthy
-    networks: [web]
-  
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./nginx/certbot/www:/var/www/certbot
-      - ./nginx/certbot/conf:/etc/letsencrypt
-    networks: [web]
+    networks:
+      - interBus
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.app.rule=Host(`cloudportail.ddns.net`)
+      - traefik.http.routers.app.entrypoints=websecure
+      - traefik.http.routers.app.tls.certresolver=le
+      - traefik.http.services.app.loadbalancer.server.port=${PORT}
 
 volumes:
   db-data:
 
 networks:
-  web:
-    driver: bridge
+  interBus:
+  proxy:
+    external: true
