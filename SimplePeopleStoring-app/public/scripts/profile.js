@@ -93,9 +93,13 @@ if (data.success) {
     document.getElementById('postal').value = user.postal;
     document.getElementById('addr').value = user.addr;
 
+    document.getElementById('tel').addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    })
+    document.getElementById('postal').addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    })
     document.getElementById('saveBtn').addEventListener('click', () => {
-        const emailInput = document.getElementById('email').value.trim();
-        if (!emailInput || !emailInput.includes('@')) { notif('Email invalide. Sauvegarde annulé.'); return; }
         const data = {
             name: document.getElementById('name').value,
             fname: document.getElementById('fname').value,
@@ -107,6 +111,7 @@ if (data.success) {
             postal: document.getElementById('postal').value,
             skills: currentSkills,
         };
+        if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
         const endpoint = targetEmail ? '/api/admin/update-student' : '/api/update-tags';
         fetch(endpoint, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })

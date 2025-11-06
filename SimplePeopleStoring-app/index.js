@@ -16,6 +16,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const crypto = require('crypto');
 // Helpers
+const ALLOWED = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim()).filter(Boolean);
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
@@ -54,23 +55,28 @@ app.set('trust proxy', 1);
 app.use(helmet.hsts({maxAge: 15552000, includeSubDomains: true, preload: true}));
 if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
-app.use(cors({origin: 'http://localhost:8080', credentials: true}));
+app.use(cors({origin: ALLOWED, credentials: true}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // === Static Files ===
 app.use(express.static(path.join(BASE_DIR, 'public')));
 // === MySQL ===
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.MYSQL_HOST,
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
   database: process.env.MYSQL_DATABASE,
   dateStrings: true,
+  waitForConnections: true,
+  connectionLimit: 20,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
-function q(sql, params = []) {
+function q(sql, params=[]) {
   return new Promise((resolve, reject) => {
-    db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+    db.query(sql, params, (err, results) => (err ? reject(err) : resolve(results)));
   });
 }
 // === Rate limit, anti ddos ===
@@ -79,15 +85,6 @@ app.use(rateLimit({
   max: 100 // max 100 requests per 15 minutes
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false});
-
-// === Database connection ===
-db.connect(err => {
-  if (err) {
-    console.error('DB Error: ', err.stack);
-    return;
-  }
-  console.log(':3 Connected to MySQL . . .');
-});
 
 // === HTML Routes ===
 app.get('/', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/index.html')));
@@ -98,42 +95,43 @@ app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(p
 app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
 
 // === /login Route ===
-app.post('/login', loginLimiter, (req, res) => {
-  const { email, password } = req.body;
-  db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
-    if (err) return res.status(500).send('DB error');
+app.post('/login', loginLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const results = await q(`SELECT * FROM Users WHERE email = ?`, [email]);
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err) return res.status(500).send('Password error');
-      if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
-      const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: IS_PROD,
-        sameSite: 'Strict',
-        maxAge: 2 * 60 * 60 * 1000 // 2h
-      });
-      res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
-    });
-  });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
+    
+    const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
+    res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
+    res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
+  } catch (e) {
+    console.error('Login error: ', e);
+    res.status(500).json({succes: false, message: 'Server Error . . .'})
+  }
 });
 // === /api/profile (Me profile user) ===
-app.post('/api/profile', authMiddleware, (req, res) => {
-  const userId = req.user.email;
-  db.query('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ?', [userId], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'DB error' });
+app.post('/api/profile', authMiddleware, async (req, res) => {
+  try{
+    const userId = req.user.email;
+    const results = await q ('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
     res.json({ success: true, user });
-  });
+  } catch (e) {
+    console.error('Profile Error: ', e);
+    return res.status(500).json({ success: false, message: 'DB Error . . .' });
+  }
 });
 // === Document display
 async function kindCheck(kind, userId){
   if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return {ok: false, reason: 'bad-kind'};
-  const [row] = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
-  if (!row) return {ok: false, reason: 'no-user'};
-  return {ok: true, path: row[kind] || null};
+  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
+  if (results.length === 0) return {ok: false, reason: 'User not found . . .'};
+  return {ok: true, path: results[0][kind] || null};
 }
 app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
   try {
@@ -162,73 +160,76 @@ app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req
   } catch (e) {console.warn(e);}
 });
 // === Admin full sql api ===
-app.post('/api/admin-panel', authMiddleware, adminOnly, (req, res) => {
-  db.query(`
-  SELECT 
-      name, fname, email, city, postal, date_inscription, birth, status,
-      ROUND(AVG(TestAttempts.score)) AS gen_score
-    FROM Users
-    LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
-    GROUP BY Users.id
-  ;`, 
-  (err, results)=>{
-    if (err) return res.status(500).json({ success: false, message: 'DB error' });
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'Result lenght === 0'});
+app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
+  try{
+    const results = await q(`
+    SELECT 
+        name, fname, email, city, postal, date_inscription, birth, status,
+        ROUND(AVG(TestAttempts.score)) AS gen_score
+      FROM Users
+      LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
+      GROUP BY Users.id
+    ;`);
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
     res.json({ success: true, users: results});
-  });
+  } catch (e) {
+    console.error('Admin-panel Error: ', e);
+    res.status(500).json({success: false, message: "DB Error . . ."});
+  }
 });
-// === Single user profile (admin) ===
-app.get('/api/user-profile/:id', authMiddleware, adminOnly, (req, res) => {
-  const userId = req.params.id;
-  db.query('SELECT * FROM Users WHERE id = ?', [userId], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'DB error' });
+// === Single user profile access (admin) ===
+app.get('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
+  try{
+    const userId = req.params.id;
+    const results = await q ('SELECT * FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
-  });
+  } catch (e) {
+    console.error('Admin profile fetch Error: ', e);
+    res.status(500).json({ success: false, message: 'DB Error . . .' });
+  }
 });
 // === Only accessible by authenticated admins ===
-app.post('/api/admin/student/:email', authMiddleware, adminOnly, (req, res) => {
-  const email = decodeURIComponent(req.params.email);
-  db.query('SELECT  FROM Users WHERE email = ?', [email], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'DB error' });
+app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res) => {
+  try{
+    const email = decodeURIComponent(req.params.email);
+    const results = await q('SELECT * FROM Users WHERE email = ?', [email]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, student: results[0] });
-  });
+  } catch (e) {
+    console.error('Admin profile fetch Error: ', e);
+    res.status(500).json({ success: false, message: 'DB Error . . .' });
+  }
 });
 // === Update students (admin) ===
-app.post('/api/admin/update-student', authMiddleware, adminOnly, (req, res) => {
-  const {
-    email, name, fname, tel, birth, addr, city, postal, tags, skills, status
-  } = req.body;
-  db.query(
-    'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
-    [name, fname, tel, birth, addr, city, postal, JSON.stringify(tags), JSON.stringify(skills), status, email],
-    (err) => {
-      if (err) return res.status(500).json({ success: false, message: 'Database error' });
-      res.json({ success: true });
-    }
-  );
+app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res) => {
+  try{
+    const {email, name, fname, tel, birth, addr, city, postal, tags, skills, status} = req.body;
+    await q( 'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
+    [name, fname, tel, birth, addr, city, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Database Update Error: ', e);
+    res.status(500).json({success: false, message: 'DB Error . . .'});
+  }
 });
 // === Update status from list (admin) ===
-app.post('/api/admin/update-status', authMiddleware, adminOnly, (req, res) => {
-  const { id, status } = req.body;
-  db.query('UPDATE Users SET status = ? WHERE id = ?',[status, id],(err, result) => {
-      if (err) {
-        console.error('DB error on status update:', err);
-        return res.status(500).json({ success: false, message: 'Database error' });
-      }
-      res.json({ success: true });
-    }
-  );
+app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    await q('UPDATE Users SET status = ? WHERE id = ?', [status, id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Database Update Error: ', e);
+    res.status(500).json({success: false, message: 'DB Error . . .'});
+  }
 });
-
-
 
 // === Register route ===
 app.post('/submit-form', (req, res) => {
   const form = formidable({
     keepExtensions: true,
-    maxFileSize: 10 * 1024 * 1024,
+    maxFileSize: 10 * 1024 * 1024, // 10 Mo
     maxTotalFileSize: 30 * 1024 * 1024,
     multiples: true,
     filter: ({mimetype, originalFilename})=>{
@@ -275,12 +276,8 @@ app.post('/submit-form', (req, res) => {
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
       const insertValues = [name, fname, email, tel, addr, city, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
-      db.query(insertSql, insertValues, async (err, results) => {
-        if (err){
-          console.error('DB insert Error: ', err);
-          fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-          return res.status(500).send('Database Error or invalid parameters');
-        }
+      try{
+        const results = await q(insertSql, insertValues);
         const newId = results.insertId;
         const finalDir = userDir(newId);
         await fs.promises.mkdir(finalDir, {recursive: true});
@@ -296,15 +293,19 @@ app.post('/submit-form', (req, res) => {
           moveToFinal(idrTmpAbs),
           moveToFinal(idvTmpAbs)
         ])
-        db.query('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId], (err)=>{
+        try{
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-          if(err){
-            console.error('DB Update Error (final paths) : ', err);
-            return res.status(500).send('Database error after insert');
-          }
           return res.redirect('/signin');
-        });
-      })
+        } catch (e) {
+          console.error('DB Update Error after first Insert : ', e);
+          res.status(500).send('Database Error after Insert');
+        }
+      } catch (e) {
+        console.error('DB Insert Error: ', e);
+        fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
+        res.status(500).send('Database Error or invalid parameters');
+      }
     } catch (e) {
       console.error('Registration handler fault : ', e);
       return res.status(500).send('Server Error');
@@ -313,189 +314,175 @@ app.post('/submit-form', (req, res) => {
 });
 
 // === GET a random test (READ-ONLY) ===
-app.get('/api/test/next', authMiddleware, (req, res) => {
-  const userId = req.user.id;
-  db.query('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId], (err, historyResults) => {
-    if (err) {
-      console.error('DB error on history check:', err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
+app.get('/api/test/next', authMiddleware, async (req, res) => {
+  try{
+    const userId = req.user.id;
+    const historyResults = await q('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId]);
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
-    const type = historyResults[0]?.cnt === 0 || historyResults[0]?.cnt == null ? 1 : historyResults[0]?.cnt;
+    const cnt = Number(historyResults?.[0]?.cnt ?? 0) || 0;
+    const type = cnt === 0 ? 1 : cnt;
     
     if(Number(type) >= 28) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     const cycleIndex = type % 27;
     const bucket = Math.floor(cycleIndex / 3);
     const servType = (bucket % 3) + 1;
     // Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
-    db.query(
-      `SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,
-      [servType],
-      (err, testResults) => {
-        if (err || testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
-        return res.status(200).json({ success: true, test: testResults[0], count: type });
-      }
-    );
-  });
+    const testResults = await q(`SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
+    if (testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
+    return res.status(200).json({ success: true, test: testResults[0], count: type });
+  } catch (e) {
+    console.error('DB error on random test fetch: ', e);
+    return res.status(500).json({ success: false, message: 'Database error' });
+  }
 });
 
 app.post('/api/test/response', authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { testId, answer } = req.body;
-  if (!testId || !answer) {
-    return res.status(400).json({ success: false, message: 'Missing test data' });
-  }
-  const rows = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
-  if (!rows.length) return res.status(404).json({ success: false, message: 'Test not found' });
-
-  const { question, answer: official_answer } = rows[0];
-
-  const response = await openai.responses.create({
-    model: "gpt-4o-mini",
-    input: [
-      { role: "system", content: `System:
-      You are a strict, detail-oriented grader. Score student answers using the rubric. 
-      Never add commentary. Do not justify.`},
-      { role:"user", content: `User:
-      Grade the student’s answer and return only a numeric score from 0 to 100 (integers only).
-      Use this rubric strictly:
-      - 100 = fully correct and complete per rubric
-      - 70–99 = mostly correct; minor omissions or errors
-      - 40–69 = partially correct; significant gaps
-      - 1–39 = mostly incorrect; minimal correct elements
-      - 0 = blank, off-topic, or copied question
-
-      Important rules:
-      - If the rubric lists point weights, respect them and scale to 0–100.
-      - If multiple parts exist, weight each part as specified; if unspecified, weight equally.
-      - Penalize fabricated facts or contradictions with the provided references.
-      - If the answer is not in the requested language or format, deduct up to 10 points.
-      - Clamp final result to 0–100 and round to nearest integer.
-
-      Question:
-      ${question}
-
-      Rubric / Correct answer or key points (use this, not your own knowledge):
-      ${official_answer}
-
-      Student answer:
-      ${answer}
-
-      Return only the final integer score.
-      `},
-    ],
-    text: {
-      format: {
-        type: "json_schema",
-        name: "score_only",
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            score: {
-              type: "integer",
-              minimum: 0,
-              maximum: 100
-            }
-          },
-          required: ["score"]
-        },
-        strict: true
-      }
-    }
-  });
-  const raw = response.output[0].content[0].text;
-  let score;
   try {
-    ({ score } = JSON.parse(raw));
-  } catch {
-    score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10)));
-    console.log(score);
-  } try {
-    console.log(score);
-    await new Promise((resolve, reject) => {
-      db.query('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score], (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
+    const userId = req.user.id;
+    const { testId, answer } = req.body;
+    if (!testId || !answer) return res.status(400).json({ success: false, message: 'Missing test data' });
+    const results = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
+    if (!results.length) return res.status(404).json({ success: false, message: 'Test not found' });
+
+    const { question, answer: official_answer } = results[0];
+
+    const response = await openai.responses.create({
+      model: "gpt-4o-mini",
+      input: [
+        { role: "system", content: `System:
+        You are a strict, detail-oriented grader. Score student answers using the rubric. 
+        Never add commentary. Do not justify.`},
+        { role:"user", content: `User:
+        Grade the student’s answer and return only a numeric score from 0 to 100 (integers only).
+        Use this rubric strictly:
+        - 100 = fully correct and complete per rubric
+        - 70–99 = mostly correct; minor omissions or errors
+        - 40–69 = partially correct; significant gaps
+        - 1–39 = mostly incorrect; minimal correct elements
+        - 0 = blank, off-topic, or copied question
+
+        Important rules:
+        - If the rubric lists point weights, respect them and scale to 0–100.
+        - If multiple parts exist, weight each part as specified; if unspecified, weight equally.
+        - Penalize fabricated facts or contradictions with the provided references.
+        - If the answer is not in the requested language or format, deduct up to 10 points.
+        - Clamp final result to 0–100 and round to nearest integer.
+
+        Question:
+        ${question}
+
+        Rubric / Correct answer or key points (use this, not your own knowledge):
+        ${official_answer}
+
+        Student answer:
+        ${answer}
+
+        Return only the final integer score.
+        `},
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "score_only",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              score: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              }
+            },
+            required: ["score"]
+          },
+          strict: true
+        }
+      }
     });
+    const raw = response.output[0].content[0].text;
+    let score;
+    
+    try { ({ score } = JSON.parse(raw)); }
+    catch { score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10))); }
+    
+    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score]);
     res.json({ success: true, score });
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error('Test/Response Error: ', e);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 // === CRUD ===
-function deleteUser(userId){
+async function deleteUser(userId) {
   const userFolder = path.resolve(BASE_DIR, `uploads/u_${userId}`);
-  fs.rm(userFolder, { recursive: true, force: true}, (e) => {
-    if(e && e.code !== 'ENOENT') console.warn('rm error: ', userFolder, e.message);
-  });
-  db.query('DELETE FROM Users WHERE id = ?',[userId], (err) => {
-    if (err) return reject(err);
-    resolve();
-  })
+  try { await fs.promises.rm(userFolder, { recursive: true, force: true});} 
+  catch (e) { if (e.code !== 'ENOENT') console.warn('File RM Error: ', userFolder, e.message); }
+  const confirm = await q('DELETE FROM Users WHERE id = ?',[userId]);
+  if ((confirm?.affectedRows || 0) === 0) {
+    const err = new Error('User not found while trying to Delete user:');
+    err.status = 404;
+    throw err;
+  }
 }
 // === From profile to db users ===
-app.post('/api/update-tags', authMiddleware, (req, res) => {
+app.post('/api/update-tags', authMiddleware, async (req, res) => {
   const userEmail = req.user.email;
   const {name, fname, tel, birth, addr, city, postal, skills} = req.body;
   let tags = [];
   if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
   const tagsJSON = JSON.stringify(tags);
   const skillsJSON = JSON.stringify(skills);
-  db.query(
+  try {
+    await q(
     `UPDATE Users 
      SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?
      WHERE email = ?`,
-    [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, userEmail],
-    (err, result) => {
-      if (err) {
-        console.error('DB update error:', err);
-        return res.status(500).json({ success: false, message: 'Database error' });
-      }
-      res.json({ success: true, message: 'Profile updated successfully' });
-    }
-  );
+    [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, userEmail]);
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (e) {
+    console.error('DB Profile Update Error: ', e);
+    res.status(500).json({ success: false, message: 'Database error . . .' });
+  }
 });
 // === CRUD delete route ===
 app.delete('/api/delete', authMiddleware, async (req, res) => {
   try { await deleteUser(req.user.id); res.json({success: true});}
-  catch { res.status(500).json({success: false, message: "Couldn't delete user"});}
+  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
 });
 // === CRUD delete route (admin) ===
 app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
   try { await deleteUser(req.params.id); res.json({success: true});}
-  catch { res.status(500).json({success: false, message: "Couldn't delete user"});}
+  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
 });
 // === CRUD change(upload)/delete files only route ===
 async function deleteFile(userId, action) {
-  const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
-    if (!rows || !rows[0]) throw Object.assign(new Error('User not found'), {status : 404});
-    const user = rows[0];
-    let filename = null;
-    let nullTheColumn = null;
-    if(action === 'del' && user.id_doc){
-      filename = toAbsFromStored(user.id_doc);
-      nullTheColumn = 'id_doc';
-    } else if(action === 'delV' && user.id_doc_verso){
-      filename = toAbsFromStored(user.id_doc_verso);
-      nullTheColumn = 'id_doc_verso';
-    } else if(action === 'delCV' && user.cv) {
-      filename = toAbsFromStored(user.cv);
-      nullTheColumn = 'cv';
-    } else { return {success: false} }
-    try{
-      await fs.promises.unlink(filename);
-    } catch (e){
-      if (e.code !== 'ENOENT'){
-        console.warn('Unlink error:', e);
-        const err = new Error("File can't be deleted"); err.status=500; throw err;
-      } else {console.log('File already deleted');}
-    }
-    await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
-    return {success: true};
+  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
+  if (!results || !results[0]) throw Object.assign(new Error('User not found'), {status : 404});
+  const user = results[0];
+  let filename = null;
+  let nullTheColumn = null;
+  if(action === 'del' && user.id_doc){
+    filename = toAbsFromStored(user.id_doc);
+    nullTheColumn = 'id_doc';
+  } else if(action === 'delV' && user.id_doc_verso){
+    filename = toAbsFromStored(user.id_doc_verso);
+    nullTheColumn = 'id_doc_verso';
+  } else if(action === 'delCV' && user.cv) {
+    filename = toAbsFromStored(user.cv);
+    nullTheColumn = 'cv';
+  } else { return {success: false} }
+  try{
+    await fs.promises.unlink(filename);
+  } catch (e){
+    if (e.code !== 'ENOENT'){
+      console.warn('Unlink error:', e);
+      const err = new Error("File can't be deleted"); err.status=500; throw err;
+    } else {console.log('File already deleted');}
+  }
+  await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
+  return {success: true};
 }
 app.post('/api/files',authMiddleware, async (req,res)=>{
   try{
@@ -503,7 +490,7 @@ app.post('/api/files',authMiddleware, async (req,res)=>{
     return res.json(result);
   } catch (e) {
     console.error('Delete Route Error: ', e);
-    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server Error'});
+    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server File Delete Error . . .'});
   }
 })
 app.post('/api/files/:id', authMiddleware, adminOnly, async (req,res)=>{
@@ -512,7 +499,7 @@ app.post('/api/files/:id', authMiddleware, adminOnly, async (req,res)=>{
     return res.json(result);
   } catch (e) {
     console.error('Delete Route Error: ', e);
-    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server Error'});
+    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server File Delete Error . . .'});
   }
 })
 app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
@@ -521,8 +508,8 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   const userFolder = userDir(req.user.id);
   await fs.promises.mkdir(userFolder, {recursive : true});
   try {
-    const rows = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
-    const current = rows[0]?.[kind];
+    const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
+    const current = results[0]?.[kind];
     if (current){
       const oldAbs = toAbsFromStored(current);
       try { await fs.promises.unlink(oldAbs);} 
@@ -530,7 +517,7 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
     }
   } catch (e) {
     console.error('Pre check error: ', e);
-    return res.status(500).json({success: false, message: 'server error'});
+    return res.status(500).json({success: false, message: 'Server Upload Error'});
   }
   const form = formidable({
     uploadDir: userFolder,
@@ -563,8 +550,8 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
       await q(`UPDATE Users SET ${kind}=? WHERE id=?`, [storedPath, req.user.id]);
       return res.json({success: true, path : storedPath});
     } catch (e) {
-      console.error('Erreur upload: ', e);
-      return res.status(500).json({success: false, message: 'Server error'});
+      console.error('Path Upload DIR Error: ', e);
+      return res.status(500).json({success: false, message: 'Server Path Upload Error'});
     }
   });
 })
