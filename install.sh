@@ -17,10 +17,10 @@ read -p "Enter OpenAi test correction api key: " API
 
 # Create .env file
 echo "OwO Creating .env file..."
-cat <<EOT > .env
+cat <<EOT > SimplePeopleStoring-app/.env
 PORT=3000
 HOST=0.0.0.0
-NODE_ENV=development
+NODE_ENV=production
 
 MYSQL_HOST=mysql
 MYSQL_USER=mysql
@@ -31,7 +31,7 @@ MYSQL_ROOT_PASSWORD=$ROOT_PASS
 JWT_SECRET=$SECRET
 OPENAI_API_KEY=$API
 
-UPLOADS_DIR_HOST=./SimplePeopleStoring-app/uploads
+DIR_HOST=/mnt/nas/cloudportail/simplepeoplestoring/
 APP_UPLOADS_DIR=/usr/src/app/uploads
 APP_BASE_DIR=/usr/src/app
 EOT
