@@ -7,7 +7,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - db-data:/var/lib/mysql
+      - ${DIR_HOST}/mysql:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
@@ -19,6 +19,7 @@ services:
 
   app:
     build: .
+    restart: always
     env_file:
       - .env
     depends_on:
@@ -27,7 +28,7 @@ services:
     volumes:
       - ./SimplePeopleStoring-app:/usr/src/app
       - /usr/src/app/node_modules
-      - ${UPLOADS_DIR_HOST}:${APP_UPLOADS_DIR}
+      - ${DIR_HOST}/uploads:${APP_UPLOADS_DIR}
     working_dir: /usr/src/app
     expose:
       - "3000"

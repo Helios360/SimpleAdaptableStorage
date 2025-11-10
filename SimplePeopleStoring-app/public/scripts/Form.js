@@ -5,7 +5,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const message = document.createElement("span");
     message.id = "password-message";
     confirm.parentNode.appendChild(message);
-
+    const telInput = document.getElementById('tel');
+    telInput.addEventListener('input', () => {
+        telInput.value = telInput.value.replace(/\s+/g, "");
+    })
     // Vérification mot de passe et confirmation
     function checkPasswordMatch() {
         if (confirm.value === "") {
@@ -22,7 +25,6 @@ document.addEventListener("DOMContentLoaded", function () {
             return false;
         }
     }
-
 
     password.addEventListener("input", checkPasswordMatch);
     confirm.addEventListener("input", checkPasswordMatch);
@@ -167,5 +169,5 @@ document.addEventListener("DOMContentLoaded", function () {
     cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name;})
     pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name;})
     pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name;})
-
 });
+
