@@ -120,6 +120,7 @@ li{
 }
 .docs {
     display: flex;
+    justify-content: space-between;
     gap:0.8rem;
 }
 .docs a{
@@ -202,6 +203,11 @@ li{
     display: flex;
     flex-direction: row;
     gap:1rem;
+}
+#deleteBtn{
+    border: none;
+    width: 200px;
+    height:30px;
 }
 @media (max-width:1179px){
     .contain{
