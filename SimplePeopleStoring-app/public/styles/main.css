@@ -22,6 +22,11 @@ input[type=number] {
     box-sizing: border-box;    
     scrollbar-width: none;
 }
+a:link {color: var(--secondary);}
+a:visited{color: var(--secondary);}
+a:hover {color: var(--tertiary);}
+a:active {color: lightblue;}
+
 body{margin: 0; padding: 0;}
 html{
     padding:0;
@@ -35,7 +40,8 @@ header{
     height:110px;
     position:relative;
     display: flex;
-    justify-content: space-between;
+    justify-content: end;
+    align-items: center;
     width: 100%;
     padding: 20px 20px;
 }
@@ -143,9 +149,6 @@ button:active{
 .signin{
     gap: 20px !important;
 }
-.signin input{
-    margin: 0;
-}
 .signin button{
     margin-top: 60px;
     margin-bottom: 0;
@@ -183,16 +186,27 @@ footer{
     z-index: 500;
     background-color: #00000083;
     padding: 20%;
-    width:100%;
+    width: 100%;
     height: 100%;
     text-align: justify;
     top:0;
 }
+.notif-alert > div > span {
+    width:100%;
+    display:flex;
+    flex-direction:row;
+    justify-content:space-between;
+    gap:1rem;
+}
+.notif-alert > div > span > button {
+    width:100%;
+}
 .notif-alert > div{
+    font-weight: bold;
     border: 2px solid var(--secondary);
     background-color: var(--primary);
     border-radius: 8px;
-    padding: 20px;
+    padding: 1rem;
 }
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}
@@ -204,5 +218,9 @@ footer{
     }
     hr{
         width: 100%;
+    }
+    .notif-alert {padding:1rem;}
+    .notif-alert > div > span{
+        flex-direction: column;
     }
 }

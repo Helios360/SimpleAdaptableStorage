@@ -380,6 +380,26 @@ fileUploadCV.addEventListener('change', async (e) => {
     }
 })
 
+let isDirty = false;
+let pendingHref = false;
+const infoList = document.querySelector('.info-list');
+if (infoList) {
+    infoList.addEventListener('input', onDirty, true);
+    infoList.addEventListener('change', onDirty, true);
+}
+function onDirty(e) {
+    const t = e.target;
+    if(t.matches('input:not([readonly]), select, textarea')) {
+        isDirty = true;
+    }
+}
+document.getElementById('saveBtn')?.addEventListener('click', ()=>{ isDirty = false;});
+window.addEventListener('beforeunload', (event) => {
+    if(isDirty){
+        event.preventDefault();
+        event.returnValue ='';
+    }
+});
 const skillTypes = {
   // Languages
   'C': 'language',

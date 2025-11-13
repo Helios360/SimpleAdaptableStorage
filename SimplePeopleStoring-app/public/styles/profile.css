@@ -3,6 +3,9 @@ main{
     justify-content: center;
     height:100vh;
 }
+header{
+    justify-content: space-between;
+}
 p{padding: 0;margin: 0;}
 input{
     border: 2px var(--secondary) solid;
@@ -33,6 +36,7 @@ select{
     border: 2px var(--secondary) solid;
     background-color: transparent;
     overflow: scroll;
+    scrollbar-width: auto;
 }
 .pi{
     width:100%;
@@ -120,12 +124,18 @@ li{
 }
 .docs {
     display: flex;
+    justify-content: space-between;
     gap:0.8rem;
 }
-.docs a{
+.docs span{
+    display: flex;
+    flex-direction: row;
+    gap:1rem;
+}
+.docs span a{
     height: 40px;
     padding:7px 10px;
-    border: 1px solid var(--secondary);
+    border: 2px solid var(--secondary);
     border-radius: 9px;
     min-width: 60px;
     display: flex;
@@ -198,10 +208,9 @@ li{
     gap:1rem;
 }
 .button-wrap button{ font-family: main-font; width:100%;}
-.cv-action{
-    display: flex;
-    flex-direction: row;
-    gap:1rem;
+#deleteBtn{
+    text-align: right;
+    cursor: pointer;
 }
 @media (max-width:1179px){
     .contain{

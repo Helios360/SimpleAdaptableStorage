@@ -5,7 +5,7 @@ function applyTheme(isDark) {
     if (isDark) {
         root.style.setProperty('--primary', '#141414');
         root.style.setProperty('--secondary', '#F1F4F4');
-        root.style.setProperty('--tertiary', '#F1F4F4');
+        root.style.setProperty('--tertiary', '#46c2c2ff');
 
     } else {
         root.style.setProperty('--primary', '#F1F4F4');
@@ -16,7 +16,7 @@ function applyTheme(isDark) {
 window.addEventListener('DOMContentLoaded', () => { applyTheme(localStorage.getItem('dark') === 'true'); });
 
 button.addEventListener('click', () => {
-    const isDark = localStorage.getItem('dark') === 'true';
+    const isDark = localStorage.getItem('dark') === 'true' || false;
     const newTheme = !isDark;
     localStorage.setItem('dark', newTheme.toString());
     applyTheme(newTheme);
@@ -53,7 +53,7 @@ function alertChoice(message){
         popup.innerHTML=`
         <div>
             <h1 style="font-size:1.5rem;">${message}</h1>
-            <span style="width:100%;display:flex;flex-direction:row;justify-content:space-between;gap:1rem;">
+            <span>
                 <button id="yes">Je confirme</button>
                 <button id="no">Annuler et retour en arrière</button>
             </span>

@@ -1,13 +1,13 @@
 services:
   mysql:
-    image: mysql:latest
+    image: mysql:8.4
     restart: always
     env_file:
       - .env
     ports:
       - "3307:3306"
     volumes:
-      - ${DIR_HOST}/mysql:/var/lib/mysql
+      - ${MYSQL_DATA_DIR}:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
@@ -17,9 +17,44 @@ services:
     networks:
       - interBus
 
+  mysql-backup:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ${NAS_BACKUPS}:/backup
+    entrypoint: ["/bin/sh", "-c"]
+    networks:
+      - interBus
+    command: |
+      set -eu
+      trap 'exit 0' TERM INT
+      mkdir -p /backup
+      while true; do
+        TS="$(date +%F_%H-%M-%S)"
+        FILE="/backup/backup_${TS}.sql.gz"
+        if mysqldump -h "$${MYSQL_HOST:-mysql}" -u "$${MYSQL_USER:-root}" -p"$${MYSQL_PASSWORD:-$${MYSQL_ROOT_PASSWORD:-}}" \
+          --all-databases --single-transaction --quick --routines --triggers --events | gzip > "$${FILE}"; then
+          echo "Backup OK: $${FILE}"
+          find /backup -type f -name 'backup_*.sql.gz' -mtime +7 -delete
+        else
+          echo "Backup FAILED at $${TS}" >&2
+        fi
+        sleep 43200
+      done
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h $${MYSQL_HOST:-mysql} -u $${MYSQL_USER:-root} -p$${MYSQL_PASSWORD:-$${MYSQL_ROOT_PASSWORD:-}} -e 'SELECT 1'"]
+      interval: 60s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
-    restart: always
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
@@ -28,7 +63,7 @@ services:
     volumes:
       - ./SimplePeopleStoring-app:/usr/src/app
       - /usr/src/app/node_modules
-      - ${DIR_HOST}/uploads:${APP_UPLOADS_DIR}
+      - ${NAS_UPLOADS}:${APP_UPLOADS_DIR}
     working_dir: /usr/src/app
     expose:
       - "3000"
@@ -45,11 +80,9 @@ services:
       - traefik.http.routers.app.rule=Host(`cloudportail.ddns.net`)
       - traefik.http.routers.app.entrypoints=websecure
       - traefik.http.routers.app.tls.certresolver=le
-      - traefik.http.services.app.loadbalancer.server.port=${PORT}
+      - traefik.http.services.app.loadbalancer.server.port=${PORT:-3000}
 
-volumes:
-  db-data:
-
+volumes: {}
 networks:
   interBus:
   proxy:
