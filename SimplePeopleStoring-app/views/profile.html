@@ -94,7 +94,13 @@
               <path d="m3 11 19-9-9 19-2-8z"/>
             </svg>
             <label for="addr">Adresse </label>
-            <input type="text" id="addr" name="addr">
+            <div class="city-postal">
+              <input type="text" id="addr" name="addr">
+              <select id="mobility" name="mobility" required>
+                <option value="0">Mobile</option>
+                <option value="1">Immobile</option>
+              </select>
+            </div>
           </li>
         </ul>
         <div class="plus">

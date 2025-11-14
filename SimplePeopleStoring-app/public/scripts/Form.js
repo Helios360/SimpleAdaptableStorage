@@ -109,6 +109,10 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Ville obligatoire.");
         }
+        if (!document.getElementById("mobility").value.trim()) {
+            valid = false;
+            errors.push("Veuillez indiquer votre mobilité.");
+        }
 
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {
@@ -157,7 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Si erreur -> bloquer envoi
         if (!valid) {
             e.preventDefault();
-            alert("Erreurs trouvées :\n- " + errors.join("\n- "));
+            notifAlert("Erreurs trouvées :\n- " + errors.join("\n- "));
         }
     });
     const cvUpload = document.getElementById('cv');

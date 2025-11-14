@@ -60,7 +60,7 @@
                 </div>
             </div>
             <hr>
-            <div style="display:flex; justify-content: space-around;">
+            <div class="register">
                 <ul class="form2 inputs" >
                     <p>Documents :</p>
                     <li class="file-upload inputs">
@@ -77,6 +77,13 @@
                     </li>
                 </ul>
                 <div>
+                    <select name="mobility" id="mobility" required>
+                        <option value="" selected disable hidden>Mobilité</option>
+                        <option value="0">Je suis mobile</option>    
+                        <option value="1">Je reste dans la ville</option>    
+                    </select>
+                </div>
+                <div>
                     <label for="password">Mot de passe</label>
                     <input class="inputs" type="password" id="password" name="password" required>
                 </div>
@@ -84,11 +91,13 @@
                     <label for="confirm">Confirmer le mot de passe</label>
                     <input class="inputs" type="password" id="confirm" name="confirm" required>
                 </div>
+                
                 <div class="checkbox">
                     <label for="agree">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>
                     <input type="checkbox" id="agree" name="agree" required>                
                 </div>
                 <button type="submit" id="send">Envoyer</button>
+                <a href="/signin"><u>Vous avez deja un compte ?</u></a>
             </div>
         </form>
     </main>
