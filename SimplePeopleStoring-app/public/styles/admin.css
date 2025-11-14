@@ -5,9 +5,12 @@ main{
     align-items: start;
     gap: 2rem;
 }
-a{ color:var(--secondary); }
+header{
+    justify-content: space-between;
+}
 .inputInfo{
     min-width:350px;
+    width:30%;
     border:2px solid var(--secondary);
     border-radius: 8px;
     padding:15px;
@@ -62,20 +65,25 @@ select{
     border-radius:0 6px 6px 0;
     border-left: none;
 }
-.ai{
+.place1 {
     display: flex;
-    position: relative;
+    flex-direction: row;
+    flex-wrap: nowrap;
 }
-.ai textarea{
-    width: 100%;
+.place1 :nth-child(1) {
+    width: 50%;
+    border-radius:6px 0 0 6px;
 }
-#sendPrompt{
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    padding:10px;
+.place1 :nth-child(2) {
+    width:50%;
+    border-radius:0 6px 6px 0;
+    border-left: none;
 }
-
+.checks{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
 /* The right panel */
 p{padding: 0; margin:0;}
 .list{
@@ -117,7 +125,9 @@ p{padding: 0; margin:0;}
   transform: rotate(0deg);
   transition: transform 0.3s ease;
 }
-@media (max-width:1530px){
+.status-select{width:140px;}
+.creationDate{width: 100px; text-align: right;}
+@media (max-width:1230px){
     main{
         flex-direction: column;
         gap:2rem;
@@ -137,4 +147,13 @@ p{padding: 0; margin:0;}
         padding:1rem;
     }
     textarea{height:3rem;}
+}
+@media (max-width:700px){
+    main{padding:0;}
+    .inputInfo{min-width: 0;border:none;}
+    .list{border:none;}
+    #localisation{display: none;}
+    #creation-date{display:none;}
+    .resped{display: none;}
+    .status-select{margin-left:-20px;}
 }

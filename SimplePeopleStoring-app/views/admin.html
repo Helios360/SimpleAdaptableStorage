@@ -33,16 +33,13 @@
         <div class="inputInfo">
             <form id="search-form">
             <input placeholder="Nom Prénom" id="nomPrenom" name="name" type="text">
-            <select class="status-select" id="searchStatus">
+            <select id="searchStatus">
                 <option value="" selected>Status</option>
                 <option value="0">Archive</option>
                 <option value="1">En recherche</option>
                 <option value="2">Recherche active</option>
             </select>
-            <span class="place">
-                <input placeholder="Lieu . . ." id="place">
-                <input placeholder="Distance.." id="dist">
-            </span>
+            <input placeholder="Lieu . . ." id="place">
             <span class="place">
                 <input placeholder="Age" type="number" id="age">
                 <select name="tranche-age" id="trancheAge">
@@ -51,10 +48,23 @@
                     <option value="2126">21 - 26</option>
                 </select>
             </span>
-            <input placeholder="Tag +" name="Skills" type="text" id="skills">
-            <span class="ai">
-                <textarea name="AI_search" placeholder="J'ai de la chance :3" id="aiSearch"></textarea>
-                <a id="sendPrompt"><u>Envoyer</u></a>
+            <span class="place1">
+                <input placeholder="Tag +" name="Tags" type="text" id="tags">
+                <input placeholder="Skills +" name="Skills" type="text" id="skills">
+            </span>
+            <span class="checks">
+                <span>
+                    <input type="checkbox" id="permis" name="permis">
+                    <label for="permis-b">Permis</label>
+                </span>
+                <span>
+                    <input type="checkbox" id="vehicule" name="vehicule">
+                    <label for="nomade">Véhiculé</label>
+                </span>
+                <span>    
+                    <input type="checkbox" id="mobile" name="mobile">
+                    <label for="nomade">Mobile</label>
+                </span>
             </span>
         </form>
         </div>

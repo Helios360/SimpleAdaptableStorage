@@ -77,11 +77,18 @@
                     </li>
                 </ul>
                 <div>
-                    <select name="mobility" id="mobility" required>
-                        <option value="" selected disable hidden>Mobilité</option>
-                        <option value="0">Je suis mobile</option>    
-                        <option value="1">Je reste dans la ville</option>    
-                    </select>
+                    <span class="checks">
+                        <input type="checkbox" id="permis" name="permis">
+                        <label for="permis-b">Permis</label>
+                    </span>
+                    <span class="checks">
+                        <input type="checkbox" id="vehicule" name="vehicule">
+                        <label for="nomade">Véhiculé</label>
+                    </span>
+                    <span class="checks">    
+                        <input type="checkbox" id="mobile" name="mobile">
+                        <label for="nomade">Mobile</label>
+                    </span>
                 </div>
                 <div>
                     <label for="password">Mot de passe</label>

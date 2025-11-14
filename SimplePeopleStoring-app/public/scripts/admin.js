@@ -1,10 +1,7 @@
-const token = localStorage.getItem('token');
-if (token) {
-  fetch('/admin-panel', { headers: { Authorization: `Bearer ${token}` }})
+fetch('/admin-panel', { headers: { credentials:'include' }})
   .then(res => res.text())
   .catch(err => console.error('Erreur admin fetch:', err));
-}
-
+  
 const allUsers = [];
 function renderUser (users) {
   const list = document.getElementById('list');
@@ -21,7 +18,7 @@ function renderUser (users) {
     <div class="user" data-user-id="${user.id}">
     <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
     <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
-    <span style="line-break:loose">${user.city}, ${user.postal}</span>
+    <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
     <span>
         <select class="status-select" data-user-id="${user.id}">
             <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>
@@ -29,7 +26,7 @@ function renderUser (users) {
             <option value="2" ${user.status == 2 ? 'selected' : ''}>Recherche active</option>
         </select>
     </span>
-    <span><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
+    <span class="resped"><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
     </div>
     `;
   });
@@ -41,7 +38,7 @@ function renderUser (users) {
       fetch('/api/admin/update-status', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('token'),
+          credentials: 'include',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -53,11 +50,8 @@ function renderUser (users) {
       .then(data => {
         if (data.success) {
           console.log(`Status updated for user ${userId}`);
-
           const userToUpdate = allUsers.find(user => user.id == userId);
-          if (userToUpdate) {
-            userToUpdate.status = parseInt(newStatus, 10);
-          }
+          if (userToUpdate) userToUpdate.status = parseInt(newStatus, 10);
         } else {
           throw new Error(data.message);
         }
@@ -99,7 +93,7 @@ function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 
-fetch('/api/admin-panel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
+fetch('/api/admin-panel', { method: 'POST', credentials: 'include'})
 .then(res => res.json())
 .then(data => {
   if (data.success) {
@@ -247,17 +241,17 @@ function filterUsers() {
   const ageValue = document.getElementById('age').value;
   const trancheValue = document.getElementById('trancheAge').value;
   const skillsValue = document.getElementById('skills').value.toLowerCase();
-  const aiSearchValue = document.getElementById('aiSearch').value.toLowerCase();
-  
+  const tagsValue = document.getElementById('tags').value.toLowerCase();
+  const permisValue = document.getElementById('permis').checked;
+  const vehiculeValue = document.getElementById('vehicule').checked;
+  const mobileValue = document.getElementById('mobile').checked;
   const filtered = allUsers.filter(user => {
     // Calculate age
     const birthDate = new Date(user.birth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     const fullName = `${user.name} ${user.fname}`.toLowerCase();
     const matchName = nameValue === '' || fullName.includes(nameValue);
     const matchStatus = statusValue === '' || user.status.toString() === statusValue;
@@ -267,10 +261,12 @@ function filterUsers() {
       age >= parseInt(trancheValue.slice(0,2)) &&
       age <= parseInt(trancheValue.slice(2))
     );
-    const matchskills = skillsValue === '' || (user.skills || []).some(tag => tag.toLowerCase().includes(skillsValue));
-    const matchAI = aiSearchValue === '' || JSON.stringify(user).toLowerCase().includes(aiSearchValue); // simple AI full-text
-
-    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchskills && matchAI;
+    const matchSkills = skillsValue === '' || (user.skills || []).some(skill => skill.toLowerCase().includes(skillsValue));
+    const matchTags = tagsValue === '' || (user.tags || []).some(tag => tag.toLowerCase().includes(tagsValue));
+    const matchPermis = permisValue === '' || user.permis === permisValue;
+    const matchVehicule = vehiculeValue === '' || user.vehicule === vehiculeValue;
+    const matchMobile = mobileValue === '' || user.mobile === mobileValue;
+    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile;
   });
   renderUser(filtered);
 }
@@ -283,7 +279,7 @@ function attachFormListeners() {
   });
 }
 function refreshUserList() {
-  fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token')}})
+  fetch('/api/admin-panel', { method: 'POST', credentials: 'include'})
   .then(res => res.json())
   .then(data => {
     if (data.success) {

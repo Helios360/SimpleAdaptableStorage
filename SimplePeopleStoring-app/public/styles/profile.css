@@ -201,6 +201,7 @@ li{
     text-align: right;
     cursor: pointer;
 }
+#status{width: 200px;}
 @media (max-width:1179px){
     .contain{
         flex-direction: column;

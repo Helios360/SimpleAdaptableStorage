@@ -13,11 +13,13 @@ CREATE TABLE IF NOT EXISTS Users (
     id_doc_verso VARCHAR(255),
     password VARCHAR(100),
     agree BOOLEAN DEFAULT FALSE,
+    permis BOOLEAN DEFAULT FALSE,
+    vehicule BOOLEAN DEFAULT FALSE,
+    mobile BOOLEAN DEFAULT FALSE,
     date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     tags JSON,
     skills JSON,
     status TINYINT DEFAULT 1,
-    mobility TINYINT DEFAULT 0,
     is_admin TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS Tests (

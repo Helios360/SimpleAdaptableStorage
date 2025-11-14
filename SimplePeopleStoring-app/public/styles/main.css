@@ -223,6 +223,15 @@ footer{
     border-radius: 8px;
     padding: 1rem;
 }
+.checks{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+.checks input{
+    width: 20px;
+}
 #send{width: 100%;}
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}

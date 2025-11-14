@@ -117,7 +117,7 @@ app.post('/login', loginLimiter, async (req, res) => {
 app.post('/api/profile', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,mobility,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
+    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
     res.json({ success: true, user });
@@ -164,7 +164,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
     const results = await q(`
     SELECT 
-        name, fname, email, city, mobility, postal, date_inscription, birth, status,
+        id, name, fname, email, city, permis, mobile, vehicule, postal, date_inscription, birth, status, tags, skills,
         ROUND(AVG(TestAttempts.score)) AS gen_score
       FROM Users
       LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
@@ -178,7 +178,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 // === Single user profile access (admin) ===
-app.get('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
     const results = await q ('SELECT * FROM Users WHERE id = ?', [userId]);
@@ -204,9 +204,9 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res
 // === Update students (admin) ===
 app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res) => {
   try{
-    const {email, name, fname, tel, birth, addr, city, mobility, postal, tags, skills, status} = req.body;
-    await q( 'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, mobility=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
-    [name, fname, tel, birth, addr, city, mobility, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
+    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status} = req.body;
+    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
     res.json({ success: true });
   } catch (e) {
     console.error('Database Update Error: ', e);
@@ -253,10 +253,10 @@ app.post('/submit-form', (req, res) => {
     }
     try {
       const {
-        name, fname, email, tel, addr, city, mobility,
+        name, fname, email, tel, addr, city, permis, vehicule, mobile,
         postal, birth, password, agree,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !addr || !city || !mobility || !postal || !birth || !agree) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !addr || !city || !permis || !vehicule || !mobile || !postal || !birth || !agree) return res.status(400).send('Missing required fields');
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.promises.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
@@ -271,11 +271,11 @@ app.post('/submit-form', (req, res) => {
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, mobility, postal, birth, cv, id_doc, id_doc_verso, password, agree)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, agree)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, mobility, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
+      const insertValues = [name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -429,7 +429,7 @@ async function deleteUser(userId) {
 // === From profile to db users ===
 app.post('/api/update-tags', authMiddleware, async (req, res) => {
   const userEmail = req.user.email;
-  const {name, fname, tel, birth, addr, city, mobility, postal, skills} = req.body;
+  const {name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, skills} = req.body;
   let tags = [];
   if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
   const tagsJSON = JSON.stringify(tags);
@@ -437,9 +437,9 @@ app.post('/api/update-tags', authMiddleware, async (req, res) => {
   try {
     await q(
     `UPDATE Users 
-     SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, mobility=?, postal = ?, tags = ?, skills = ?
+     SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, permis=?, vehicule=?, mobile=?, postal = ?, tags = ?, skills = ?
      WHERE email = ?`,
-    [name, fname, tel, birth, addr, city, mobility, postal, tagsJSON, skillsJSON, userEmail]);
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tagsJSON, skillsJSON, userEmail]);
     res.json({ success: true, message: 'Profile updated successfully' });
   } catch (e) {
     console.error('DB Profile Update Error: ', e);
