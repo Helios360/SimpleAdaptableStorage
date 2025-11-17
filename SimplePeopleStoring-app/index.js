@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const { formidable } = require('formidable');
 const authMiddleware = require('./controllers/authControl');
 const adminOnly = require('./controllers/adminOnly');
@@ -16,11 +15,11 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const crypto = require('crypto');
 // Helpers
-const ALLOWED = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim()).filter(Boolean);
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
 const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR || path.join(BASE_DIR, 'uploads'));
+const TOS_VERSION = process.env.TOS_VERSION;
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
 const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
 const toAbsFromStored = (stored) => {
@@ -41,8 +40,38 @@ function guessContentType(p){
 }
 
 // === Security headers setup ===
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site'} }));
+app.use(helmet({ 
+  crossOriginResourcePolicy: { policy: 'same-site'},
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'"],
+      "connect-src": ["'self'"],
+      "img-src": ["'self'", "data:", "blob:"],
+      "object-src": ["'none'"],
+      "frame-ancestors": ["'none'"],
+      "base-uri": ["'self'"]
+    }
+  },
+  referrerPolicy: {policy: "no-referrer"}
+}));
+const allowIframeSelf = helmet.contentSecurityPolicy({
+  useDefaults: true,
+  directives: {
+    "default-src": ["'self'"],
+    "script-src": ["'self'"],
+    "connect-src": ["'self'"],
+    "img-src": ["'self'", "data:", "blob:"],
+    "object-src": ["'none'"],
+    "frame-ancestors": ["'self'"],
+    "base-uri": ["'self'"]
+  }
+})
+
+app.disable('x-powered-by');
 app.use(cookieParser());
+
 
 // === Setting up important consts ===
 const PORT = process.env.PORT || 3000;
@@ -52,10 +81,8 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 // === Security boot features ===
 app.set('trust proxy', 1);
-app.use(helmet.hsts({maxAge: 15552000, includeSubDomains: true, preload: true}));
 if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
-app.use(cors({origin: ALLOWED, credentials: true}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // === Static Files ===
@@ -113,6 +140,10 @@ app.post('/login', loginLimiter, async (req, res) => {
     res.status(500).json({succes: false, message: 'Server Error . . .'})
   }
 });
+app.post('/logout', (req,res) => {
+  res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict'});
+  res.json({success: true});
+});
 // === /api/profile (Me profile user) ===
 app.post('/api/profile', authMiddleware, async (req, res) => {
   try{
@@ -133,7 +164,7 @@ async function kindCheck(kind, userId){
   if (results.length === 0) return {ok: false, reason: 'User not found . . .'};
   return {ok: true, path: results[0][kind] || null};
 }
-app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
+app.get('/api/me/files/:kind', authMiddleware, allowIframeSelf, async (req, res) => {
   try {
     const { kind } = req.params;
     const result = await kindCheck(kind, req.user.id);
@@ -143,10 +174,12 @@ app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
     await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
     res.setHeader('Content-type', guessContentType(abs));
     res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
     res.sendFile(abs);
   } catch (e) {console.warn(e);}
 });
-app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req, res) => {
+app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, allowIframeSelf, async (req, res) => {
   try {
     const { id, kind } = req.params;
     const result = await kindCheck(kind, id);
@@ -156,6 +189,8 @@ app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req
     await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
     res.setHeader('Content-type', guessContentType(abs));
     res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');    
     res.sendFile(abs);
   } catch (e) {console.warn(e);}
 });
@@ -254,9 +289,9 @@ app.post('/submit-form', (req, res) => {
     try {
       const {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
-        postal, birth, password, agree,
+        postal, birth, password, consent,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !addr || !city || !permis || !vehicule || !mobile || !postal || !birth || !agree) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.promises.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
@@ -271,11 +306,11 @@ app.post('/submit-form', (req, res) => {
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, agree)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -304,7 +339,10 @@ app.post('/submit-form', (req, res) => {
       } catch (e) {
         console.error('DB Insert Error: ', e);
         fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-        res.status(500).send('Database Error or invalid parameters');
+        if (e && (e.code === 'ER_DUP_ENTRY' || e.errno === 1062)){
+          return res.status(409).json({ message: "Cet utilisateur est deja enregistré"});
+        }
+        res.status(500).json({message: 'Database Error or invalid parameters'});
       }
     } catch (e) {
       console.error('Registration handler fault : ', e);
@@ -416,7 +454,7 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
 });
 // === CRUD ===
 async function deleteUser(userId) {
-  const userFolder = path.resolve(BASE_DIR, `uploads/u_${userId}`);
+  const userFolder = path.resolve(UPLOADS_ROOT, `u_${userId}`);
   try { await fs.promises.rm(userFolder, { recursive: true, force: true});} 
   catch (e) { if (e.code !== 'ENOENT') console.warn('File RM Error: ', userFolder, e.message); }
   const confirm = await q('DELETE FROM Users WHERE id = ?',[userId]);

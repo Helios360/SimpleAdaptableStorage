@@ -70,3 +70,40 @@ function alertChoice(message){
     }) 
 }
 function wait(ms) {return new Promise(resolve => setTimeout(resolve, ms));}
+
+async function parseOrThrow(res){
+    const ct = res.headers.get('content-type') || '';
+    const isJSON = ct.includes('application/json');
+    let body;
+    try {body = isJSON? await res.json() : await res.text(); } catch {body=null;}
+    if(!res.ok){
+        const msgFromJSON = isJSON && (body?.message || body?.error);
+        const msgFromHTML = !isJSON && typeof body === 'string' ? stripHTML(body).slice(0,300) : null;
+        const err = new Error(msgFromJSON || msgFromHTML || 'Une erreur est survenue . . .');
+        err.status = res.status;
+        err.body = body;
+        throw err;
+    }
+    return body;
+}
+
+function stripHTML(html){
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || '';
+}
+
+async function api(url, opts = {}){
+    try{
+        const res = await fetch(url, {
+            headers: { 'Accept': 'application/json', ...(opts.headers || {})}, ...opts
+        });
+        return await parseOrThrow(res);
+    } catch(err){
+        let msg = err.message || 'Erreur réseau . . .';
+        if (err.status === 409) msg = 'Cet email est déja enregistré . . .';
+        else if (err.status === 500) msg = 'Erreur serveur. Réessayez plus tard . . .';
+        notifAlert(msg);
+        throw err;
+    }
+}

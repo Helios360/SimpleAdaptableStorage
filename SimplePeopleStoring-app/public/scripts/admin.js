@@ -1,4 +1,4 @@
-fetch('/admin-panel', { headers: { credentials:'include' }})
+fetch('/admin-panel')
   .then(res => res.text())
   .catch(err => console.error('Erreur admin fetch:', err));
   
@@ -37,10 +37,7 @@ function renderUser (users) {
 
       fetch('/api/admin/update-status', {
         method: 'POST',
-        headers: {
-          credentials: 'include',
-          'Content-Type': 'application/json'
-        },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           id: userId,
           status: newStatus
@@ -93,7 +90,7 @@ function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 
-fetch('/api/admin-panel', { method: 'POST', credentials: 'include'})
+fetch('/api/admin-panel', { method: 'POST'})
 .then(res => res.json())
 .then(data => {
   if (data.success) {
@@ -235,17 +232,18 @@ fetch('/api/admin-panel', { method: 'POST', credentials: 'include'})
 .catch(err => { console.error('Error fetching users:', err); });
 
 function filterUsers() {
-  const nameValue = document.getElementById('nomPrenom').value.toLowerCase();
-  const statusValue = document.getElementById('searchStatus').value;
-  const placeValue = document.getElementById('place').value.toLowerCase();
-  const ageValue = document.getElementById('age').value;
-  const trancheValue = document.getElementById('trancheAge').value;
-  const skillsValue = document.getElementById('skills').value.toLowerCase();
-  const tagsValue = document.getElementById('tags').value.toLowerCase();
-  const permisValue = document.getElementById('permis').checked;
-  const vehiculeValue = document.getElementById('vehicule').checked;
-  const mobileValue = document.getElementById('mobile').checked;
+  const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
+  const statusValue = (document.getElementById('searchStatus')?.value || '');
+  const placeValue = (document.getElementById('place')?.value || '').toLowerCase();
+  const ageValue = (document.getElementById('age')?.value || '');
+  const trancheValue = (document.getElementById('trancheAge')?.value || '');
+  const skillsValue = (document.getElementById('skills')?.value || '').toLowerCase();
+  const tagsValue = (document.getElementById('tags')?.value || '').toLowerCase();
+  const permisValue = Number(document.getElementById('permis').checked);
+  const vehiculeValue = Number(document.getElementById('vehicule').checked);
+  const mobileValue = Number(document.getElementById('mobile').checked);
   const filtered = allUsers.filter(user => {
+    if (!user) return false;
     // Calculate age
     const birthDate = new Date(user.birth);
     const today = new Date();
@@ -263,9 +261,9 @@ function filterUsers() {
     );
     const matchSkills = skillsValue === '' || (user.skills || []).some(skill => skill.toLowerCase().includes(skillsValue));
     const matchTags = tagsValue === '' || (user.tags || []).some(tag => tag.toLowerCase().includes(tagsValue));
-    const matchPermis = permisValue === '' || user.permis === permisValue;
-    const matchVehicule = vehiculeValue === '' || user.vehicule === vehiculeValue;
-    const matchMobile = mobileValue === '' || user.mobile === mobileValue;
+    const matchPermis = !permisValue || user.permis === permisValue;
+    const matchVehicule = !vehiculeValue === '' || user.vehicule === vehiculeValue;
+    const matchMobile = !mobileValue === '' || user.mobile === mobileValue;
     return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile;
   });
   renderUser(filtered);
@@ -279,7 +277,7 @@ function attachFormListeners() {
   });
 }
 function refreshUserList() {
-  fetch('/api/admin-panel', { method: 'POST', credentials: 'include'})
+  fetch('/api/admin-panel', {method: 'POST'})
   .then(res => res.json())
   .then(data => {
     if (data.success) {

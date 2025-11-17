@@ -24,7 +24,7 @@
     </header>
     <main>
         <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-        <form action="/submit-form" method="POST" enctype="multipart/form-data" class="form">
+        <form action="/submit-form" data-ajax method="POST" enctype="multipart/form-data" class="form">
             <div class="register">
                 <div>
                     <label for="name">Nom</label>
@@ -100,8 +100,8 @@
                 </div>
                 
                 <div class="checkbox">
-                    <label for="agree">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>
-                    <input type="checkbox" id="agree" name="agree" required>                
+                    <label for="consent">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>
+                    <input type="checkbox" id="consent" name="consent" required>                
                 </div>
                 <button type="submit" id="send">Envoyer</button>
                 <a href="/signin"><u>Vous avez deja un compte ?</u></a>

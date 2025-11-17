@@ -74,7 +74,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Validation globale avant envoi
-    form.addEventListener("submit", function (e) {
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
         let valid = true;
         let errors = [];
 
@@ -108,10 +109,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!document.getElementById("city").value.trim()) {
             valid = false;
             errors.push("Ville obligatoire.");
-        }
-        if (!document.getElementById("mobility").value.trim()) {
-            valid = false;
-            errors.push("Veuillez indiquer votre mobilité.");
         }
 
         // Date de naissance
@@ -160,10 +157,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Si erreur -> bloquer envoi
         if (!valid) {
-            e.preventDefault();
             notifAlert("Erreurs trouvées :\n- " + errors.join("\n- "));
+            return;
+        }
+
+
+        const fd = new FormData(form);
+        const email = (fd.get('email') || '').toString().trim().toLowerCase();
+        fd.set('email', email);
+        try{
+            await api(form.action || '/submit-form', { method: 'POST', body: fd});
+            notif('Compte créé avec succès !');
+            window.location.href = '/signin';
+        } catch (e) {
+            if(e.status === 409){
+                const emailInput = form.querySelector('#email');
+                if (emailInput) {
+                    emailInput.classList.add('is-invalid');
+                    emailInput.focus();
+                }
+            }
         }
     });
+
     const cvUpload = document.getElementById('cv');
     const pirUpload = document.getElementById('id_doc');
     const pivUpload = document.getElementById('id_doc_verso');

@@ -23,17 +23,17 @@ let targetId = null;
 const adminView = !!targetEmail;
 const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
 async function deleteSelf(){
-    const res = await fetch('/api/delete', { method: 'DELETE', credentials: 'include'});
+    const res = await fetch('/api/delete', {method: 'DELETE'});
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
 }
 async function deleteAsAdmin(userId){
-    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE', credentials : 'include' });
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE'});
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
 }
 async function api(url, opts = {}){ // Better, will update to this soon
-    const res = await fetch(url, {credentials: 'include', ...opts});
+    const res = await fetch(url, {...opts});
     if (res.status === 401 || res.status === 403){
         notif('Session expirée, Veuillez vous reconnecter...');
         window.location.href = '/signin';
@@ -41,7 +41,7 @@ async function api(url, opts = {}){ // Better, will update to this soon
     } return res;
 }
 if(!adminView)document.getElementById('status-parent').style.display = "none";
-fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
+fetch(fetchUrl, { method: 'POST'})
 .then(res => res.json())
 .then(data => {
 if (data.success) {
@@ -116,7 +116,7 @@ if (data.success) {
         if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
         const endpoint = targetEmail ? '/api/admin/update-student' : '/api/update-tags';
-        fetch(endpoint, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(res => res.json())
         .then(result => {
             if (!result.success) throw new Error(result.message);
@@ -291,7 +291,6 @@ delCV.addEventListener('click', () => {action('delCV'); cvFrame.src=''});
 function action(name) {
     fetch('/api/files',{
         method: 'POST',
-        credentials: 'include',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action: name })
     })
@@ -320,7 +319,7 @@ changeCV.addEventListener('click', (e) => {
 async function uploadKind(kind, file){
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(`/api/upload/${encodeURIComponent(kind)}`,{ method : 'POST', credentials: 'include', body: fd });
+    const res = await fetch(`/api/upload/${encodeURIComponent(kind)}`,{ method : 'POST', body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
     return data;

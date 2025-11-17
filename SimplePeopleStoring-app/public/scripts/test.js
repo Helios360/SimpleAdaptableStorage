@@ -20,7 +20,6 @@ start.addEventListener('click', async () => {
   try {
     const res = await fetch('/api/test/next', {
       method: 'GET',
-      credentials: 'include',
       headers:{'Content-Type':'application/json'},
     })
     const data = await res.json();
@@ -59,7 +58,6 @@ submit.addEventListener("click", async event => {
     // Send answer
     const res = await fetch('/api/test/response', {
       method: "POST",
-      credentials: 'include',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ testId, type, answer: answerText })
     });
@@ -73,7 +71,7 @@ submit.addEventListener("click", async event => {
     localStorage.removeItem("current_test_type");
 
     // fetch next test
-    const nextRes = await fetch('/api/test/next', {method: 'GET', credentials: 'include'});
+    const nextRes = await fetch('/api/test/next', {method: 'GET'});
     const nextData = await nextRes.json();
 
     if (nextData.success) {
