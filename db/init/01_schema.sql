@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS Users (
     id_doc VARCHAR(255) NULL,
     id_doc_verso VARCHAR(255) NULL,
     password VARCHAR(60) NOT NULL,
+    tags JSON,
+    skills JSON,
     permis TINYINT(1) NOT NULL DEFAULT 0,
     vehicule TINYINT(1) NOT NULL DEFAULT 0,
     mobile TINYINT(1) NOT NULL DEFAULT 0,
@@ -19,8 +21,6 @@ CREATE TABLE IF NOT EXISTS Users (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     consent TINYINT(1) NOT NULL DEFAULT 0,
     terms_version INT NOT NULL,
-    tags JSON,
-    skills JSON,
     status TINYINT DEFAULT 1,
     is_admin TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

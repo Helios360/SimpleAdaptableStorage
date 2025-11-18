@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Conditions
-        if (!document.getElementById("agree").checked) {
+        if (!document.getElementById("consent").checked) {
             valid = false;
             errors.push("Vous devez accepter les conditions.");
         }

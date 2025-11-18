@@ -94,14 +94,22 @@
               <path d="m3 11 19-9-9 19-2-8z"/>
             </svg>
             <label for="addr">Adresse </label>
-            <div class="city-postal">
-              <input type="text" id="addr" name="addr">
-              <select id="mobility" name="mobility" required>
-                <option value="0">Mobile</option>
-                <option value="1">Immobile</option>
-              </select>
-            </div>
+            <input type="text" id="addr" name="addr">
           </li>
+          <div class="checks">
+            <span>
+              <input type="checkbox" id="permis" name="permis">
+              <label for="permis">Permis</label>
+            </span>
+            <span>
+              <input type="checkbox" id="vehicule" name="vehicule">
+              <label for="vehicule">Véhiculé</label>
+            </span>
+            <span>
+              <input type="checkbox" id="mobile" name="mobile">
+              <label for="mobile">Mobile</label>
+            </span>
+          </div>
         </ul>
         <div class="plus">
           <div class="wrapper" id="tagsWrapper">

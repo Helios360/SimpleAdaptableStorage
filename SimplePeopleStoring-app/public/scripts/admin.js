@@ -259,11 +259,15 @@ function filterUsers() {
       age >= parseInt(trancheValue.slice(0,2)) &&
       age <= parseInt(trancheValue.slice(2))
     );
-    const matchSkills = skillsValue === '' || (user.skills || []).some(skill => skill.toLowerCase().includes(skillsValue));
-    const matchTags = tagsValue === '' || (user.tags || []).some(tag => tag.toLowerCase().includes(tagsValue));
+    const skillsTerms = skillsValue.split(/\s+/).filter(term => term.length > 0);
+    const tagsTerms = tagsValue.split(/\s+/).filter(term => term.length > 0);
+
+    const matchSkills = skillsTerms.lenght === 0 || skillsTerms.every(term => (user.skills || []).some(skill => skill.toLowerCase().includes(term)));
+    const matchTags = tagsTerms.lenght === 0 || tagsTerms.every(term => (user.tags || []).some(tag => tag.toLowerCase().includes(term)));
+
     const matchPermis = !permisValue || user.permis === permisValue;
-    const matchVehicule = !vehiculeValue === '' || user.vehicule === vehiculeValue;
-    const matchMobile = !mobileValue === '' || user.mobile === mobileValue;
+    const matchVehicule = !vehiculeValue || user.vehicule === vehiculeValue;
+    const matchMobile = !mobileValue || user.mobile === mobileValue;
     return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile;
   });
   renderUser(filtered);

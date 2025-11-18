@@ -194,6 +194,23 @@ VALUES
 'Look for a polynomial pattern.',
 3);
 
+pour des users -----------------------------------------
+
+INSERT INTO Users (
+    name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, permis, vehicule, mobile, consent, terms_version, tags, skills, status, is_admin
+) VALUES
+('Smith', 'John', 'john.smith@example.com', '+1234567890', '123 Main St', 'New York', '10001', '1985-05-15', 'john_smith_cv.pdf', 'john_smith_id_front.jpg', 'john_smith_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["driving", "cooking"]', 1, 0),
+('Doe', 'Jane', 'jane.doe@example.com', '+1987654321', '456 Oak Ave', 'Los Angeles', '90001', '1990-08-22', 'jane_doe_cv.pdf', 'jane_doe_id_front.jpg', 'jane_doe_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["writing", "photography"]', 1, 0),
+('Johnson', 'Michael', 'michael.j@example.com', '+1456789012', '789 Pine Rd', 'Chicago', '60601', '1982-11-30', NULL, 'michael_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 0, 1, 1, 1, NULL, '["sales", "marketing"]', 1, 0),
+('Williams', 'Emily', 'emily.w@example.com', '+1789012345', '321 Elm Blvd', 'Houston', '77001', '1995-03-10', 'emily_w_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["teaching", "music"]', 1, 0),
+('Brown', 'David', 'david.b@example.com', '+1321654987', '654 Cedar Ln', 'Phoenix', '85001', '1988-07-19', 'david_b_cv.pdf', 'david_b_id_front.jpg', 'david_b_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["standard"]', '["programming", "design"]', 1, 0),
+('Jones', 'Sarah', 'sarah.j@example.com', '+1654987321', '987 Maple Dr', 'Philadelphia', '19101', '1993-09-05', NULL, 'sarah_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, NULL, '["nursing", "first aid"]', 1, 0),
+('Garcia', 'Carlos', 'carlos.g@example.com', '+1987321654', '135 Birch St', 'San Antonio', '78201', '1980-12-25', 'carlos_g_cv.pdf', 'carlos_g_id_front.jpg', 'carlos_g_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["construction", "plumbing"]', 1, 0),
+('Miller', 'Lisa', 'lisa.m@example.com', '+1321987654', '246 Spruce Ave', 'San Diego', '92101', '1991-04-17', 'lisa_m_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["accounting", "finance"]', 1, 0),
+('Davis', 'Robert', 'robert.d@example.com', '+1654321987', '369 Willow Rd', 'Dallas', '75201', '1987-06-30', NULL, 'robert_d_id_front.jpg', 'robert_d_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, NULL, '["logistics", "management"]', 1, 0),
+('Rodriguez', 'Maria', 'maria.r@example.com', '+1789654321', '482 Redwood Ln', 'San Jose', '95101', '1994-02-14', 'maria_r_cv.pdf', 'maria_r_id_front.jpg', 'maria_r_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["education", "coaching"]', 1, 0);
+
+
 
 III/ Regen de CA
 (Don't forget CA regen is made in http not https)

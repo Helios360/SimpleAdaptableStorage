@@ -8,18 +8,22 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const fs = require('fs');
+const sharp = require('sharp');
+const fs = require('fs').promises;
+const { PDFDocument, rgb } = require('pdf-lib');
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const crypto = require('crypto');
+
 // Helpers
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
 const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR || path.join(BASE_DIR, 'uploads'));
 const TOS_VERSION = process.env.TOS_VERSION;
+const WATERMARK_PATH = path.resolve('./public/sources/LogoBleuOmbre-edited.png');
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
 const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
 const toAbsFromStored = (stored) => {
@@ -38,7 +42,36 @@ function guessContentType(p){
   if(ext==='.jpg' || ext==='.jpeg') return 'image/jpeg';
   return 'application/octet-stream';
 }
+async function addWatermark(pdfPath, outputPath){
+  try{
+    // charge existing pdf
+    const existingPdfBytes = await fs.readFile(pdfPath);
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    // charge watermark
+    const watermarkImageBytes = await fs.readFile(WATERMARK_PATH);
+    const watermarkImage = await pdfDoc.embedPng(watermarkImageBytes);
+    const watermarkDims = watermarkImage.scale(0.1);
 
+    // no loop only one page because it's a cv (lol)
+
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+
+    const {width, height} = firstPage.getSize();
+
+    const x = (width - watermarkDims.width) - 5;
+    const y = watermarkDims.height - 70;
+    
+    firstPage.drawImage(watermarkImage, { x,y,width: watermarkDims.width,height: watermarkDims.height, opacity: 0.8});
+
+    const pdfBytes = await pdfDoc.save();
+    await fs.writeFile(outputPath, pdfBytes);
+    return true;
+  } catch (err) {
+    console.error('Watermark apply error:', err);
+    return false;
+  }
+}
 // === Security headers setup ===
 app.use(helmet({ 
   crossOriginResourcePolicy: { policy: 'same-site'},
@@ -171,7 +204,7 @@ app.get('/api/me/files/:kind', authMiddleware, allowIframeSelf, async (req, res)
     if(!result.ok) return res.sendStatus(400);
     if(!result.path) return res.sendStatus(404);
     const abs = toAbsFromStored(result.path);
-    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
+    await fs.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
     res.setHeader('Content-type', guessContentType(abs));
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -186,7 +219,7 @@ app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, allowIfram
     if(!result.ok) return res.sendStatus(400);
     if(!result.path) return res.sendStatus(404);
     const abs = toAbsFromStored(result.path);
-    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
+    await fs.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
     res.setHeader('Content-type', guessContentType(abs));
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -276,9 +309,9 @@ app.post('/submit-form', (req, res) => {
     if (!file) return null;
     const ext = path.extname(file.originalFilename || '').toLowerCase();
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    await fs.promises.mkdir(destDir, {recursive: true});
+    await fs.mkdir(destDir, {recursive: true});
     const destAbs = path.join(destDir, safeName);
-    await fs.promises.copyFile(file.filepath, destAbs);
+    await fs.copyFile(file.filepath, destAbs);
     return destAbs;
   };
   form.parse(req, async (err, fields, files) => {
@@ -293,7 +326,7 @@ app.post('/submit-form', (req, res) => {
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
       if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      await fs.promises.mkdir(tmpDir, {recursive: true});
+      await fs.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
@@ -315,19 +348,25 @@ app.post('/submit-form', (req, res) => {
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
         const finalDir = userDir(newId);
-        await fs.promises.mkdir(finalDir, {recursive: true});
+        await fs.mkdir(finalDir, {recursive: true});
         const moveToFinal = async (absPath) => {
           if(!absPath) return null;
           const base = path.basename(absPath);
           const dest = path.join(finalDir, base);
-          await fs.promises.rename(absPath, dest);
+          await fs.rename(absPath, dest);
           return relFromAbs(dest);
         };
-        const [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
+        let [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
           moveToFinal(cvTmpAbs),
           moveToFinal(idrTmpAbs),
           moveToFinal(idvTmpAbs)
         ])
+        if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
+          const absCvPath = toAbsFromStored(cvFinalRel);
+          const tempWatermarkedPath = absCvPath.replace(/\.pdf$/,'_wm.pdf');
+          const success = await addWatermark(absCvPath, tempWatermarkedPath);
+          if (success) await fs.rename(tempWatermarkedPath, absCvPath);
+        }
         try{
           await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
@@ -455,7 +494,7 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
 // === CRUD ===
 async function deleteUser(userId) {
   const userFolder = path.resolve(UPLOADS_ROOT, `u_${userId}`);
-  try { await fs.promises.rm(userFolder, { recursive: true, force: true});} 
+  try { await fs.rm(userFolder, { recursive: true, force: true});} 
   catch (e) { if (e.code !== 'ENOENT') console.warn('File RM Error: ', userFolder, e.message); }
   const confirm = await q('DELETE FROM Users WHERE id = ?',[userId]);
   if ((confirm?.affectedRows || 0) === 0) {
@@ -512,7 +551,7 @@ async function deleteFile(userId, action) {
     nullTheColumn = 'cv';
   } else { return {success: false} }
   try{
-    await fs.promises.unlink(filename);
+    await fs.unlink(filename);
   } catch (e){
     if (e.code !== 'ENOENT'){
       console.warn('Unlink error:', e);
@@ -544,13 +583,13 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   const kind = String(req.params.kind || '').trim();
   if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
   const userFolder = userDir(req.user.id);
-  await fs.promises.mkdir(userFolder, {recursive : true});
+  await fs.mkdir(userFolder, {recursive : true});
   try {
     const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
     const current = results[0]?.[kind];
     if (current){
       const oldAbs = toAbsFromStored(current);
-      try { await fs.promises.unlink(oldAbs);} 
+      try { await fs.unlink(oldAbs);} 
       catch (e) {if (e.code !== 'ENOENT') console.warn('Old file delete error: ', e);}
     }
   } catch (e) {
@@ -584,6 +623,11 @@ app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
       return res.status(415).json({success: false, message: 'Unsupported file type'});
     }
     try{
+      if(kind == 'cv' && ext === '.pdf'){
+        const tempWatermarked = f.filepath.replace(/\.pdf$/, '_wm.pdf');
+        const success = await addWatermark(f.filepath, tempWatermarked);
+        if (success) await fs.rename(tempWatermarked, f.filepath);
+      }
       const storedPath = relFromAbs(f.filepath);
       await q(`UPDATE Users SET ${kind}=? WHERE id=?`, [storedPath, req.user.id]);
       return res.json({success: true, path : storedPath});

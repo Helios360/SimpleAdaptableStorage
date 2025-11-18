@@ -92,7 +92,9 @@ if (data.success) {
     document.getElementById('city').value = user.city;
     document.getElementById('postal').value = user.postal;
     document.getElementById('addr').value = user.addr;
-    document.getElementById('mobility').value = user.mobility;
+    document.getElementById('permis').checked = user.permis;
+    document.getElementById('vehicule').checked = user.vehicule;
+    document.getElementById('mobile').checked = user.mobile;
 
     document.getElementById('tel').addEventListener('input', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
@@ -110,7 +112,9 @@ if (data.success) {
             city: document.getElementById('city').value,
             postal: document.getElementById('postal').value,
             addr: document.getElementById('addr').value,
-            mobility: document.getElementById('mobility').value,
+            permis: document.getElementById('permis').checked,
+            vehicule: document.getElementById('vehicule').checked,
+            mobile: document.getElementById('mobile').checked,
             skills: currentSkills,
         };
         if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
