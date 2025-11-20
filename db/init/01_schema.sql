@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS Users (
     cv VARCHAR(255) NULL,
     id_doc VARCHAR(255) NULL,
     id_doc_verso VARCHAR(255) NULL,
-    password VARCHAR(60) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     tags JSON,
     skills JSON,
     permis TINYINT(1) NOT NULL DEFAULT 0,

@@ -16,11 +16,13 @@ let currentSkills = [];
 const test = document.getElementById('test');
 const accountDelete = document.getElementById('deleteBtn');
 test.addEventListener('click',()=>{ window.location.href= "/test";})
-
+2
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
 if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;
+// Enable admin view
 const adminView = !!targetEmail;
+// Display user's files
 const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
 async function deleteSelf(){
     const res = await fetch('/api/delete', {method: 'DELETE'});
@@ -351,9 +353,7 @@ fileUpload.addEventListener('change', async (e) => {
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 fileUploadV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
@@ -366,9 +366,7 @@ fileUploadV.addEventListener('change', async (e) => {
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 fileUploadCV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
@@ -380,9 +378,7 @@ fileUploadCV.addEventListener('change', async (e) => {
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 
 let isDirty = false;
@@ -394,9 +390,7 @@ if (infoList) {
 }
 function onDirty(e) {
     const t = e.target;
-    if(t.matches('input:not([readonly]), select, textarea')) {
-        isDirty = true;
-    }
+    if(t.matches('input:not([readonly]), select, textarea')) isDirty = true;
 }
 document.getElementById('saveBtn')?.addEventListener('click', ()=>{ isDirty = false;});
 window.addEventListener('beforeunload', (event) => {
