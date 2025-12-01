@@ -3,7 +3,9 @@ const path = require('path');
 const fs = require('fs').promises;
 const { PDFDocument } = require('pdf-lib');
 const mysql = require('mysql2/promise');
-
+const helmet = require('helmet');
+const { Router } = require('express');
+const router = Router();
 // ------------------------- CONSTS ------------------------- //
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
@@ -25,6 +27,36 @@ const toAbsFromStored = (stored) => {
   }
   return abs;
 }
+
+// === Security headers setup ===
+router.use(helmet({ 
+  crossOriginResourcePolicy: { policy: 'same-site'},
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'"],
+      "connect-src": ["'self'"],
+      "img-src": ["'self'", "data:", "blob:"],
+      "object-src": ["'none'"],
+      "frame-ancestors": ["'none'"],
+      "base-uri": ["'self'"]
+    }
+  },
+  referrerPolicy: {policy: "no-referrer"}
+}));
+const allowIframeSelf = helmet.contentSecurityPolicy({
+  useDefaults: true,
+  directives: {
+    "default-src": ["'self'"],
+    "script-src": ["'self'"],
+    "connect-src": ["'self'"],
+    "img-src": ["'self'", "data:", "blob:"],
+    "object-src": ["'none'"],
+    "frame-ancestors": ["'self'"],
+    "base-uri": ["'self'"]
+  }
+})
 
 // ------------------------- DB CODE CONFIG ------------------------- //
 const db = mysql.createPool({
@@ -133,5 +165,5 @@ module.exports = {
     userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark,
     // === db + ops ===
     q, db,
-    deleteUser, kindCheck, deleteFile,
+    deleteUser, kindCheck, deleteFile, allowIframeSelf,
 };

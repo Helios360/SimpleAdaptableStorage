@@ -2,13 +2,23 @@ document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector("form");
     const password = document.getElementById("password");
     const confirm = document.getElementById("confirm");
-    const message = document.createElement("span");
-    message.id = "password-message";
-    confirm.parentNode.appendChild(message);
+    const message = document.getElementById("password-message")
     const telInput = document.getElementById('tel');
     telInput.addEventListener('input', () => {
         telInput.value = telInput.value.replace(/\s+/g, "");
     })
+
+    const togglePwd = document.getElementById('pwdEye');
+    togglePwd.addEventListener('click', ()=>{
+        const type = password.getAttribute('type') === "password" ? "test" : "password";
+        password.setAttribute('type', type);
+    })
+    const toggleConf = document.getElementById('confirmEye');
+    toggleConf.addEventListener('click', ()=>{
+        const type = confirm.getAttribute('type') === "password" ? "test" : "password";
+        confirm.setAttribute('type', type);
+    })
+
     // Vérification mot de passe et confirmation
     function checkPasswordMatch() {
         if (confirm.value === "") {
@@ -134,13 +144,17 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("CV invalide (PDF uniquement, max 2 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 1)) {
+        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité recto invalide (JPG/PNG, max 1 Mo).");
+            errors.push("Pièce d'identité recto invalide (JPG/PNG, max 3 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 1)) {
+        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide (JPG/PNG, max 1 Mo).");
+            errors.push("Pièce d'identité verso invalide (JPG/PNG, max 3 Mo).");
+        }
+        if (!validateFile(document.getElementById("stateWorkAuth"), ["pdf"], 2)) {
+            valid = false;
+            errors.push("Autorisation de travail invalide (PDF, max 2 Mo).");
         }
 
         // Mot de passe
@@ -183,11 +197,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const cvUpload = document.getElementById('cv');
     const pirUpload = document.getElementById('id_doc');
     const pivUpload = document.getElementById('id_doc_verso');
+    const stateWorkAuthUpload = document.getElementById('stateWorkAuth');
     const labelCV = document.getElementById('cvFileName');
     const labelPir = document.getElementById('piRectoFilename');
     const labelPiv = document.getElementById('piVersoFilename');
+    const labelStateWorkAuth = document.getElementById('stateWorkAuthFilename');
     cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name;})
     pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name;})
     pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name;})
+    stateWorkAuthUpload.addEventListener('change', () => { if (stateWorkAuthUpload.files.length > 0) labelStateWorkAuth.innerText = stateWorkAuthUpload.files[0].name;})
 });
 

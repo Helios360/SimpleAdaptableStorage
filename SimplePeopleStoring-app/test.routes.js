@@ -25,14 +25,18 @@ app.get('/api/test/next', authMiddleware, async (req, res) => {
 // ------------------------- OPENAI CORRECTION API === USERS ------------------------- //
 app.post('/api/test/response', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id;
     const { testId, answer } = req.body;
+    if (typeof testId === 'string') testId.trim();
+    if (typeof answer === 'string') answer.trim();
     if (!testId || !answer) return res.status(400).json({ success: false, message: 'Missing test data' });
+
+    const testIdNum = Number(testId);
+    if (!Number.isInteger(testIdNum)) return res.status(400).json({success: false, message: "Invalid testId"});
+
     const results = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
     if (!results.length) return res.status(404).json({ success: false, message: 'Test not found' });
 
     const { question, answer: official_answer } = results[0];
-
     const response = await openai.responses.create({
       model: "gpt-4o-mini",
       input: [
@@ -93,7 +97,7 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
     try { ({ score } = JSON.parse(raw)); }
     catch { score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10))); }
     
-    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score]);
+    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [req.user.id, testId, answer, score]);
     res.json({ success: true, score });
   } catch (e) {
     console.error('Test/Response Error: ', e);

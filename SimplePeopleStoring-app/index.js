@@ -5,49 +5,12 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const cookieParser = require('cookie-parser');
-const helmet = require('helmet');
-const crud = require("./crud.routes.js");
-const test = require("./TEST.js");
-const helpers = require("./helpers.js");
 const crudRouter = require('./crud.routes');
-const { allowIframeSelf } = require('./helpers.js')
-
-// === Security headers setup ===
-app.use(helmet({ 
-  crossOriginResourcePolicy: { policy: 'same-site'},
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: {
-      "default-src": ["'self'"],
-      "script-src": ["'self'"],
-      "connect-src": ["'self'"],
-      "img-src": ["'self'", "data:", "blob:"],
-      "object-src": ["'none'"],
-      "frame-ancestors": ["'none'"],
-      "base-uri": ["'self'"]
-    }
-  },
-  referrerPolicy: {policy: "no-referrer"}
-}));
-const allowIframeSelf = helmet.contentSecurityPolicy({
-  useDefaults: true,
-  directives: {
-    "default-src": ["'self'"],
-    "script-src": ["'self'"],
-    "connect-src": ["'self'"],
-    "img-src": ["'self'", "data:", "blob:"],
-    "object-src": ["'none'"],
-    "frame-ancestors": ["'self'"],
-    "base-uri": ["'self'"]
-  }
-})
+const { BASE_DIR } = require('./helpers.js')
 
 app.disable('x-powered-by');
 app.use(cookieParser());
-
 
 // === Setting up important consts ===
 const PORT = process.env.PORT || 3000;
@@ -63,9 +26,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // === Static Files ===
 app.use(express.static(path.join(BASE_DIR, 'public')));
-// === MySQL ===
-
-
 
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
@@ -184,10 +144,6 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res)
     res.status(500).json({success: false, message: 'DB Error . . .'});
   }
 });
-
-helpers();
-test();
-crud();
 
 app.use(crudRouter);
 // === Global error handler ===

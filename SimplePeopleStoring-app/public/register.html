@@ -64,22 +64,29 @@
                 <ul class="form2 inputs" >
                     <p>Documents :</p>
                     <li class="file-upload inputs">
-                        <label class="inputs" for="cv" id="cvFileName">CV +</label>
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label>
                         <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) +</label>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) (.png/.jpg)</label>
                         <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) +</label>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) (.png/.jpg)</label>
                         <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
                     </li>
+                    <div class="showdown">
+                        <p>Je suis étudiant étrangé arrivé en france ⬇️</p>
+                        <li class="file-upload">
+                            <label class="inputs" for="stateWorkAuth" id="stateWorkAuthFilename">Autorisation de travail (.pdf)</label>
+                            <input class="inputs" type="file" id="stateWorkAuth" name="stateWorkAuth" accept=".pdf">
+                        </li>
+                    </div>
                 </ul>
                 <div>
                     <span class="checks">
                         <input type="checkbox" id="permis" name="permis">
-                        <label for="permis">Permis</label>
+                        <label for="permis">Permis B</label>
                     </span>
                     <span class="checks">
                         <input type="checkbox" id="vehicule" name="vehicule">
@@ -87,18 +94,28 @@
                     </span>
                     <span class="checks">    
                         <input type="checkbox" id="mobile" name="mobile">
-                        <label for="mobile">Mobile</label>
+                        <label for="mobile">Mobile geographiquement</label>
                     </span>
                 </div>
                 <div>
                     <label for="password">Mot de passe</label>
-                    <input class="inputs" type="password" id="password" name="password" required>
+                    <span class="eye-contain">
+                        <input class="inputs" type="password" id="password" name="password" required>
+                        <svg id="pwdEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
+                            <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                        </svg>
+                    </span>
                 </div>
                 <div>
                     <label for="confirm">Confirmer le mot de passe</label>
-                    <input class="inputs" type="password" id="confirm" name="confirm" required>
+                    <span class="eye-contain">
+                        <input class="inputs" type="password" id="confirm" name="confirm" required>
+                        <svg id="confirmEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
+                            <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                        </svg>
+                    </span>
                 </div>
-                
+                <span id="password-message"></span>
                 <div class="checkbox">
                     <label for="consent">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>
                     <input type="checkbox" id="consent" name="consent" required>                

@@ -1,4 +1,5 @@
 const CV = document.getElementById('cv');
+const AT = document.getElementById('at');
 const PI = document.getElementById('pi');
 const pimg = document.getElementById('PImg');
 const pimgverso = document.getElementById('PImgVerso');
@@ -16,7 +17,6 @@ let currentSkills = [];
 const test = document.getElementById('test');
 const accountDelete = document.getElementById('deleteBtn');
 test.addEventListener('click',()=>{ window.location.href= "/test";})
-2
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
 if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;
@@ -63,7 +63,7 @@ if (data.success) {
                 } finally { accountDelete.disabled = false;} 
             }
         })
-    } else { // User delete his account
+    } else { // User deletes his account
         accountDelete.addEventListener('click', async() => {
             const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
             if (choice) {
