@@ -1,7 +1,7 @@
 :root{
     --primary:#F1F4F4;
     --secondary:#141414;
-    --tertiary:#1c1c68;
+    --tertiary:#16166c;
     transition: all 0.5s ease;
 }
 @font-face {
@@ -25,7 +25,7 @@ input[type=number] {
 a:link {color: var(--secondary);}
 a:visited{color: var(--secondary);}
 a:hover {color: var(--tertiary);}
-a:active {color: lightblue;}
+a:active {color: #1c7567;}
 
 body{margin: 0; padding: 0;}
 html{
@@ -45,6 +45,9 @@ header{
     width: 100%;
     padding: 20px 20px;
 }
+.file-upload{
+    position:relative;
+}
 .file-upload input[type="file"] {
   display: none;
 }
@@ -54,7 +57,7 @@ header{
     font-size: 20px;
     border-radius: 8px;
     border: 2px solid var(--secondary);
-    width:315px;
+    max-width: 100%;
     height:40px;
     background-color: transparent;
     cursor: pointer;
@@ -97,6 +100,8 @@ select{
     flex-direction: column;
     gap:20px;
     width:100%;
+    max-width:400px;
+    overflow: hidden;
 }
 .form div div {gap:5px;}
 .form input{
@@ -260,6 +265,15 @@ footer{
     transform: translateY(-50%);
     pointer-events: auto;
     cursor: pointer;
+}
+.supprFile{
+    position: absolute;
+    top:50%;
+    right:1rem;
+    transform: translateX(-50%);
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: none;
 }
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}

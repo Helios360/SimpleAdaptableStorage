@@ -24,7 +24,7 @@
     </header>
     <main>
         <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-        <form action="/submit-form" data-ajax method="POST" enctype="multipart/form-data" class="form">
+        <form action="/submit-form" data-ajax method="POST" enctype="multipart/form-data" class="form" novalidate>
             <div class="register">
                 <div>
                     <label for="name">Nom</label>
@@ -64,21 +64,21 @@
                 <ul class="form2 inputs" >
                     <p>Documents :</p>
                     <li class="file-upload inputs">
-                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label>
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label><span id="cvCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) (.png/.jpg)</label>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) (.png/.jpg)</label><span id="pirCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) (.png/.jpg)</label>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) (.png/.jpg)</label><span id="pivCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
                     </li>
                     <div class="showdown">
                         <p>Je suis étudiant étrangé arrivé en france ⬇️</p>
                         <li class="file-upload">
-                            <label class="inputs" for="stateWorkAuth" id="stateWorkAuthFilename">Autorisation de travail (.pdf)</label>
+                            <label class="inputs" for="stateWorkAuth" id="stateWorkAuthFilename">Autorisation de travail (.pdf)</label><span id="stateWorkAuthCross" class="supprFile">X</span>
                             <input class="inputs" type="file" id="stateWorkAuth" name="stateWorkAuth" accept=".pdf">
                         </li>
                     </div>

@@ -38,6 +38,10 @@ Pour acceder a la bdd il faut etre dans le dir du projet puis
     Cette commande permet d'acceder a la console mysql du docker, elle est pérsitente a travers les reboot (normalement)
     Tu peux faire ce que tu veux dessus comme des backups lolilol
 
+POUR TOUT RESET :
+sudo rm -rf dev
+sudo docker compose down -v --remove-orphans
+sudo docker compose up --build -d
 
 Pour créer des tests:
 CREATE TABLE IF NOT EXISTS Tests (

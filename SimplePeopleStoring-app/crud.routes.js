@@ -50,11 +50,13 @@ router.post('/submit-form', (req, res) => {
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
+      const f_swa = files.swa?.[0] || null;
 
-      const [cvTmpAbs, idrTmpAbs, idvTmpAbs] = await Promise.all([
+      const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
         copyInto(f_idr, tmpDir),
-        copyInto(f_idv, tmpDir)
+        copyInto(f_idv, tmpDir),
+        copyInto(f_swa, tmpDir)
       ]);
 
       const insertSql = `
@@ -76,10 +78,11 @@ router.post('/submit-form', (req, res) => {
           await fs.rename(absPath, dest);
           return relFromAbs(dest);
         };
-        let [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
+        let [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel] = await Promise.all([
           moveToFinal(cvTmpAbs),
           moveToFinal(idrTmpAbs),
-          moveToFinal(idvTmpAbs)
+          moveToFinal(idvTmpAbs),
+          moveToFinal(swaTmpAbs)
         ])
         if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
           const absCvPath = toAbsFromStored(cvFinalRel);
@@ -88,7 +91,7 @@ router.post('/submit-form', (req, res) => {
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{
-          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_auth_work=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
           return res.redirect('/signin');
         } catch (e) {
@@ -203,11 +206,11 @@ router.post('/api/files',authMiddleware, async (req,res)=>{
 // ------------------------- UPDATE > FILE === USERS ------------------------- //
 router.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   const kind = String(req.params.kind || '').trim();
-  if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+  if(!['id_doc', 'id_doc_verso', 'cv', 'swa'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
   const userFolder = userDir(req.user.id);
   await fs.mkdir(userFolder, {recursive : true});
   try {
-    const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
+    const results = await q('SELECT cv, id_doc, id_doc_verso, state_work_auth FROM Users WHERE id=?',[req.user.id]);
     const current = results[0]?.[kind];
     if (current){
       const oldAbs = toAbsFromStored(current);

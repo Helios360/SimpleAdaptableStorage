@@ -128,18 +128,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Fichiers
-        if (!validateFile(document.getElementById("cv"), ["pdf"])) {
-            valid = false;
-            errors.push("CV invalide (PDF uniquement).");
-        }
-        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"])) {
-            valid = false;
-            errors.push("Pièce d'identité recto invalide (JPG ou PNG).");
-        }
-        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"])) {
-            valid = false;
-            errors.push("Pièce d'identité verso invalide (JPG ou PNG).");
-        }
         if (!validateFile(document.getElementById("cv"), ["pdf"], 2)) {
             valid = false;
             errors.push("CV invalide (PDF uniquement, max 2 Mo).");
@@ -152,9 +140,18 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Pièce d'identité verso invalide (JPG/PNG, max 3 Mo).");
         }
-        if (!validateFile(document.getElementById("stateWorkAuth"), ["pdf"], 2)) {
-            valid = false;
-            errors.push("Autorisation de travail invalide (PDF, max 2 Mo).");
+        const fileAuth = document.getElementById('stateWorkAuth').files[0];
+        if (fileAuth) {
+            const ext = fileAuth.name.split('.').pop().toLowerCase();
+            if (ext !== "pdf") {
+                valid = false;
+                errors.push("Extension autorisation de travail invalide (PDF, max 2 Mo).");
+            }
+            const maxSizeBytes = 2 * 1024 * 1024; 
+            if (fileAuth.size > maxSizeBytes) {
+                valid = false;
+                errors.push("Taille autorisation de travail invalide (PDF, max 2 Mo).");
+            }
         }
 
         // Mot de passe
@@ -162,19 +159,16 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Les mots de passe ne correspondent pas.");
         }
-
         // Conditions
         if (!document.getElementById("consent").checked) {
             valid = false;
             errors.push("Vous devez accepter les conditions.");
         }
-
         // Si erreur -> bloquer envoi
         if (!valid) {
-            notifAlert("Erreurs trouvées :\n- " + errors.join("\n- "));
+            notifAlert("Erreurs trouvées :<br>- " + errors.join("<br>- "));
             return;
         }
-
 
         const fd = new FormData(form);
         const email = (fd.get('email') || '').toString().trim().toLowerCase();
@@ -193,18 +187,45 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     });
+    const cvCross = document.getElementById('cvCross');
+    const pirCross = document.getElementById('pirCross');
+    const pivCross = document.getElementById('pivCross');
+    const stateWorkAuthCross = document.getElementById('stateWorkAuthCross');
 
     const cvUpload = document.getElementById('cv');
     const pirUpload = document.getElementById('id_doc');
     const pivUpload = document.getElementById('id_doc_verso');
     const stateWorkAuthUpload = document.getElementById('stateWorkAuth');
+
     const labelCV = document.getElementById('cvFileName');
     const labelPir = document.getElementById('piRectoFilename');
     const labelPiv = document.getElementById('piVersoFilename');
     const labelStateWorkAuth = document.getElementById('stateWorkAuthFilename');
-    cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name;})
-    pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name;})
-    pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name;})
-    stateWorkAuthUpload.addEventListener('change', () => { if (stateWorkAuthUpload.files.length > 0) labelStateWorkAuth.innerText = stateWorkAuthUpload.files[0].name;})
+
+    cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
+    pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
+    pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name; pivCross.style.display = 'block';})
+    stateWorkAuthUpload.addEventListener('change', () => { if (stateWorkAuthUpload.files.length > 0) labelStateWorkAuth.innerText = stateWorkAuthUpload.files[0].name; stateWorkAuthCross.style.display = 'block';})
+    cvCross.addEventListener('click', ()=>{
+        labelCV.innerText = 'CV (.pdf)';
+        cvUpload.value = '';
+        cvCross.style.display = 'none';
+    })
+    pirCross.addEventListener('click', ()=>{
+        labelPir.innerText = "Pièce d'identité (recto) (.png/.jpg)";
+        pirUpload.value = '';
+        pirCross.style.display = 'none';
+    })
+    pivCross.addEventListener('click', ()=>{
+        labelPiv.innerText = "Pièce d'identité (verso) (.png/.jpg)";
+        pivUpload.value = '';
+        pivCross.style.display = 'none';
+    })
+    stateWorkAuthCross.addEventListener('click', ()=>{
+        labelStateWorkAuth.innerText = "Pièce d'identité (verso) (.png/.jpg)";
+        stateWorkAuthUpload.value = '';
+        stateWorkAuthCross.style.display = 'none';
+    })
+
 });
 
