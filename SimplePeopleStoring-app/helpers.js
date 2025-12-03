@@ -156,7 +156,7 @@ async function deleteFile(userId, action) {
     if (e.code !== 'ENOENT'){
       console.warn('Unlink error:', e);
       const err = new Error("File can't be deleted"); err.status=500; throw err;
-    } else { console.log('File already deleted'); }
+    }
   }
   if (action === 'delAT'){ await q(`UPDATE Users SET ${nullTheColumn} = 'empty' WHERE id=?`, [userId]); } 
   else { await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]); }

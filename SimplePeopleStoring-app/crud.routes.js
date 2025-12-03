@@ -91,7 +91,6 @@ router.post('/submit-form', (req, res) => {
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{
-          console.log(cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId);
           await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_work_auth=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
           return res.redirect('/signin');

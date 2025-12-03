@@ -5,18 +5,15 @@ const pimg = document.getElementById('PImg');
 const pimgverso = document.getElementById('PImgVerso');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
-const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
-const targetEmail = urlParams.get('email'); // email from ?email=...
+const targetEmail = urlParams.get('email');
 const frame = document.getElementById('cv-frame');
 
 document.getElementById('pis').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
-const test = document.getElementById('test');
 const accountDelete = document.getElementById('deleteBtn');
-test.addEventListener('click',()=>{ window.location.href= "/test";})
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
 if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;

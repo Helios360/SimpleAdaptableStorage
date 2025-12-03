@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", function () {
         try{
             await api(form.action || '/submit-form', { method: 'POST', body: fd});
             notif('Compte créé avec succès !');
-            window.location.href = '/signin';
+            window.location.href = '/test';
         } catch (e) {
             if(e.status === 409){
                 const emailInput = form.querySelector('#email');
