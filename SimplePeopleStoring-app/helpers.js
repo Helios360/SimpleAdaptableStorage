@@ -72,7 +72,10 @@ const db = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 // Main async db calls
-async function q(sql, params=[]) { return await db.execute(sql, params); }
+async function q(sql, params=[]) { 
+  const [rows] = await db.execute(sql, params); 
+  return rows;
+}
 
 // ------------------------- MIME GUESSER ------------------------- //
 function guessContentType(p){
@@ -129,22 +132,23 @@ async function deleteUser(userId) {
 
 // ------------------------- KIND CHECK AT SQL LEVEL ------------------------- //
 async function kindCheck(kind, userId){
-  if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return {ok: false, reason: 'bad-kind'};
-  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
+  if(!['cv', 'id_doc', 'id_doc_verso', 'state_work_auth'].includes(kind)) return {ok: false, reason: 'bad-kind'};
+  const results = await q('SELECT cv, id_doc, id_doc_verso, state_work_auth FROM Users WHERE id=?', [userId]);
   if (results.length === 0) return {ok: false, reason: 'User not found . . .'};
   return {ok: true, path: results[0][kind] || null};
 }
 
 // ------------------------- SQL FILEPATH DELETE ------------------------- //
 async function deleteFile(userId, action) {
-  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
+  const results = await q('SELECT cv, id_doc, id_doc_verso, state_work_auth FROM Users WHERE id=?', [userId]);
   if (!results || !results[0]) throw Object.assign(new Error('User not found'), {status : 404});
   const user = results[0];
   let filename = null;
   let nullTheColumn = null;
   if(action === 'del' && user.id_doc) {filename = toAbsFromStored(user.id_doc);nullTheColumn = 'id_doc';}
   else if(action === 'delV' && user.id_doc_verso) {filename = toAbsFromStored(user.id_doc_verso);nullTheColumn = 'id_doc_verso';} 
-  else if(action === 'delCV' && user.cv) {filename = toAbsFromStored(user.cv);nullTheColumn = 'cv';} 
+  else if(action === 'delCV' && user.cv) {filename = toAbsFromStored(user.cv);nullTheColumn = 'cv';}
+  else if(action === 'delAT' && user.state_work_auth) {filename = toAbsFromStored(user.state_work_auth);nullTheColumn = 'state_work_auth';}
   else { return {success: false} }
   
   try { await fs.unlink(filename); }
@@ -154,7 +158,8 @@ async function deleteFile(userId, action) {
       const err = new Error("File can't be deleted"); err.status=500; throw err;
     } else { console.log('File already deleted'); }
   }
-  await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
+  if (action === 'delAT'){ await q(`UPDATE Users SET ${nullTheColumn} = 'empty' WHERE id=?`, [userId]); } 
+  else { await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]); }
   return {success: true};
 }
 

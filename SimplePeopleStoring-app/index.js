@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
-const { BASE_DIR } = require('./helpers.js')
+const { BASE_DIR, q } = require('./helpers.js')
 
 app.disable('x-powered-by');
 app.use(cookieParser());
@@ -65,19 +65,7 @@ app.post('/logout', (req,res) => {
   res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict'});
   res.json({success: true});
 });
-// === /api/profile (Me profile user) ===
-app.post('/api/profile', authMiddleware, async (req, res) => {
-  try{
-    const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
-    const user = results[0];
-    res.json({ success: true, user });
-  } catch (e) {
-    console.error('Profile Error: ', e);
-    return res.status(500).json({ success: false, message: 'DB Error . . .' });
-  }
-});
+
 
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {

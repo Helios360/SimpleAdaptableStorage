@@ -8,7 +8,7 @@ const skills = document.getElementById('add_skills');
 const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email'); // email from ?email=...
-const cvFrame = document.getElementById('cv-frame');
+const frame = document.getElementById('cv-frame');
 
 document.getElementById('pis').style.display = "none";
 
@@ -20,36 +20,24 @@ test.addEventListener('click',()=>{ window.location.href= "/test";})
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
 if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;
-// Enable admin view
+
 const adminView = !!targetEmail;
-// Display user's files
 const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
-async function deleteSelf(){
-    const res = await fetch('/api/delete', {method: 'DELETE'});
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
-}
-async function deleteAsAdmin(userId){
-    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE'});
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
-}
-async function api(url, opts = {}){ // Better, will update to this soon
-    const res = await fetch(url, {...opts});
-    if (res.status === 401 || res.status === 403){
-        notif('Session expirée, Veuillez vous reconnecter...');
-        window.location.href = '/signin';
-        throw new Error('Unauthorized');
-    } return res;
-}
+
+async function deleteSelf(){ await api('/api/delete', {method: 'DELETE'});}
+async function deleteAsAdmin(userId){await api(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE'});}
+
 if(!adminView)document.getElementById('status-parent').style.display = "none";
+
 fetch(fetchUrl, { method: 'POST'})
 .then(res => res.json())
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
+    const hasAT = user.state_work_auth !== "empty";
+
     targetId = user.id;
-    if (targetEmail) { // Admin deletes an account
+    if (adminView) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
         accountDelete.addEventListener('click', async ()=>{
             const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
@@ -133,31 +121,58 @@ if (data.success) {
     });
     const pis = document.getElementById('pis');
     const cvAction = document.getElementById('cv-action');
-    cvFrame.style.display = "block";
-    cvFrame.src = fileUrl('cv');
+    const atAction = document.getElementById('at-action');
+    atAction.style.display = "none";
+    frame.style.display = "block";
+    frame.src = fileUrl('cv');
     CV.style.backgroundColor = "var(--secondary)";
     CV.style.color = "var(--primary)";
+    AT.style.backgroundColor = "var(--primary)";
+    AT.style.color = "var(--secondary)";
     PI.style.backgroundColor = "var(--primary)";
     PI.style.color = "var(--secondary)";
 
     CV.addEventListener('click', function (){ // charger le cv
         pis.style.display = "none";
         cvAction.style.display = "flex";
-        cvFrame.style.display = "block";
-        cvFrame.src = fileUrl('cv');
+        atAction.style.display = "none";
+        frame.style.display = "block";
+        frame.src = fileUrl('cv');
         CV.style.backgroundColor = "var(--secondary)";
         CV.style.color = "var(--primary)";
+        AT.style.backgroundColor = "var(--primary)";
+        AT.style.color = "var(--secondary)";
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
+    if(user.state_work_auth) {
+        AT.style.display="flex";
+        AT.addEventListener('click', function (){ // charger l'attestation de travail
+            pis.style.display = "none";
+            cvAction.style.display = "none";
+            atAction.style.display = "flex";
+            frame.style.display = "block";
+            if (!hasAT) {frame.src=''; notif('Aucune AT enregistée');} 
+            else {frame.src = fileUrl('state_work_auth');}
+            AT.style.backgroundColor = "var(--secondary)";
+            AT.style.color = "var(--primary)";
+            CV.style.backgroundColor = "var(--primary)";
+            CV.style.color = "var(--secondary)";
+            PI.style.backgroundColor = "var(--primary)";
+            PI.style.color = "var(--secondary)";
+        });
+    } else { AT.style.display = 'none';}
     PI.addEventListener('click', function (){ // charger la pi
-        cvFrame.style.display = "none";
+        frame.style.display = "none";
         pis.style.display = "block";
         cvAction.style.display = "none";
+        atAction.style.display = "none";
         pimg.style.backgroundImage = "url('"+fileUrl('id_doc')+"')";
         pimgverso.style.backgroundImage = "url('"+fileUrl('id_doc_verso')+"')";
         CV.style.backgroundColor = "var(--primary)";
         CV.style.color = "var(--secondary)";
+        AT.style.backgroundColor = "var(--primary)";
+        AT.style.color = "var(--secondary)";
         PI.style.backgroundColor = "var(--secondary)";
         PI.style.color = "var(--primary)";
     });
@@ -286,13 +301,16 @@ pimgverso.addEventListener('mouseout', ()=>{
 const change = document.getElementById('change');
 const changeV = document.getElementById('change-v');
 const changeCV = document.getElementById('change-cv');
+const changeAT = document.getElementById('change-at');
 const del = document.getElementById('delete');
 const delV = document.getElementById('delete-v');
 const delCV = document.getElementById('delete-cv');
+const delAT = document.getElementById('delete-at');
 
-del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage=''});
-delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage=''});
-delCV.addEventListener('click', () => {action('delCV'); cvFrame.src=''});
+del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage='';});
+delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage='';});
+delCV.addEventListener('click', () => {action('delCV'); frame.src='';});
+delAT.addEventListener('click', () => {action('delAT'); hasAT=false; frame.src='';});
 
 function action(name) {
     fetch('/api/files',{
@@ -307,7 +325,8 @@ function action(name) {
 
 const fileUpload = document.getElementById('file-change'); 
 const fileUploadV = document.getElementById('file-change-v'); 
-const fileUploadCV = document.getElementById('file-change-cv'); 
+const fileUploadCV = document.getElementById('file-change-cv');
+const fileUploadAT = document.getElementById('file-change-at');
 
 change.addEventListener('click', (e) => {
     e.preventDefault();
@@ -321,7 +340,10 @@ changeCV.addEventListener('click', (e) => {
     e.preventDefault();
     fileUploadCV.click();
 });
-
+changeAT.addEventListener('click', (e) => {
+    e.preventDefault();
+    fileUploadAT.click();
+});
 async function uploadKind(kind, file){
     const fd = new FormData();
     fd.append('file', file);
@@ -373,8 +395,21 @@ fileUploadCV.addEventListener('change', async (e) => {
     if(!file) return;
     try{
         await uploadKind('cv', file);
-        cvFrame.src = `${fileUrl('cv')}`;
+        frame.src = `${fileUrl('cv')}`;
         notif("CV mis à jour ...");
+    } catch (e) {
+        console.error(e);
+        notif("Erreur pendant l'upload");
+    } finally { e.target.value =''; }
+})
+fileUploadAT.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    try{
+        await uploadKind('state_work_auth', file);
+        hasAT=true;
+        frame.src = `${fileUrl('state_work_auth')}`;
+        notif("AT mis à jour ...");
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");

@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const {allowIframeSelf} = require('./helpers.js')
 const bcrypt = require('bcrypt');
 const { 
-    q, userDir, relFromAbs, toAbsFromStored,
-    ALLOWED_EXT, ALLOWED_MIME, UPLOADS_ROOT, TOS_VERSION, addWatermark, 
+    q, userDir, relFromAbs, toAbsFromStored, kindCheck, guessContentType, deleteFile,
+    ALLOWED_EXT, ALLOWED_MIME, UPLOADS_ROOT, TOS_VERSION, addWatermark, deleteUser,
 } = require('./helpers');
 const { authMiddleware, adminOnly} = require('./controllers/authControl');
 const router = Router();
@@ -50,7 +50,7 @@ router.post('/submit-form', (req, res) => {
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
-      const f_swa = files.swa?.[0] || null;
+      const f_swa = files.stateWorkAuth?.[0] || null;
 
       const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
@@ -61,11 +61,11 @@ router.post('/submit-form', (req, res) => {
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -91,7 +91,8 @@ router.post('/submit-form', (req, res) => {
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{
-          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_auth_work=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
+          console.log(cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId);
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_work_auth=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
           return res.redirect('/signin');
         } catch (e) {
@@ -146,6 +147,19 @@ router.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res
   catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
 });
 
+// ------------------------- READ > PROFILE === USERS ------------------------- //
+router.post('/api/profile', authMiddleware, async (req, res) => {
+  try{
+    const userId = req.user.email;
+    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,state_work_auth,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
+    const user = results[0];
+    res.json({ success: true, user });
+  } catch (e) {
+    console.error('Profile Error: ', e);
+    return res.status(500).json({ success: false, message: 'DB Error . . .' });
+  }
+});
 
 // ------------------------- READ > FILE === USERS ------------------------- //
 router.get('/api/me/files/:kind', authMiddleware, allowIframeSelf, async (req, res) => {
@@ -206,7 +220,7 @@ router.post('/api/files',authMiddleware, async (req,res)=>{
 // ------------------------- UPDATE > FILE === USERS ------------------------- //
 router.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   const kind = String(req.params.kind || '').trim();
-  if(!['id_doc', 'id_doc_verso', 'cv', 'swa'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+  if(!['id_doc', 'id_doc_verso', 'cv', 'state_work_auth'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
   const userFolder = userDir(req.user.id);
   await fs.mkdir(userFolder, {recursive : true});
   try {
