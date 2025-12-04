@@ -21,9 +21,10 @@ function renderUser (users) {
     <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
     <span>
         <select class="status-select" data-user-id="${user.id}">
-            <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>
-            <option value="1" ${user.status == 1 ? 'selected' : ''}>En recherche</option>
-            <option value="2" ${user.status == 2 ? 'selected' : ''}>Recherche active</option>
+            <option value="active" ${user.status === 'active' ? 'selected' : ''}>Recherche active</option>
+            <option value="recherche" ${user.status === 'recherche' ? 'selected' : ''}>En recherche</option>
+            <option value="entreprise" ${user.status === 'entreprise' ? 'selected' : ''}>En Entreprise</option>
+            <option value="archive" ${user.status === 'archive' ? 'selected' : ''}>Archive</option>
         </select>
     </span>
     <span class="resped"><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
@@ -233,7 +234,7 @@ fetch('/api/admin-panel', { method: 'POST'})
 
 function filterUsers() {
   const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
-  const statusValue = (document.getElementById('searchStatus')?.value || '');
+  const statusValue = (document.getElementById('searchStatus')?.value || '').toLowerCase();
   const placeValue = (document.getElementById('place')?.value || '').toLowerCase();
   const ageValue = (document.getElementById('age')?.value || '');
   const trancheValue = (document.getElementById('trancheAge')?.value || '');
@@ -252,7 +253,7 @@ function filterUsers() {
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     const fullName = `${user.name} ${user.fname}`.toLowerCase();
     const matchName = nameValue === '' || fullName.includes(nameValue);
-    const matchStatus = statusValue === '' || user.status.toString() === statusValue;
+    const matchStatus = statusValue === '' || user.status === statusValue;
     const matchPlace = placeValue === '' || user.city?.toLowerCase().includes(placeValue);
     const matchAge = ageValue === '' || age === parseInt(ageValue);
     const matchTranche = trancheValue === '' || (

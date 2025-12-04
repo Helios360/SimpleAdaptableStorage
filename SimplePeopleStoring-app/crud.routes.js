@@ -42,16 +42,16 @@ router.post('/submit-form', (req, res) => {
     try {
       const {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
-        postal, birth, password, consent,
+        postal, birth, password, consent, formation,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
       if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
+      
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
       const f_swa = files.stateWorkAuth?.[0] || null;
-
       const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
         copyInto(f_idr, tmpDir),
@@ -61,11 +61,11 @@ router.post('/submit-form', (req, res) => {
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version, formation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;

@@ -10,12 +10,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const togglePwd = document.getElementById('pwdEye');
     togglePwd.addEventListener('click', ()=>{
-        const type = password.getAttribute('type') === "password" ? "test" : "password";
+        const type = password.getAttribute('type') === "password" ? "text" : "password";
         password.setAttribute('type', type);
     })
     const toggleConf = document.getElementById('confirmEye');
     toggleConf.addEventListener('click', ()=>{
-        const type = confirm.getAttribute('type') === "password" ? "test" : "password";
+        const type = confirm.getAttribute('type') === "password" ? "text" : "password";
         confirm.setAttribute('type', type);
     })
 
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Vérification taille
       const maxSizeBytes = maxSizeMB * 1024 * 1024; 
-      if (file.size > maxSizeBytes) {
+      if (file.size > maxSizeBytes || file.size == 0) {
           return false;
       }
       return true;
@@ -130,15 +130,15 @@ document.addEventListener("DOMContentLoaded", function () {
         // Fichiers
         if (!validateFile(document.getElementById("cv"), ["pdf"], 2)) {
             valid = false;
-            errors.push("CV invalide (PDF uniquement, max 2 Mo).");
+            errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
         }
         if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité recto invalide (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
         if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité verso invalide ou manquant (JPG/PNG, max 3 Mo).");
         }
         const fileAuth = document.getElementById('stateWorkAuth').files[0];
         if (fileAuth) {
@@ -166,17 +166,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         // Si erreur -> bloquer envoi
         if (!valid) {
-            notifAlert("Erreurs trouvées :<br>- " + errors.join("<br>- "));
+            notifAlert("Infos manquantes :<br>- " + errors.join("<br>- "));
             return;
         }
 
         const fd = new FormData(form);
         const email = (fd.get('email') || '').toString().trim().toLowerCase();
+        const password = fd.get('password');
         fd.set('email', email);
         try{
             await api(form.action || '/submit-form', { method: 'POST', body: fd});
-            notif('Compte créé avec succès !');
-            window.location.href = '/test';
+            const choice = await alertChoice("Votre compte a bien été créé, veuiller cliquer suivant pour passer au test.");
+            if (choice) {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                if (data.success) window.location.href = '/test';
+                else notif(data.message || 'Login failed');
+            }
         } catch (e) {
             if(e.status === 409){
                 const emailInput = form.querySelector('#email');

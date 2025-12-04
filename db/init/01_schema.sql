@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS Users (
     tel VARCHAR(20) NOT NULL,
     addr TEXT NOT NULL,
     city VARCHAR(100),
-    postal VARCHAR(20),
+    postal VARCHAR(5),
     birth DATE NOT NULL,
     cv VARCHAR(255) NULL,
     id_doc VARCHAR(255) NULL,
@@ -22,7 +22,11 @@ CREATE TABLE IF NOT EXISTS Users (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     consent TINYINT(1) NOT NULL DEFAULT 0,
     terms_version INT NOT NULL,
-    status TINYINT DEFAULT 1,
+    status ENUM ('active', 'recherche', 'entreprise', 'archive') NOT NULL DEFAULT 'recherche',
+    formation ENUM('btsndrc', 'btsntc', 'fullstack', 'cybersec') NOT NULL,
+    email_verified TINYINT(1) NOT NULL DEFAULT 0,
+    email_verify_token VARCHAR(64) NULL,
+    email_verify_expires DATETIME NULL,
     is_admin TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS Tests (
