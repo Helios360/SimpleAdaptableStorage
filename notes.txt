@@ -53,29 +53,10 @@ THINGS TO CHANGE
 ajouter (ajouter un étudiant) sur admin-panel
 envoyer un mail lorque l'étudiant est créé par admin
 
-code postal 5 chiffres seulement
-
 les champs vides a rendre obligatoire sur profil
-
-demander a l'étudiant sa formation sur register
-afin de proposer des compétence de prefil correspondantes
-avec dropdown menu et formation en entier
-
 
 ajouter le code postal dans la recherche de
 lieu sur la partie formulaire admin-panel
-
-tranche d'age en recherche:
--18
-18 - 20
-21 - 25
-26 - 29
-30+
-
-peut retirer un champs sans filter
-permis vehicule mobile
-
-rajouter status "En entreprise" + recherche dans admin
 
 faire un petit widget < > pour naviguer entre
 les étudiant depuis admin-panel

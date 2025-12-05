@@ -45,11 +45,11 @@
                 <input placeholder="Age" type="number" id="age">
                 <select name="tranche-age" id="trancheAge">
                     <option value="" selected>Tranche</option>
-                    <option value="-18">-18</option>
-                    <option value="1820">18 - 20</option>
-                    <option value="2125">21 - 25</option>
-                    <option value="2629">26 - 29</option>
-                    <option value="30+">30+</option>
+                    <option value="0-17">-18</option>
+                    <option value="18-20">18 - 20</option>
+                    <option value="21-25">21 - 25</option>
+                    <option value="26-29">26 - 29</option>
+                    <option value="30-100">30+</option>
                 </select>
             </span>
             <span class="place1">
@@ -71,7 +71,11 @@
                 </span>
             </span>
         </form>
-        </div>
+        <span>
+            <a class="action-btn" id="addStud">Ajouter un étudiant</a>
+            <a class="action-btn" id="reset">Reset</a>
+        </span>    
+    </div>
         <div class="list" >
             <div class="header">
                 <span id="name-fname">

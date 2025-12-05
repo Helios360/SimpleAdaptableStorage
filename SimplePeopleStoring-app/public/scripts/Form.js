@@ -44,13 +44,19 @@ document.addEventListener("DOMContentLoaded", function () {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return regex.test(email);
     }
-
     // Vérification téléphone (10 chiffres minimum)
     function validatePhone(phone) {
-        const regex = /^[0-9]{10,15}$/;
-        return regex.test(phone);
+        if (typeof phone !== 'string') return false;
+        const normalize = phone.replace(/[\s\-()]/g, "");
+        const regex = /^0[1-9][0-9]{8}$/;
+        return regex.test(normalize);
     }
-
+    function validatePostal(postal) {
+        if (typeof postal !== 'string') return false;
+        const normalize = postal.replace(/\s+/g, "");
+        const regex = /^(0[1-9]|[1-8][0-9]|9[0-8])[0-9]{3}$/;
+        return regex.test(normalize);
+    }
     // Vérification nom/prénom (lettres uniquement)
     function validateName(name) {
         const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s\-]+$/;
@@ -108,10 +114,10 @@ document.addEventListener("DOMContentLoaded", function () {
         // Téléphone
         if (!validatePhone(document.getElementById("tel").value)) {
             valid = false;
-            errors.push("Téléphone invalide (10-15 chiffres).");
+            errors.push("Téléphone invalide (10 chiffres).");
         }
 
-        // Adresse et ville
+        // Adresse, ville et code postal
         if (!document.getElementById("addr").value.trim()) {
             valid = false;
             errors.push("Adresse obligatoire.");
@@ -120,6 +126,11 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Ville obligatoire.");
         }
+        if (!validatePostal(document.getElementById("postal").value)) {
+            valid = false;
+            errors.push("Code postal invalide (5 chiffres).");
+        }
+
 
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {

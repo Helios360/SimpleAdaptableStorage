@@ -29,7 +29,6 @@ start.addEventListener('click', async () => {
       localStorage.setItem('current_test_type', test.type);
       console.log("New test fetched:", test);
       document.getElementById('test_count').innerText = data.count;
-      document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
       popup?.remove();
     } else {
@@ -80,7 +79,6 @@ submit.addEventListener("click", async event => {
       localStorage.setItem('current_test_type', test.type);
       console.log("New test fetched:", test);
       document.getElementById('test_count').innerText = nextData.count;
-      document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
       answer.value='';
     } else {

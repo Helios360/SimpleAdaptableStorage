@@ -34,8 +34,6 @@ CREATE TABLE IF NOT EXISTS Tests (
     question VARCHAR(200),
     answer VARCHAR(1000),
     type TINYINT,
-    exemple VARCHAR(500),
-    hint VARCHAR(255),
     difficulty TINYINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS TestAttempts (

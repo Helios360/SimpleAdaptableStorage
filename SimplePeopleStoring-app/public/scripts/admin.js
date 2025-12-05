@@ -232,9 +232,16 @@ fetch('/api/admin-panel', { method: 'POST'})
 })
 .catch(err => { console.error('Error fetching users:', err); });
 
+document.getElementById('reset').addEventListener('click', ()=>{
+  document.getElementById('search-form').reset();
+  renderUser(allUsers);
+})
+
+
 function filterUsers() {
   const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
-  const statusValue = (document.getElementById('searchStatus')?.value || '').toLowerCase();
+  const statusRaw = (document.getElementById('searchStatus')?.value || '');
+  const statusValue = statusRaw.toLowerCase();
   const placeValue = (document.getElementById('place')?.value || '').toLowerCase();
   const ageValue = (document.getElementById('age')?.value || '');
   const trancheValue = (document.getElementById('trancheAge')?.value || '');
@@ -243,6 +250,22 @@ function filterUsers() {
   const permisValue = Number(document.getElementById('permis').checked);
   const vehiculeValue = Number(document.getElementById('vehicule').checked);
   const mobileValue = Number(document.getElementById('mobile').checked);
+  const noFilters = 
+    !nameValue &&
+    !(statusRaw || statusRaw === 'all') &&
+    !placeValue &&
+    !ageValue &&
+    !trancheValue &&
+    !skillsValue &&
+    !tagsValue &&
+    !permisValue &&
+    !vehiculeValue &&
+    !mobileValue;
+  
+  if (noFilters) {
+    renderUser(noFilters);
+    return;
+  }
   const filtered = allUsers.filter(user => {
     if (!user) return false;
     // Calculate age
@@ -256,15 +279,16 @@ function filterUsers() {
     const matchStatus = statusValue === '' || user.status === statusValue;
     const matchPlace = placeValue === '' || user.city?.toLowerCase().includes(placeValue);
     const matchAge = ageValue === '' || age === parseInt(ageValue);
-    const matchTranche = trancheValue === '' || (
-      age >= parseInt(trancheValue.slice(0,2)) &&
-      age <= parseInt(trancheValue.slice(2))
-    );
+    let matchTranche = true;
+    if (trancheValue !== ''){
+       const [minAge, maxAge] = trancheValue.split('-').map(v=>parseInt(v,10));
+      matchTranche = age >= minAge && age <= maxAge;
+    }
     const skillsTerms = skillsValue.split(/\s+/).filter(term => term.length > 0);
     const tagsTerms = tagsValue.split(/\s+/).filter(term => term.length > 0);
 
-    const matchSkills = skillsTerms.lenght === 0 || skillsTerms.every(term => (user.skills || []).some(skill => skill.toLowerCase().includes(term)));
-    const matchTags = tagsTerms.lenght === 0 || tagsTerms.every(term => (user.tags || []).some(tag => tag.toLowerCase().includes(term)));
+    const matchSkills = skillsTerms.length === 0 || skillsTerms.every(term => (user.skills || []).some(skill => skill.toLowerCase().includes(term)));
+    const matchTags = tagsTerms.length === 0 || tagsTerms.every(term => (user.tags || []).some(tag => tag.toLowerCase().includes(term)));
 
     const matchPermis = !permisValue || user.permis === permisValue;
     const matchVehicule = !vehiculeValue || user.vehicule === vehiculeValue;

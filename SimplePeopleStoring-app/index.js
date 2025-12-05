@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
+const testRouter = require('./test.routes');
 const { BASE_DIR, q } = require('./helpers.js')
 
 app.disable('x-powered-by');
@@ -52,17 +53,25 @@ app.post('/login', loginLimiter, async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
-    
+    const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
     const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
+    console.log(stillTest[0].testNum);
+    if (stillTest[0].testNum<=26 && !user.is_admin){
+      redirectTo = '/test';
+    } else if (user.is_admin){
+      redirectTo = '/admin-panel';
+    } else {
+      redirectTo = '/profile';
+    }
+    return res.json({ success: true, redirectTo, user: { email: user.email, name: user.name, sec: user.is_admin} });
   } catch (e) {
     console.error('Login error: ', e);
     res.status(500).json({succes: false, message: 'Server Error . . .'})
   }
 });
 app.post('/logout', (req,res) => {
-  res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict'});
+  res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', path: '/'});
   res.json({success: true});
 });
 
@@ -134,6 +143,7 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res)
 });
 
 app.use(crudRouter);
+app.use(testRouter);
 // === Global error handler ===
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);

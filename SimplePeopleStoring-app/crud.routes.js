@@ -102,7 +102,7 @@ router.post('/submit-form', (req, res) => {
         console.error('DB Insert Error: ', e);
         fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
         if (e && (e.code === 'ER_DUP_ENTRY' || e.errno === 1062)){
-          return res.status(409).json({ message: "Cet utilisateur est deja enregistré"});
+          return res.status(409).json({ message: "Ce compte existe déjà"});
         }
         res.status(500).json({message: 'Database Error or invalid parameters'});
       }

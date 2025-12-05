@@ -1,21 +1,29 @@
+// ------------------------- CONSTS & IMPORTS ------------------------- //
+const { Router } = require('express');
+const router = Router();
+const { authMiddleware } = require('./controllers/authControl');
+const { q } = require('./helpers');
+const OpenAI = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 // ------------------------- TEST FETCH === USERS ------------------------- //
-app.get('/api/test/next', authMiddleware, async (req, res) => {
+router.get('/api/test/next', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.id;
     const historyResults = await q('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId]);
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
     const cnt = Number(historyResults?.[0]?.cnt ?? 0) || 0;
-    const type = cnt === 0 ? 1 : cnt;
+    const type = cnt + 1;
     
-    if(Number(type) >= 28) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
+    if(Number(type) > 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
     const cycleIndex = type % 27;
     const bucket = Math.floor(cycleIndex / 3);
     const servType = (bucket % 3) + 1;
-    // Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
-    const testResults = await q(`SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
+    // a completed test flag is not used yet, but it should be for when we'll choose to not send the same exercice twice
+    const testResults = await q(`SELECT id,question,type,difficulty FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
     if (testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
-    return res.status(200).json({ success: true, test: testResults[0], count: type });
+    return res.status(200).json({ success: true, test: testResults[0], count: type});
   } catch (e) {
     console.error('DB error on random test fetch: ', e);
     return res.status(500).json({ success: false, message: 'Database error' });
@@ -23,7 +31,7 @@ app.get('/api/test/next', authMiddleware, async (req, res) => {
 });
 
 // ------------------------- OPENAI CORRECTION API === USERS ------------------------- //
-app.post('/api/test/response', authMiddleware, async (req, res) => {
+router.post('/api/test/response', authMiddleware, async (req, res) => {
   try {
     const { testId, answer } = req.body;
     if (typeof testId === 'string') testId.trim();
@@ -105,4 +113,4 @@ app.post('/api/test/response', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports =  test;
+module.exports = router;

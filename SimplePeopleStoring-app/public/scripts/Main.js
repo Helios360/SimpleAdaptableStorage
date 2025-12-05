@@ -103,6 +103,7 @@ async function api(url, opts = {}){
         let msg = err.message || 'Erreur réseau . . .';
         if (err.status === 409) msg = 'Cet email est déja enregistré . . .';
         else if (err.status === 500) msg = 'Erreur serveur. Réessayez plus tard . . .';
+        else msg = "Erreur inconnue . . .";
         notifAlert(msg);
         throw err;
     }

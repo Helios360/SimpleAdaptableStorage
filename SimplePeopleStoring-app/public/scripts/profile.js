@@ -8,14 +8,14 @@ const skills = document.getElementById('add_skills');
 const urlParams = new URLSearchParams(window.location.search);
 const targetEmail = urlParams.get('email');
 const frame = document.getElementById('cv-frame');
-
+const logoutBtn = document.getElementById('logoutBtn');
 document.getElementById('pis').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
 const accountDelete = document.getElementById('deleteBtn');
 const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
-if (fetchUrl!= '/api/profile') {test.style.display="none"; };
+if (fetchUrl!= '/api/profile') {logoutBtn.style.display="none"; };
 let targetId = null;
 
 const adminView = !!targetEmail;
@@ -431,6 +431,18 @@ window.addEventListener('beforeunload', (event) => {
         event.returnValue ='';
     }
 });
+if(adminView){
+    logoutBtn.addEventListener('click', ()=>{
+        fetch('/logout', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(r => r.json())
+        .then(() => {
+            window.location.href='/signin';
+        })
+    })
+}
 const skillTypes = {
   // Languages
   'C': 'language',

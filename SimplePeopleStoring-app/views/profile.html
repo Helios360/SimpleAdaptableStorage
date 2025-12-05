@@ -36,9 +36,10 @@
             </svg>
             <label for="status">Status </label>
             <select type="text" id="status" name="status" required>
-              <option value="0">Archive</option>
-              <option value="1">En recherche</option>
-              <option value="2">Recherche active</option>
+              <option value="archive">Archive</option>
+              <option value="recherche">Recherche</option>
+              <option value="active">Recherche active</option>
+              <option value="entreprise">Entreprise</option>
             </select>
           </li>
           <li>
@@ -224,6 +225,7 @@
         </div>
         <span class="button-wrap">
           <button id="saveBtn">Sauvegarder</button>
+          <button id="logoutBtn">Se déconnecter</button>
           <button id="resetBtn">Réinitialiser</button>
         </span>
       </div>

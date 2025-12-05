@@ -40,7 +40,7 @@ header{
     height:110px;
     position:relative;
     display: flex;
-    justify-content: end;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     padding: 20px 20px;
@@ -284,11 +284,7 @@ footer{
         flex-direction: column;
         max-width:95%;
     }
-    hr{
-        width: 100%;
-    }
+    hr{width: 100%;}
     .notif-alert {padding:1rem;}
-    .notif-alert > div > span{
-        flex-direction: column;
-    }
+    .notif-alert > div > button {width: 100%;}
 }
