@@ -6,20 +6,22 @@ const pimgverso = document.getElementById('PImgVerso');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
 const urlParams = new URLSearchParams(window.location.search);
-const targetEmail = urlParams.get('email');
+const urlTargetId = urlParams.get('id');
 const frame = document.getElementById('cv-frame');
 const logoutBtn = document.getElementById('logoutBtn');
+const accountDelete = document.getElementById('deleteBtn');
+const tagInput = document.getElementById('add_tags');
+const skillInput = document.getElementById('add_skills');
 document.getElementById('pis').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
-const accountDelete = document.getElementById('deleteBtn');
-const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
-if (fetchUrl!= '/api/profile') {logoutBtn.style.display="none"; };
 let targetId = null;
+const adminView = !!urlTargetId;
+const fetchUrl = adminView ? `/api/user-profile/${encodeURIComponent(urlTargetId)}` : '/api/profile';
+if (!adminView) logoutBtn.style.display="none";
 
-const adminView = !!targetEmail;
-const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
+const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(urlTargetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
 
 async function deleteSelf(){ await api('/api/delete', {method: 'DELETE'});}
 async function deleteAsAdmin(userId){await api(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE'});}
@@ -31,9 +33,9 @@ fetch(fetchUrl, { method: 'POST'})
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
-    const hasAT = user.state_work_auth !== "empty";
-
+    let hasAT = !!user.state_work_auth || user.state_work_auth !== "empty";
     targetId = user.id;
+
     if (adminView) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
         accountDelete.addEventListener('click', async ()=>{
@@ -106,7 +108,7 @@ if (data.success) {
         };
         if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
-        const endpoint = targetEmail ? '/api/admin/update-student' : '/api/update-tags';
+        const endpoint = adminView ? '/api/admin/update-student' : '/api/update-tags';
         fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(res => res.json())
         .then(result => {
@@ -142,7 +144,7 @@ if (data.success) {
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
-    if(user.state_work_auth) {
+    if(hasAT) {
         AT.style.display="flex";
         AT.addEventListener('click', function (){ // charger l'attestation de travail
             pis.style.display = "none";
@@ -185,9 +187,6 @@ if (data.success) {
         document.getElementById('resetBtn').style.display = 'none';
     }
     renderTagsAndSkills();
-    
-    const tagInput = document.getElementById('add_tags');
-    const skillInput = document.getElementById('add_skills');
 
     // When tag input loses focus or user presses Enter
     tagInput.addEventListener('change', () => {
@@ -198,7 +197,6 @@ if (data.success) {
         }
         tagInput.value = '';
     });
-
     // When skill input loses focus or user presses Enter
     skillInput.addEventListener('change', () => {
         const skill = skillInput.value.trim();
