@@ -95,7 +95,6 @@ if (data.success) {
         const data = {
             name: document.getElementById('name').value,
             fname: document.getElementById('fname').value,
-            email: document.getElementById('email').value,
             tel: document.getElementById('tel').value,
             birth: document.getElementById('birth').value,
             city: document.getElementById('city').value,

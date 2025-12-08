@@ -36,7 +36,7 @@ router.post('/api/test/response', authMiddleware, async (req, res) => {
     const { testId, answer } = req.body;
     if (typeof testId === 'string') testId.trim();
     if (typeof answer === 'string') answer.trim();
-    if (!testId || !answer) return res.status(400).json({ success: false, message: 'Missing test data' });
+    if (!testId || !answer) return res.status(400).json({ success: false, message: 'La réponse est vide ou le test est invalide' });
 
     const testIdNum = Number(testId);
     if (!Number.isInteger(testIdNum)) return res.status(400).json({success: false, message: "Invalid testId"});
