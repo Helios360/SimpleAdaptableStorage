@@ -50,13 +50,8 @@ networks:
 
 THINGS TO CHANGE 
 
-ajouter (ajouter un étudiant) sur admin-panel
 envoyer un mail lorque l'étudiant est créé par admin
 
-les champs vides a rendre obligatoire sur profil
-
-ajouter le code postal dans la recherche de
-lieu sur la partie formulaire admin-panel
 
 faire un petit widget < > pour naviguer entre
 les étudiant depuis admin-panel

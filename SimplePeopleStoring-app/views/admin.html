@@ -16,13 +16,16 @@
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
 
     <meta property="og:title" content="Cloud-testing">
-    <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
+<meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
     <meta property="og:image" content="assets/preview.png">
     <meta property="og:type" content="website">
 </head>
 <body>
     <header>
         <img src="/sources/LogoBleuOmbre-edited.png" height="80px">
+	<nav>
+		<a id="addStud">Ajouter un étudiant</a>
+	</nav>
         <a id="toggle-theme">
             <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/>
@@ -40,8 +43,11 @@
                 <option value="active">Recherche active</option>
                 <option value="entreprise">En entreprise</option>
             </select>
-            <input placeholder="Lieu . . ." id="place">
             <span class="place">
+                <input placeholder="Lieu . . ." id="place">
+                <input placeholder="Postal" id="postal">
+            </span>
+                <span class="place">
                 <input placeholder="Age" type="number" id="age">
                 <select name="tranche-age" id="trancheAge">
                     <option value="" selected>Tranche</option>
@@ -52,11 +58,226 @@
                     <option value="30-100">30+</option>
                 </select>
             </span>
-            <span class="place1">
-                <input placeholder="Tag +" name="Tags" type="text" id="tags">
-                <input placeholder="Skills +" name="Skills" type="text" id="skills">
-            </span>
+            <div class="wrapper" id="tagsWrapper">
+            <p>Tags</p>
+            <input class="taging" id="add_tags" list="tagList" placeholder=". . .">
+              <datalist id="tagList">
+                <option value="Eloquence">
+                <option value="Optimiste">
+                <option value="Curieux">
+                <option value="Détérminé">
+              </datalist>
+            <div class="box" id="tags">
+            </div>
+          </div>
+          <div class="wrapper">
+            <p>Compétences</p>
+            <input class="taging" id="add_skills" list="skillList" placeholder=". . .">
+            <datalist id="skillList">
+  <!-- Languages -->
+  <option value="C - acquis">
+  <option value="C - en cours d'acquisition">
+
+  <option value="C++ - acquis">
+  <option value="C++ - en cours d'acquisition">
+
+  <option value="Java - acquis">
+  <option value="Java - en cours d'acquisition">
+
+  <option value="JavaScript - acquis">
+  <option value="JavaScript - en cours d'acquisition">
+
+  <option value="TypeScript - acquis">
+  <option value="TypeScript - en cours d'acquisition">
+
+  <option value="Python - acquis">
+  <option value="Python - en cours d'acquisition">
+
+  <option value="Ruby - acquis">
+  <option value="Ruby - en cours d'acquisition">
+
+  <option value="Go - acquis">
+  <option value="Go - en cours d'acquisition">
+
+  <option value="Rust - acquis">
+  <option value="Rust - en cours d'acquisition">
+
+  <option value="PHP - acquis">
+  <option value="PHP - en cours d'acquisition">
+
+  <option value="Swift - acquis">
+  <option value="Swift - en cours d'acquisition">
+
+  <option value="Kotlin - acquis">
+  <option value="Kotlin - en cours d'acquisition">
+
+  <option value="Scala - acquis">
+  <option value="Scala - en cours d'acquisition">
+
+  <option value="Dart - acquis">
+  <option value="Dart - en cours d'acquisition">
+
+  <option value="R - acquis">
+  <option value="R - en cours d'acquisition">
+
+  <option value="Bash - acquis">
+  <option value="Bash - en cours d'acquisition">
+
+  <option value="Perl - acquis">
+  <option value="Perl - en cours d'acquisition">
+
+  <!-- Frontend -->
+  <option value="HTML - acquis">
+  <option value="HTML - en cours d'acquisition">
+
+  <option value="CSS - acquis">
+  <option value="CSS - en cours d'acquisition">
+
+  <option value="React - acquis">
+  <option value="React - en cours d'acquisition">
+
+  <option value="Vue.js - acquis">
+  <option value="Vue.js - en cours d'acquisition">
+
+  <option value="Angular - acquis">
+  <option value="Angular - en cours d'acquisition">
+
+  <option value="Svelte - acquis">
+  <option value="Svelte - en cours d'acquisition">
+
+  <option value="Next.js - acquis">
+  <option value="Next.js - en cours d'acquisition">
+
+  <option value="Gatsby - acquis">
+  <option value="Gatsby - en cours d'acquisition">
+
+  <option value="Tailwind CSS - acquis">
+  <option value="Tailwind CSS - en cours d'acquisition">
+
+  <option value="Bootstrap - acquis">
+  <option value="Bootstrap - en cours d'acquisition">
+
+  <option value="jQuery - acquis">
+  <option value="jQuery - en cours d'acquisition">
+
+  <!-- Backend -->
+  <option value="Node.js - acquis">
+  <option value="Node.js - en cours d'acquisition">
+
+  <option value="Express.js - acquis">
+  <option value="Express.js - en cours d'acquisition">
+
+  <option value="Django - acquis">
+  <option value="Django - en cours d'acquisition">
+
+  <option value="Flask - acquis">
+  <option value="Flask - en cours d'acquisition">
+
+  <option value="Ruby on Rails - acquis">
+  <option value="Ruby on Rails - en cours d'acquisition">
+
+  <option value="Spring Boot - acquis">
+  <option value="Spring Boot - en cours d'acquisition">
+
+  <option value="Laravel - acquis">
+  <option value="Laravel - en cours d'acquisition">
+
+  <option value="ASP.NET - acquis">
+  <option value="ASP.NET - en cours d'acquisition">
+
+  <option value="FastAPI - acquis">
+  <option value="FastAPI - en cours d'acquisition">
+
+  <option value="NestJS - acquis">
+  <option value="NestJS - en cours d'acquisition">
+
+  <!-- Databases -->
+  <option value="PostgreSQL - acquis">
+  <option value="PostgreSQL - en cours d'acquisition">
+
+  <option value="MySQL - acquis">
+  <option value="MySQL - en cours d'acquisition">
+
+  <option value="SQLite - acquis">
+  <option value="SQLite - en cours d'acquisition">
+
+  <option value="MongoDB - acquis">
+  <option value="MongoDB - en cours d'acquisition">
+
+  <option value="Redis - acquis">
+  <option value="Redis - en cours d'acquisition">
+
+  <option value="Firebase - acquis">
+  <option value="Firebase - en cours d'acquisition">
+
+  <!-- DevOps -->
+  <option value="Docker - acquis">
+  <option value="Docker - en cours d'acquisition">
+
+  <option value="Kubernetes - acquis">
+  <option value="Kubernetes - en cours d'acquisition">
+
+  <option value="Git - acquis">
+  <option value="Git - en cours d'acquisition">
+
+  <option value="AWS - acquis">
+  <option value="AWS - en cours d'acquisition">
+
+  <option value="Azure - acquis">
+  <option value="Azure - en cours d'acquisition">
+
+  <option value="GCP - acquis">
+  <option value="GCP - en cours d'acquisition">
+
+  <option value="Linux - acquis">
+  <option value="Linux - en cours d'acquisition">
+
+  <option value="CI/CD - acquis">
+  <option value="CI/CD - en cours d'acquisition">
+
+  <!-- Testing -->
+  <option value="Jest - acquis">
+  <option value="Jest - en cours d'acquisition">
+
+  <option value="Cypress - acquis">
+  <option value="Cypress - en cours d'acquisition">
+
+  <option value="Selenium - acquis">
+  <option value="Selenium - en cours d'acquisition">
+
+  <option value="PyTest - acquis">
+  <option value="PyTest - en cours d'acquisition">
+
+  <!-- Mobile -->
+  <option value="React Native - acquis">
+  <option value="React Native - en cours d'acquisition">
+
+  <option value="Flutter - acquis">
+  <option value="Flutter - en cours d'acquisition">
+
+  <option value="SwiftUI - acquis">
+  <option value="SwiftUI - en cours d'acquisition">
+
+  <!-- Other -->
+  <option value="GraphQL - acquis">
+  <option value="GraphQL - en cours d'acquisition">
+
+  <option value="REST API - acquis">
+  <option value="REST API - en cours d'acquisition">
+
+  <option value="Webpack - acquis">
+  <option value="Webpack - en cours d'acquisition">
+
+  <option value="Vite - acquis">
+  <option value="Vite - en cours d'acquisition">
+</datalist>
+
+            <div class="box" id="skills">
+            </div>
+          </div>
+        
             <span class="checks">
+                <a class="action-btn" id="reset">Reset</a>
                 <span>
                     <input type="checkbox" id="permis" name="permis">
                     <label for="permis-b">Permis</label>
@@ -71,10 +292,7 @@
                 </span>
             </span>
         </form>
-        <span>
-            <a class="action-btn" id="addStud">Ajouter un étudiant</a>
-            <a class="action-btn" id="reset">Reset</a>
-        </span>    
+        
     </div>
         <div class="list">
             <div class="header">
@@ -111,7 +329,6 @@
             </div>
             <div id="list"></div>
         </div>
-        
     </main>
 <script src="/scripts/Main.js" defer></script>
 <script src="/scripts/admin.js" defer></script>

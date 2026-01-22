@@ -42,6 +42,7 @@ app.get('/signin', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/signin.h
 app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR, 'views', 'profile.html'));});
 app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'admin.html'));});
 app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
+app.get('/legal', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/legal.html')));
 
 // === /login Route ===
 app.post('/login', loginLimiter, async (req, res) => {

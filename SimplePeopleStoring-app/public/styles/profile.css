@@ -95,6 +95,7 @@ h1{font-size: 60px; font-weight: lighter;}
     flex-direction: column;
     gap:5px;
     width: 100%;
+    position: relative;
 }
 ul{
     display:flex;

@@ -19,7 +19,11 @@ let currentSkills = [];
 let targetId = null;
 const adminView = !!urlTargetId;
 const fetchUrl = adminView ? `/api/user-profile/${encodeURIComponent(urlTargetId)}` : '/api/profile';
-if (!adminView) logoutBtn.style.display="none";
+if (adminView) {
+    logoutBtn.style.display="none"
+    const retour = document.getElementById('retour');
+    retour.addEventListener('click', () => { window.location.href = "/admin-panel"})
+};
 
 const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(urlTargetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
 
@@ -33,7 +37,8 @@ fetch(fetchUrl, { method: 'POST'})
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
-    let hasAT = !!user.state_work_auth || user.state_work_auth !== "empty";
+    const hasATAccess = user.state_work_auth != null;
+    const hasATFile = !!user.state_work_auth && user.state_work_auth !== "empty";
     targetId = user.id;
 
     if (adminView) { // Admin deletes an account
@@ -95,6 +100,7 @@ if (data.success) {
         const data = {
             name: document.getElementById('name').value,
             fname: document.getElementById('fname').value,
+            email: document.getElementById('email').value,
             tel: document.getElementById('tel').value,
             birth: document.getElementById('birth').value,
             city: document.getElementById('city').value,
@@ -105,8 +111,15 @@ if (data.success) {
             mobile: document.getElementById('mobile').checked,
             skills: currentSkills,
         };
-        if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
+        if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
+        const requiredFields = ['name', 'fname', 'tel', 'birth', 'city', 'postal', 'addr'];
+        for (const field of requiredFields){
+            if(!data[field]) {
+                notif(`Des champs sont manquants ...`);
+                return;
+            }
+        }
         const endpoint = adminView ? '/api/admin/update-student' : '/api/update-tags';
         fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(res => res.json())
@@ -143,14 +156,14 @@ if (data.success) {
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
-    if(hasAT) {
+    if(hasATAccess) {
         AT.style.display="flex";
         AT.addEventListener('click', function (){ // charger l'attestation de travail
             pis.style.display = "none";
             cvAction.style.display = "none";
             atAction.style.display = "flex";
             frame.style.display = "block";
-            if (!hasAT) {frame.src=''; notif('Aucune AT enregistée');} 
+            if (!hasATFile) {frame.src=''; notif('Aucune AT enregistée');} 
             else {frame.src = fileUrl('state_work_auth');}
             AT.style.backgroundColor = "var(--secondary)";
             AT.style.color = "var(--primary)";
@@ -428,7 +441,7 @@ window.addEventListener('beforeunload', (event) => {
         event.returnValue ='';
     }
 });
-if(adminView){
+if(!adminView){
     logoutBtn.addEventListener('click', ()=>{
         fetch('/logout', {
             method: 'POST',
@@ -441,104 +454,220 @@ if(adminView){
     })
 }
 const skillTypes = {
-  // Languages
-  'C': 'language',
-  'C++': 'language',
-  'Java': 'language',
-  'JavaScript': 'language',
-  'TypeScript': 'language',
-  'Python': 'language',
-  'Ruby': 'language',
-  'Go': 'language',
-  'Rust': 'language',
-  'PHP': 'language',
-  'Swift': 'language',
-  'Kotlin': 'language',
-  'Scala': 'language',
-  'Dart': 'language',
-  'R': 'language',
-  'Bash': 'language',
-  'Perl': 'language',
+  /* =======================
+     Languages
+  ======================= */
+  'C - acquis': 'language',
+  "C - en cours d'acquisition": 'language',
 
-  // Frontend
-  'HTML': 'frontend',
-  'CSS': 'frontend',
-  'React': 'frontend',
-  'Vue.js': 'frontend',
-  'Angular': 'frontend',
-  'Svelte': 'frontend',
-  'Next.js': 'frontend',
-  'Gatsby': 'frontend',
-  'Tailwind CSS': 'frontend',
-  'Bootstrap': 'frontend',
-  'jQuery': 'frontend',
+  'C++ - acquis': 'language',
+  "C++ - en cours d'acquisition": 'language',
 
-  // Backend
-  'Node.js': 'backend',
-  'Express.js': 'backend',
-  'Django': 'backend',
-  'Flask': 'backend',
-  'Ruby on Rails': 'backend',
-  'Spring Boot': 'backend',
-  'Laravel': 'backend',
-  'ASP.NET': 'backend',
-  'Koa.js': 'backend',
-  'FastAPI': 'backend',
-  'NestJS': 'backend',
+  'Java - acquis': 'language',
+  "Java - en cours d'acquisition": 'language',
 
-  // Databases
-  'PostgreSQL': 'database',
-  'MySQL': 'database',
-  'SQLite': 'database',
-  'MongoDB': 'database',
-  'Redis': 'database',
-  'Firebase': 'database',
-  'Cassandra': 'database',
-  'MariaDB': 'database',
-  'OracleDB': 'database',
-  'DynamoDB': 'database',
+  'JavaScript - acquis': 'language',
+  "JavaScript - en cours d'acquisition": 'language',
 
-  // DevOps / Tools
-  'Docker': 'devops',
-  'Kubernetes': 'devops',
-  'Git': 'devops',
-  'GitHub Actions': 'devops',
-  'Jenkins': 'devops',
-  'Terraform': 'devops',
-  'Ansible': 'devops',
-  'Nginx': 'devops',
-  'Apache': 'devops',
-  'AWS': 'devops',
-  'Azure': 'devops',
-  'GCP': 'devops',
-  'Linux': 'devops',
-  'CI/CD': 'devops',
+  'TypeScript - acquis': 'language',
+  "TypeScript - en cours d'acquisition": 'language',
 
-  // Testing
-  'Jest': 'testing',
-  'Mocha': 'testing',
-  'Chai': 'testing',
-  'JUnit': 'testing',
-  'Cypress': 'testing',
-  'Selenium': 'testing',
-  'PyTest': 'testing',
-  'RSpec': 'testing',
+  'Python - acquis': 'language',
+  "Python - en cours d'acquisition": 'language',
 
-  // Mobile
-  'React Native': 'mobile',
-  'Flutter': 'mobile',
-  'SwiftUI': 'mobile',
-  'Xamarin': 'mobile',
+  'Ruby - acquis': 'language',
+  "Ruby - en cours d'acquisition": 'language',
 
-  // Other
-  'GraphQL': 'other',
-  'REST API': 'other',
-  'Webpack': 'other',
-  'Vite': 'other',
-  'ESLint': 'other',
-  'Prettier': 'other',
-  'Storybook': 'other'
+  'Go - acquis': 'language',
+  "Go - en cours d'acquisition": 'language',
+
+  'Rust - acquis': 'language',
+  "Rust - en cours d'acquisition": 'language',
+
+  'PHP - acquis': 'language',
+  "PHP - en cours d'acquisition": 'language',
+
+  'Swift - acquis': 'language',
+  "Swift - en cours d'acquisition": 'language',
+
+  'Kotlin - acquis': 'language',
+  "Kotlin - en cours d'acquisition": 'language',
+
+  'Scala - acquis': 'language',
+  "Scala - en cours d'acquisition": 'language',
+
+  'Dart - acquis': 'language',
+  "Dart - en cours d'acquisition": 'language',
+
+  'R - acquis': 'language',
+  "R - en cours d'acquisition": 'language',
+
+  'Bash - acquis': 'language',
+  "Bash - en cours d'acquisition": 'language',
+
+  'Perl - acquis': 'language',
+  "Perl - en cours d'acquisition": 'language',
+
+  /* =======================
+     Frontend
+  ======================= */
+  'HTML - acquis': 'frontend',
+  "HTML - en cours d'acquisition": 'frontend',
+
+  'CSS - acquis': 'frontend',
+  "CSS - en cours d'acquisition": 'frontend',
+
+  'React - acquis': 'frontend',
+  "React - en cours d'acquisition": 'frontend',
+
+  'Vue.js - acquis': 'frontend',
+  "Vue.js - en cours d'acquisition": 'frontend',
+
+  'Angular - acquis': 'frontend',
+  "Angular - en cours d'acquisition": 'frontend',
+
+  'Svelte - acquis': 'frontend',
+  "Svelte - en cours d'acquisition": 'frontend',
+
+  'Next.js - acquis': 'frontend',
+  "Next.js - en cours d'acquisition": 'frontend',
+
+  'Gatsby - acquis': 'frontend',
+  "Gatsby - en cours d'acquisition": 'frontend',
+
+  'Tailwind CSS - acquis': 'frontend',
+  "Tailwind CSS - en cours d'acquisition": 'frontend',
+
+  'Bootstrap - acquis': 'frontend',
+  "Bootstrap - en cours d'acquisition": 'frontend',
+
+  'jQuery - acquis': 'frontend',
+  "jQuery - en cours d'acquisition": 'frontend',
+
+  /* =======================
+     Backend
+  ======================= */
+  'Node.js - acquis': 'backend',
+  "Node.js - en cours d'acquisition": 'backend',
+
+  'Express.js - acquis': 'backend',
+  "Express.js - en cours d'acquisition": 'backend',
+
+  'Django - acquis': 'backend',
+  "Django - en cours d'acquisition": 'backend',
+
+  'Flask - acquis': 'backend',
+  "Flask - en cours d'acquisition": 'backend',
+
+  'Ruby on Rails - acquis': 'backend',
+  "Ruby on Rails - en cours d'acquisition": 'backend',
+
+  'Spring Boot - acquis': 'backend',
+  "Spring Boot - en cours d'acquisition": 'backend',
+
+  'Laravel - acquis': 'backend',
+  "Laravel - en cours d'acquisition": 'backend',
+
+  'ASP.NET - acquis': 'backend',
+  "ASP.NET - en cours d'acquisition": 'backend',
+
+  'FastAPI - acquis': 'backend',
+  "FastAPI - en cours d'acquisition": 'backend',
+
+  'NestJS - acquis': 'backend',
+  "NestJS - en cours d'acquisition": 'backend',
+
+  /* =======================
+     Databases
+  ======================= */
+  'PostgreSQL - acquis': 'database',
+  "PostgreSQL - en cours d'acquisition": 'database',
+
+  'MySQL - acquis': 'database',
+  "MySQL - en cours d'acquisition": 'database',
+
+  'SQLite - acquis': 'database',
+  "SQLite - en cours d'acquisition": 'database',
+
+  'MongoDB - acquis': 'database',
+  "MongoDB - en cours d'acquisition": 'database',
+
+  'Redis - acquis': 'database',
+  "Redis - en cours d'acquisition": 'database',
+
+  'Firebase - acquis': 'database',
+  "Firebase - en cours d'acquisition": 'database',
+
+  /* =======================
+     DevOps / Tools
+  ======================= */
+  'Docker - acquis': 'devops',
+  "Docker - en cours d'acquisition": 'devops',
+
+  'Kubernetes - acquis': 'devops',
+  "Kubernetes - en cours d'acquisition": 'devops',
+
+  'Git - acquis': 'devops',
+  "Git - en cours d'acquisition": 'devops',
+
+  'CI/CD - acquis': 'devops',
+  "CI/CD - en cours d'acquisition": 'devops',
+
+  'Linux - acquis': 'devops',
+  "Linux - en cours d'acquisition": 'devops',
+
+  'AWS - acquis': 'devops',
+  "AWS - en cours d'acquisition": 'devops',
+
+  'Azure - acquis': 'devops',
+  "Azure - en cours d'acquisition": 'devops',
+
+  'GCP - acquis': 'devops',
+  "GCP - en cours d'acquisition": 'devops',
+
+  /* =======================
+     Testing
+  ======================= */
+  'Jest - acquis': 'testing',
+  "Jest - en cours d'acquisition": 'testing',
+
+  'Cypress - acquis': 'testing',
+  "Cypress - en cours d'acquisition": 'testing',
+
+  'Selenium - acquis': 'testing',
+  "Selenium - en cours d'acquisition": 'testing',
+
+  'PyTest - acquis': 'testing',
+  "PyTest - en cours d'acquisition": 'testing',
+
+  /* =======================
+     Mobile
+  ======================= */
+  'React Native - acquis': 'mobile',
+  "React Native - en cours d'acquisition": 'mobile',
+
+  'Flutter - acquis': 'mobile',
+  "Flutter - en cours d'acquisition": 'mobile',
+
+  'SwiftUI - acquis': 'mobile',
+  "SwiftUI - en cours d'acquisition": 'mobile',
+
+  /* =======================
+     Other
+  ======================= */
+  'GraphQL - acquis': 'other',
+  "GraphQL - en cours d'acquisition": 'other',
+
+  'REST API - acquis': 'other',
+  "REST API - en cours d'acquisition": 'other',
+
+  'Webpack - acquis': 'other',
+  "Webpack - en cours d'acquisition": 'other',
+
+  'Vite - acquis': 'other',
+  "Vite - en cours d'acquisition": 'other',
 };
+
 
 const typeColors = {
   language: '#43a4b1ff',

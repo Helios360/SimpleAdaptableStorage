@@ -95,7 +95,7 @@ async function addWatermark(pdfPath, outputPath){
     // charge watermark
     const watermarkImageBytes = await fs.readFile(WATERMARK_PATH);
     const watermarkImage = await pdfDoc.embedPng(watermarkImageBytes);
-    const watermarkDims = watermarkImage.scale(0.1);
+    const watermarkDims = watermarkImage.scale(0.05);
 
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
@@ -105,7 +105,7 @@ async function addWatermark(pdfPath, outputPath){
     const x = (width - watermarkDims.width) - 5;
     const y = watermarkDims.height - 70;
     
-    firstPage.drawImage(watermarkImage, { x,y,width: watermarkDims.width,height: watermarkDims.height, opacity: 0.8 });
+    firstPage.drawImage(watermarkImage, { x,y,width: watermarkDims.width,height: watermarkDims.height, opacity: 0.7 });
 
     const pdfBytes = await pdfDoc.save();
     await fs.writeFile(outputPath, pdfBytes);

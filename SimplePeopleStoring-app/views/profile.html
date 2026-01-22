@@ -22,7 +22,7 @@
 </head>
 <body>
   <header>
-    <img src="/sources/LogoBleuOmbre-edited.png" height="80px">
+    <img src="/sources/LogoBleuOmbre-edited.png" height="80px" id="retour">
     <a id="toggle-theme"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/></svg></a>
   </header>
   <main>
@@ -125,100 +125,208 @@
             <div class="box" id="tags">
             </div>
           </div>
-          <div class="wrapper"²>
+          <div class="wrapper">
             <p>Compétences</p>
             <input class="taging" id="add_skills" list="skillList" placeholder=". . .">
             <datalist id="skillList">
-                <option value="C"></option>
-                <option value="C++"></option>
-                <option value="Java"></option>
-                <option value="JavaScript"></option>
-                <option value="TypeScript"></option>
-                <option value="Python"></option>
-                <option value="Ruby"></option>
-                <option value="Go"></option>
-                <option value="Rust"></option>
-                <option value="PHP"></option>
-                <option value="Swift"></option>
-                <option value="Kotlin"></option>
-                <option value="Scala"></option>
-                <option value="Dart"></option>
-                <option value="R"></option>
-                <option value="Bash"></option>
-                <option value="Perl"></option>
+  <!-- Languages -->
+  <option value="C - acquis">
+  <option value="C - en cours d'acquisition">
 
-                <option value="HTML"></option>
-                <option value="CSS"></option>
-                <option value="React"></option>
-                <option value="Vue.js"></option>
-                <option value="Angular"></option>
-                <option value="Svelte"></option>
-                <option value="Next.js"></option>
-                <option value="Gatsby"></option>
-                <option value="Tailwind CSS"></option>
-                <option value="Bootstrap"></option>
-                <option value="jQuery"></option>
+  <option value="C++ - acquis">
+  <option value="C++ - en cours d'acquisition">
 
-                <option value="Node.js"></option>
-                <option value="Express.js"></option>
-                <option value="Django"></option>
-                <option value="Flask"></option>
-                <option value="Ruby on Rails"></option>
-                <option value="Spring Boot"></option>
-                <option value="Laravel"></option>
-                <option value="ASP.NET"></option>
-                <option value="Koa.js"></option>
-                <option value="FastAPI"></option>
-                <option value="NestJS"></option>
+  <option value="Java - acquis">
+  <option value="Java - en cours d'acquisition">
 
-                <option value="PostgreSQL"></option>
-                <option value="MySQL"></option>
-                <option value="SQLite"></option>
-                <option value="MongoDB"></option>
-                <option value="Redis"></option>
-                <option value="Firebase"></option>
-                <option value="Cassandra"></option>
-                <option value="MariaDB"></option>
-                <option value="OracleDB"></option>
-                <option value="DynamoDB"></option>
+  <option value="JavaScript - acquis">
+  <option value="JavaScript - en cours d'acquisition">
 
-                <option value="Docker"></option>
-                <option value="Kubernetes"></option>
-                <option value="Git"></option>
-                <option value="GitHub Actions"></option>
-                <option value="Jenkins"></option>
-                <option value="Terraform"></option>
-                <option value="Ansible"></option>
-                <option value="Nginx"></option>
-                <option value="Apache"></option>
-                <option value="AWS"></option>
-                <option value="Azure"></option>
-                <option value="GCP"></option>
-                <option value="Linux"></option>
-                <option value="CI/CD"></option>
+  <option value="TypeScript - acquis">
+  <option value="TypeScript - en cours d'acquisition">
 
-                <option value="Jest"></option>
-                <option value="Mocha"></option>
-                <option value="Chai"></option>
-                <option value="JUnit"></option>
-                <option value="Cypress"></option>
-                <option value="Selenium"></option>
-                <option value="PyTest"></option>
-                <option value="RSpec"></option>
+  <option value="Python - acquis">
+  <option value="Python - en cours d'acquisition">
 
-                <option value="React Native"></option>
-                <option value="Flutter"></option>
-                <option value="SwiftUI"></option>
-                <option value="Xamarin"></option>
+  <option value="Ruby - acquis">
+  <option value="Ruby - en cours d'acquisition">
 
-                <option value="GraphQL"></option>
-                <option value="REST API"></option>
-                <option value="Webpack"></option>
-                <option value="Vite"></option>
-                <option value="ESLint"></option>
-                <option value="Prettier"></option>
-                <option value="Storybook"></option>
-              </datalist>
+  <option value="Go - acquis">
+  <option value="Go - en cours d'acquisition">
+
+  <option value="Rust - acquis">
+  <option value="Rust - en cours d'acquisition">
+
+  <option value="PHP - acquis">
+  <option value="PHP - en cours d'acquisition">
+
+  <option value="Swift - acquis">
+  <option value="Swift - en cours d'acquisition">
+
+  <option value="Kotlin - acquis">
+  <option value="Kotlin - en cours d'acquisition">
+
+  <option value="Scala - acquis">
+  <option value="Scala - en cours d'acquisition">
+
+  <option value="Dart - acquis">
+  <option value="Dart - en cours d'acquisition">
+
+  <option value="R - acquis">
+  <option value="R - en cours d'acquisition">
+
+  <option value="Bash - acquis">
+  <option value="Bash - en cours d'acquisition">
+
+  <option value="Perl - acquis">
+  <option value="Perl - en cours d'acquisition">
+
+  <!-- Frontend -->
+  <option value="HTML - acquis">
+  <option value="HTML - en cours d'acquisition">
+
+  <option value="CSS - acquis">
+  <option value="CSS - en cours d'acquisition">
+
+  <option value="React - acquis">
+  <option value="React - en cours d'acquisition">
+
+  <option value="Vue.js - acquis">
+  <option value="Vue.js - en cours d'acquisition">
+
+  <option value="Angular - acquis">
+  <option value="Angular - en cours d'acquisition">
+
+  <option value="Svelte - acquis">
+  <option value="Svelte - en cours d'acquisition">
+
+  <option value="Next.js - acquis">
+  <option value="Next.js - en cours d'acquisition">
+
+  <option value="Gatsby - acquis">
+  <option value="Gatsby - en cours d'acquisition">
+
+  <option value="Tailwind CSS - acquis">
+  <option value="Tailwind CSS - en cours d'acquisition">
+
+  <option value="Bootstrap - acquis">
+  <option value="Bootstrap - en cours d'acquisition">
+
+  <option value="jQuery - acquis">
+  <option value="jQuery - en cours d'acquisition">
+
+  <!-- Backend -->
+  <option value="Node.js - acquis">
+  <option value="Node.js - en cours d'acquisition">
+
+  <option value="Express.js - acquis">
+  <option value="Express.js - en cours d'acquisition">
+
+  <option value="Django - acquis">
+  <option value="Django - en cours d'acquisition">
+
+  <option value="Flask - acquis">
+  <option value="Flask - en cours d'acquisition">
+
+  <option value="Ruby on Rails - acquis">
+  <option value="Ruby on Rails - en cours d'acquisition">
+
+  <option value="Spring Boot - acquis">
+  <option value="Spring Boot - en cours d'acquisition">
+
+  <option value="Laravel - acquis">
+  <option value="Laravel - en cours d'acquisition">
+
+  <option value="ASP.NET - acquis">
+  <option value="ASP.NET - en cours d'acquisition">
+
+  <option value="FastAPI - acquis">
+  <option value="FastAPI - en cours d'acquisition">
+
+  <option value="NestJS - acquis">
+  <option value="NestJS - en cours d'acquisition">
+
+  <!-- Databases -->
+  <option value="PostgreSQL - acquis">
+  <option value="PostgreSQL - en cours d'acquisition">
+
+  <option value="MySQL - acquis">
+  <option value="MySQL - en cours d'acquisition">
+
+  <option value="SQLite - acquis">
+  <option value="SQLite - en cours d'acquisition">
+
+  <option value="MongoDB - acquis">
+  <option value="MongoDB - en cours d'acquisition">
+
+  <option value="Redis - acquis">
+  <option value="Redis - en cours d'acquisition">
+
+  <option value="Firebase - acquis">
+  <option value="Firebase - en cours d'acquisition">
+
+  <!-- DevOps -->
+  <option value="Docker - acquis">
+  <option value="Docker - en cours d'acquisition">
+
+  <option value="Kubernetes - acquis">
+  <option value="Kubernetes - en cours d'acquisition">
+
+  <option value="Git - acquis">
+  <option value="Git - en cours d'acquisition">
+
+  <option value="AWS - acquis">
+  <option value="AWS - en cours d'acquisition">
+
+  <option value="Azure - acquis">
+  <option value="Azure - en cours d'acquisition">
+
+  <option value="GCP - acquis">
+  <option value="GCP - en cours d'acquisition">
+
+  <option value="Linux - acquis">
+  <option value="Linux - en cours d'acquisition">
+
+  <option value="CI/CD - acquis">
+  <option value="CI/CD - en cours d'acquisition">
+
+  <!-- Testing -->
+  <option value="Jest - acquis">
+  <option value="Jest - en cours d'acquisition">
+
+  <option value="Cypress - acquis">
+  <option value="Cypress - en cours d'acquisition">
+
+  <option value="Selenium - acquis">
+  <option value="Selenium - en cours d'acquisition">
+
+  <option value="PyTest - acquis">
+  <option value="PyTest - en cours d'acquisition">
+
+  <!-- Mobile -->
+  <option value="React Native - acquis">
+  <option value="React Native - en cours d'acquisition">
+
+  <option value="Flutter - acquis">
+  <option value="Flutter - en cours d'acquisition">
+
+  <option value="SwiftUI - acquis">
+  <option value="SwiftUI - en cours d'acquisition">
+
+  <!-- Other -->
+  <option value="GraphQL - acquis">
+  <option value="GraphQL - en cours d'acquisition">
+
+  <option value="REST API - acquis">
+  <option value="REST API - en cours d'acquisition">
+
+  <option value="Webpack - acquis">
+  <option value="Webpack - en cours d'acquisition">
+
+  <option value="Vite - acquis">
+  <option value="Vite - en cours d'acquisition">
+</datalist>
+
             <div class="box" id="skills">
             </div>
           </div>
@@ -226,7 +334,7 @@
         <span class="button-wrap">
           <button id="saveBtn">Sauvegarder</button>
           <button id="logoutBtn">Se déconnecter</button>
-          <button id="resetBtn">Réinitialiser</button>
+          <button id="resetBtn">Réinitialiser Test</button>
         </span>
       </div>
       <div class="doc-view">

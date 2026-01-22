@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const {allowIframeSelf} = require('./helpers.js')
 const bcrypt = require('bcrypt');
 const { 
-    q, userDir, relFromAbs, toAbsFromStored, kindCheck, guessContentType, deleteFile,
-    ALLOWED_EXT, ALLOWED_MIME, UPLOADS_ROOT, TOS_VERSION, addWatermark, deleteUser,
+  q, userDir, relFromAbs, toAbsFromStored, kindCheck, guessContentType, deleteFile,
+  ALLOWED_EXT, ALLOWED_MIME, UPLOADS_ROOT, TOS_VERSION, addWatermark, deleteUser,
 } = require('./helpers');
 const { authMiddleware, adminOnly} = require('./controllers/authControl');
 const router = Router();
@@ -113,9 +113,108 @@ router.post('/submit-form', (req, res) => {
   });
 });
 
+// ------------------------- CREATE > PROFILE === ADMINS ------------------------- //
+router.post('/submit-form-admin', (req, res) => {
+  const form = formidable({
+    keepExtensions: true,
+    maxFileSize: 10 * 1024 * 1024, // 10 Mo
+    maxTotalFileSize: 30 * 1024 * 1024,
+    multiples: true,
+    filter: ({mimetype, originalFilename})=>{
+      const ext=path.extname(originalFilename || '').toLowerCase();
+      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
+    }
+  });
+  const copyInto = async (file, destDir) => {
+    if (!file) return null;
+    const ext = path.extname(file.originalFilename || '').toLowerCase();
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    await fs.mkdir(destDir, {recursive: true});
+    const destAbs = path.join(destDir, safeName);
+    await fs.copyFile(file.filepath, destAbs);
+    return destAbs;
+  };
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error('Formidable error: ', err);
+      return res.status(400).send('Form parsing error');
+    }
+    try {
+      const {
+        name, fname, email, tel, addr, city, permis, vehicule, mobile,
+        postal, birth, password, consent, formation,
+      } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
+      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
+      
+      const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      await fs.mkdir(tmpDir, {recursive: true});
+      const f_cv = files.cv?.[0] || null;
+      const f_idr = files.id_doc?.[0] || null;
+      const f_idv = files.id_doc_verso?.[0] || null;
+      const f_swa = files.stateWorkAuth?.[0] || null;
+      const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
+        copyInto(f_cv, tmpDir),
+        copyInto(f_idr, tmpDir),
+        copyInto(f_idv, tmpDir),
+        copyInto(f_swa, tmpDir)
+      ]);
+
+      const insertSql = `
+        INSERT INTO Users
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version, formation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
+      try{
+        const results = await q(insertSql, insertValues);
+        const newId = results.insertId;
+        const finalDir = userDir(newId);
+        await fs.mkdir(finalDir, {recursive: true});
+        const moveToFinal = async (absPath) => {
+          if(!absPath) return null;
+          const base = path.basename(absPath);
+          const dest = path.join(finalDir, base);
+          await fs.rename(absPath, dest);
+          return relFromAbs(dest);
+        };
+        let [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel] = await Promise.all([
+          moveToFinal(cvTmpAbs),
+          moveToFinal(idrTmpAbs),
+          moveToFinal(idvTmpAbs),
+          moveToFinal(swaTmpAbs)
+        ])
+        if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
+          const absCvPath = toAbsFromStored(cvFinalRel);
+          const tempWatermarkedPath = absCvPath.replace(/\.pdf$/,'_wm.pdf');
+          const success = await addWatermark(absCvPath, tempWatermarkedPath);
+          if (success) await fs.rename(tempWatermarkedPath, absCvPath);
+        }
+        try{
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_work_auth=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
+          fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
+        } catch (e) {
+          console.error('DB Update Error after first Insert : ', e);
+          res.status(500).send('Database Error after Insert');
+        }
+      } catch (e) {
+        console.error('DB Insert Error: ', e);
+        fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
+        if (e && (e.code === 'ER_DUP_ENTRY' || e.errno === 1062)){
+          return res.status(409).json({ message: "Ce compte existe déjà"});
+        }
+        res.status(500).json({message: 'Database Error or invalid parameters'});
+      }
+    } catch (e) {
+      console.error('Registration handler fault : ', e);
+      return res.status(500).send('Server Error');
+    }
+  });
+});
+
 // ------------------------- UPDATE > USER === USERS ------------------------- //
 router.post('/api/update-tags', authMiddleware, async (req, res) => {
-  const userEmail = req.user.email;
+  const userId = req.user.id;
   const {name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, skills} = req.body;
   let tags = [];
   if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
@@ -125,8 +224,8 @@ router.post('/api/update-tags', authMiddleware, async (req, res) => {
     await q(
     `UPDATE Users 
      SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, permis=?, vehicule=?, mobile=?, postal = ?, tags = ?, skills = ?
-     WHERE email = ?`,
-    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tagsJSON, skillsJSON, userEmail]);
+     WHERE id = ?`,
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tagsJSON, skillsJSON, userId]);
     res.json({ success: true, message: 'Profile updated successfully' });
   } catch (e) {
     console.error('DB Profile Update Error: ', e);

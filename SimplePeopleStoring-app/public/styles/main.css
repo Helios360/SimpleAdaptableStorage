@@ -45,6 +45,10 @@ header{
     width: 100%;
     padding: 20px 20px;
 }
+nav > a{
+    cursor: pointer;
+    padding:1rem;
+}
 .file-upload{
     position:relative;
 }
@@ -139,12 +143,16 @@ select{
 }
 .checkbox{
     width: 100%;
+    text-align: justify;
     flex-direction: row!important;
     justify-content: center;
     align-items: center;
 }
 .checkbox input{
-    width: 40px;
+    width: 35px;
+}
+.checkbox label{
+    margin-right: 1rem;
 }
 button{
     color:var(--secondary);
@@ -155,6 +163,7 @@ button{
     border: 2px solid var(--secondary);
     background-color: transparent;
     transition: all 0.2s ease-out;
+    cursor: pointer;
 }
 button:hover{
     background-color: var(--tertiary);
@@ -235,7 +244,9 @@ footer{
     align-items: center;
 }
 .checks input{
-    width: 20px;
+    width:1rem;
+    height:1rem;
+    background-color: var(--tertiary);
 }
 #send{width: 100%;}
 #stateWorkAuthFilename{
@@ -274,6 +285,22 @@ footer{
     transform: translateY(-50%);
     cursor: pointer;
     display: none;
+}
+#retour{
+    cursor:pointer;
+    transition: all 0.3s ease-in-out;
+}
+#retour:hover{
+    opacity: 0.5;
+}
+.container{
+    width:100%;
+    border-radius: 14px;
+    padding:1rem;
+    border: var(--secondary) 2px solid;
+}
+.CGS{
+    padding: 0 1rem;
 }
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}
