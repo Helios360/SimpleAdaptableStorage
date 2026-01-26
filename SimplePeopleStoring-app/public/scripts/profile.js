@@ -1,5 +1,4 @@
 const CV = document.getElementById('cv');
-const AT = document.getElementById('at');
 const PI = document.getElementById('pi');
 const pimg = document.getElementById('PImg');
 const pimgverso = document.getElementById('PImgVerso');
@@ -37,8 +36,6 @@ fetch(fetchUrl, { method: 'POST'})
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
-    const hasATAccess = user.state_work_auth != null;
-    const hasATFile = !!user.state_work_auth && user.state_work_auth !== "empty";
     targetId = user.id;
 
     if (adminView) { // Admin deletes an account
@@ -113,7 +110,7 @@ if (data.success) {
         };
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
         if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
-        const requiredFields = ['name', 'fname', 'tel', 'birth', 'city', 'postal', 'addr'];
+        const requiredFields = ['name', 'fname', 'tel', 'birth', 'city'];
         for (const field of requiredFields){
             if(!data[field]) {
                 notif(`Des champs sont manquants ...`);
@@ -132,58 +129,31 @@ if (data.success) {
     });
     const pis = document.getElementById('pis');
     const cvAction = document.getElementById('cv-action');
-    const atAction = document.getElementById('at-action');
-    atAction.style.display = "none";
     frame.style.display = "block";
     frame.src = fileUrl('cv');
     CV.style.backgroundColor = "var(--secondary)";
     CV.style.color = "var(--primary)";
-    AT.style.backgroundColor = "var(--primary)";
-    AT.style.color = "var(--secondary)";
     PI.style.backgroundColor = "var(--primary)";
     PI.style.color = "var(--secondary)";
 
     CV.addEventListener('click', function (){ // charger le cv
         pis.style.display = "none";
         cvAction.style.display = "flex";
-        atAction.style.display = "none";
         frame.style.display = "block";
         frame.src = fileUrl('cv');
         CV.style.backgroundColor = "var(--secondary)";
         CV.style.color = "var(--primary)";
-        AT.style.backgroundColor = "var(--primary)";
-        AT.style.color = "var(--secondary)";
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
-    if(hasATAccess) {
-        AT.style.display="flex";
-        AT.addEventListener('click', function (){ // charger l'attestation de travail
-            pis.style.display = "none";
-            cvAction.style.display = "none";
-            atAction.style.display = "flex";
-            frame.style.display = "block";
-            if (!hasATFile) {frame.src=''; notif('Aucune AT enregistée');} 
-            else {frame.src = fileUrl('state_work_auth');}
-            AT.style.backgroundColor = "var(--secondary)";
-            AT.style.color = "var(--primary)";
-            CV.style.backgroundColor = "var(--primary)";
-            CV.style.color = "var(--secondary)";
-            PI.style.backgroundColor = "var(--primary)";
-            PI.style.color = "var(--secondary)";
-        });
-    } else { AT.style.display = 'none';}
     PI.addEventListener('click', function (){ // charger la pi
         frame.style.display = "none";
         pis.style.display = "block";
         cvAction.style.display = "none";
-        atAction.style.display = "none";
         pimg.style.backgroundImage = "url('"+fileUrl('id_doc')+"')";
         pimgverso.style.backgroundImage = "url('"+fileUrl('id_doc_verso')+"')";
         CV.style.backgroundColor = "var(--primary)";
         CV.style.color = "var(--secondary)";
-        AT.style.backgroundColor = "var(--primary)";
-        AT.style.color = "var(--secondary)";
         PI.style.backgroundColor = "var(--secondary)";
         PI.style.color = "var(--primary)";
     });
@@ -308,16 +278,13 @@ pimgverso.addEventListener('mouseout', ()=>{
 const change = document.getElementById('change');
 const changeV = document.getElementById('change-v');
 const changeCV = document.getElementById('change-cv');
-const changeAT = document.getElementById('change-at');
 const del = document.getElementById('delete');
 const delV = document.getElementById('delete-v');
 const delCV = document.getElementById('delete-cv');
-const delAT = document.getElementById('delete-at');
 
 del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage='';});
 delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage='';});
 delCV.addEventListener('click', () => {action('delCV'); frame.src='';});
-delAT.addEventListener('click', () => {action('delAT'); hasAT=false; frame.src='';});
 
 function action(name) {
     fetch('/api/files',{
@@ -333,7 +300,6 @@ function action(name) {
 const fileUpload = document.getElementById('file-change'); 
 const fileUploadV = document.getElementById('file-change-v'); 
 const fileUploadCV = document.getElementById('file-change-cv');
-const fileUploadAT = document.getElementById('file-change-at');
 
 change.addEventListener('click', (e) => {
     e.preventDefault();
@@ -346,10 +312,6 @@ changeV.addEventListener('click', (e) => {
 changeCV.addEventListener('click', (e) => {
     e.preventDefault();
     fileUploadCV.click();
-});
-changeAT.addEventListener('click', (e) => {
-    e.preventDefault();
-    fileUploadAT.click();
 });
 async function uploadKind(kind, file){
     const fd = new FormData();
@@ -404,19 +366,6 @@ fileUploadCV.addEventListener('change', async (e) => {
         await uploadKind('cv', file);
         frame.src = `${fileUrl('cv')}`;
         notif("CV mis à jour ...");
-    } catch (e) {
-        console.error(e);
-        notif("Erreur pendant l'upload");
-    } finally { e.target.value =''; }
-})
-fileUploadAT.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if(!file) return;
-    try{
-        await uploadKind('state_work_auth', file);
-        hasAT=true;
-        frame.src = `${fileUrl('state_work_auth')}`;
-        notif("AT mis à jour ...");
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");

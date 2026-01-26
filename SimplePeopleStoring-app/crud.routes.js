@@ -44,28 +44,26 @@ router.post('/submit-form', (req, res) => {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
         postal, birth, password, consent, formation,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !birth || !consent) return res.status(400).send('Missing required fields');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
-      const f_swa = files.stateWorkAuth?.[0] || null;
       const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
         copyInto(f_idr, tmpDir),
         copyInto(f_idv, tmpDir),
-        copyInto(f_swa, tmpDir)
       ]);
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version, formation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -78,11 +76,10 @@ router.post('/submit-form', (req, res) => {
           await fs.rename(absPath, dest);
           return relFromAbs(dest);
         };
-        let [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel] = await Promise.all([
+        let [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
           moveToFinal(cvTmpAbs),
           moveToFinal(idrTmpAbs),
           moveToFinal(idvTmpAbs),
-          moveToFinal(swaTmpAbs)
         ])
         if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
           const absCvPath = toAbsFromStored(cvFinalRel);
@@ -91,7 +88,7 @@ router.post('/submit-form', (req, res) => {
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{
-          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_work_auth=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
           return res.redirect('/signin');
         } catch (e) {
@@ -144,28 +141,26 @@ router.post('/submit-form-admin', (req, res) => {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
         postal, birth, password, consent, formation,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !consent) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !birth || !consent) return res.status(400).send('Missing required fields');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
-      const f_swa = files.stateWorkAuth?.[0] || null;
-      const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
+      const [cvTmpAbs, idrTmpAbs, idvTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
         copyInto(f_idr, tmpDir),
         copyInto(f_idv, tmpDir),
-        copyInto(f_swa, tmpDir)
       ]);
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, state_work_auth, password, consent, terms_version, formation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -178,11 +173,10 @@ router.post('/submit-form-admin', (req, res) => {
           await fs.rename(absPath, dest);
           return relFromAbs(dest);
         };
-        let [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel] = await Promise.all([
+        let [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
           moveToFinal(cvTmpAbs),
           moveToFinal(idrTmpAbs),
-          moveToFinal(idvTmpAbs),
-          moveToFinal(swaTmpAbs)
+          moveToFinal(idvTmpAbs)
         ])
         if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
           const absCvPath = toAbsFromStored(cvFinalRel);
@@ -191,7 +185,7 @@ router.post('/submit-form-admin', (req, res) => {
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{
-          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=?,state_work_auth=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, swaFinalRel, newId]);
+          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
         } catch (e) {
           console.error('DB Update Error after first Insert : ', e);
@@ -249,7 +243,7 @@ router.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res
 router.post('/api/profile', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,state_work_auth,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
+    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
     res.json({ success: true, user });
@@ -318,11 +312,11 @@ router.post('/api/files',authMiddleware, async (req,res)=>{
 // ------------------------- UPDATE > FILE === USERS ------------------------- //
 router.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
   const kind = String(req.params.kind || '').trim();
-  if(!['id_doc', 'id_doc_verso', 'cv', 'state_work_auth'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+  if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
   const userFolder = userDir(req.user.id);
   await fs.mkdir(userFolder, {recursive : true});
   try {
-    const results = await q('SELECT cv, id_doc, id_doc_verso, state_work_auth FROM Users WHERE id=?',[req.user.id]);
+    const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
     const current = results[0]?.[kind];
     if (current){
       const oldAbs = toAbsFromStored(current);

@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Téléphone invalide (10 chiffres).");
         }
-
+/*
         // Adresse, ville et code postal
         if (!document.getElementById("addr").value.trim()) {
             valid = false;
@@ -130,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Code postal invalide (5 chiffres).");
         }
-
+*/
 
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {
@@ -149,20 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide ou manquant (JPG/PNG, max 3 Mo).");
-        }
-        const fileAuth = document.getElementById('stateWorkAuth').files[0];
-        if (fileAuth) {
-            const ext = fileAuth.name.split('.').pop().toLowerCase();
-            if (ext !== "pdf") {
-                valid = false;
-                errors.push("Extension autorisation de travail invalide (PDF, max 2 Mo).");
-            }
-            const maxSizeBytes = 2 * 1024 * 1024; 
-            if (fileAuth.size > maxSizeBytes) {
-                valid = false;
-                errors.push("Taille autorisation de travail invalide (PDF, max 2 Mo).");
-            }
+            errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
 
         // Mot de passe
@@ -211,42 +198,32 @@ document.addEventListener("DOMContentLoaded", function () {
     const cvCross = document.getElementById('cvCross');
     const pirCross = document.getElementById('pirCross');
     const pivCross = document.getElementById('pivCross');
-    const stateWorkAuthCross = document.getElementById('stateWorkAuthCross');
 
     const cvUpload = document.getElementById('cv');
     const pirUpload = document.getElementById('id_doc');
     const pivUpload = document.getElementById('id_doc_verso');
-    const stateWorkAuthUpload = document.getElementById('stateWorkAuth');
 
     const labelCV = document.getElementById('cvFileName');
     const labelPir = document.getElementById('piRectoFilename');
     const labelPiv = document.getElementById('piVersoFilename');
-    const labelStateWorkAuth = document.getElementById('stateWorkAuthFilename');
 
     cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
     pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
     pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name; pivCross.style.display = 'block';})
-    stateWorkAuthUpload.addEventListener('change', () => { if (stateWorkAuthUpload.files.length > 0) labelStateWorkAuth.innerText = stateWorkAuthUpload.files[0].name; stateWorkAuthCross.style.display = 'block';})
     cvCross.addEventListener('click', ()=>{
         labelCV.innerText = 'CV (.pdf)';
         cvUpload.value = '';
         cvCross.style.display = 'none';
     })
     pirCross.addEventListener('click', ()=>{
-        labelPir.innerText = "Pièce d'identité (recto) (.png/.jpg)";
+        labelPir.innerText = "Pièce d'identité (recto) (.png/.jpg/.pdf)";
         pirUpload.value = '';
         pirCross.style.display = 'none';
     })
     pivCross.addEventListener('click', ()=>{
-        labelPiv.innerText = "Pièce d'identité (verso) (.png/.jpg)";
+        labelPiv.innerText = "Pièce d'identité (verso) (.png/.jpg/.pdf)";
         pivUpload.value = '';
         pivCross.style.display = 'none';
     })
-    stateWorkAuthCross.addEventListener('click', ()=>{
-        labelStateWorkAuth.innerText = "Pièce d'identité (verso) (.png/.jpg)";
-        stateWorkAuthUpload.value = '';
-        stateWorkAuthCross.style.display = 'none';
-    })
-
 });
 

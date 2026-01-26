@@ -49,6 +49,52 @@ nav > a{
     cursor: pointer;
     padding:1rem;
 }
+footer{
+    position : absolute;
+    bottom: 0;
+}
+main img {
+    height: 200px;
+    margin-bottom: 50px;
+}
+main{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+select{
+    border: 2px var(--secondary) solid;
+    color:var(--secondary);
+    border-radius: 8px;
+    padding:7px;
+    cursor:pointer;
+    background-color: transparent;
+    font-size: 20px;
+    width: 100%;
+    font-family: main-font;
+}
+button{
+    color:var(--secondary);
+    width: 330px;
+    height:50px;
+    font-size: 20px;
+    border-radius: 8px;
+    border: 2px solid var(--secondary);
+    background-color: transparent;
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+}
+button:hover{
+    background-color: var(--tertiary);
+    color:var(--primary);
+    border: none;
+}
+button:active{
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: none;
+}
 .file-upload{
     position:relative;
 }
@@ -68,29 +114,8 @@ nav > a{
     display: flex;
     justify-content: center;
 }
-main img {
-    height: 200px;
-    margin-bottom: 50px;
-}
-main{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
 .normal{
     text-align: center;
-}
-select{
-    border: 2px var(--secondary) solid;
-    color:var(--secondary);
-    border-radius: 8px;
-    padding:7px;
-    cursor:pointer;
-    background-color: transparent;
-    font-size: 20px;
-    width: 100%;
-    font-family: main-font;
 }
 .form{
     color:var(--secondary);
@@ -154,37 +179,12 @@ select{
 .checkbox label{
     margin-right: 1rem;
 }
-button{
-    color:var(--secondary);
-    width: 330px;
-    height:50px;
-    font-size: 20px;
-    border-radius: 8px;
-    border: 2px solid var(--secondary);
-    background-color: transparent;
-    transition: all 0.2s ease-out;
-    cursor: pointer;
-}
-button:hover{
-    background-color: var(--tertiary);
-    color:var(--primary);
-    border: none;
-}
-button:active{
-    background-color: var(--secondary);
-    color: var(--primary);
-    border: none;
-}
 .signin{
     gap: 20px !important;
 }
 .signin button{
     margin-top: 60px;
     margin-bottom: 0;
-}
-footer{
-    position : absolute;
-    bottom: 0;
 }
 .docin{
     padding: 15px 0px 0px 5px !important;
@@ -249,20 +249,6 @@ footer{
     background-color: var(--tertiary);
 }
 #send{width: 100%;}
-#stateWorkAuthFilename{
-    text-align: left;
-    justify-content: left;
-    align-items: center;
-}
-.showdown{
-    max-height:20px;
-    overflow: hidden;
-    transition: max-height 0.5s ease-in;
-}
-.showdown:hover{
-    height:auto;
-    max-height:80px;
-}
 .eye-contain{
     position: relative;
 }
