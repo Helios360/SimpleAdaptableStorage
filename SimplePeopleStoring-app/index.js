@@ -48,6 +48,7 @@ app.get('/legal', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/legal.htm
 app.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
+
     const results = await q(`SELECT * FROM Users WHERE email = ?`, [email]);
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
