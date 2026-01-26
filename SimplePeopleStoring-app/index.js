@@ -52,13 +52,23 @@ app.post('/login', loginLimiter, async (req, res) => {
     const results = await q(`SELECT * FROM Users WHERE email = ?`, [email]);
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
+    let staff = null;
+    if(user.is_admin){
+      const formationsRow = await q(`SELECT formation FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
+      staff = { formations : formationsRow.map(r=>r.formation) };
+    }
     const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
-    const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      is_admin: user.is_admin,
+      staff_formations: staff ? staff.formations : null
+    };
+    const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    console.log(stillTest[0].testNum);
     if (stillTest[0].testNum<=26 && !user.is_admin){
       redirectTo = '/test';
     } else if (user.is_admin){
@@ -83,12 +93,16 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
     const results = await q(`
     SELECT 
-        id, name, fname, email, city, permis, mobile, vehicule, postal, date_inscription, birth, status, tags, skills,
-        ROUND(AVG(TestAttempts.score)) AS gen_score
-      FROM Users
-      LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
-      GROUP BY Users.id
-    ;`);
+        u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.date_inscription, u.birth, u.status, u.tags, u.skills,
+        ROUND(AVG(ta.score)) AS gen_score
+      FROM Users u
+      JOIN StaffSettings ss
+      On ss.formation = u.formation
+      AND ss.staff_user_id = ?
+      LEFT JOIN TestAttempts ta
+      ON u.id = ta.user_id
+      GROUP BY u.id
+    ;`, [req.user.id]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
     res.json({ success: true, users: results});
   } catch (e) {

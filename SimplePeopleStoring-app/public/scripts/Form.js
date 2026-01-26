@@ -7,7 +7,6 @@ document.addEventListener("DOMContentLoaded", function () {
     telInput.addEventListener('input', () => {
         telInput.value = telInput.value.replace(/\s+/g, "");
     })
-
     const togglePwd = document.getElementById('pwdEye');
     togglePwd.addEventListener('click', ()=>{
         const type = password.getAttribute('type') === "password" ? "text" : "password";
@@ -19,6 +18,21 @@ document.addEventListener("DOMContentLoaded", function () {
         confirm.setAttribute('type', type);
     })
 
+    const stranger = document.getElementById('stranger');
+    let toggle = 0;
+    stranger.addEventListener('click', () => {
+        if (toggle == 0){
+            document.getElementById('doc1').style.maxHeight='0px';
+            document.getElementById('doc2').style.maxHeight='0px';
+            stranger.style.maxHeight='80px';
+            toggle = 1;
+        }else{
+            document.getElementById('doc1').style.maxHeight='40px';
+            document.getElementById('doc2').style.maxHeight='40px';
+            stranger.style.maxHeight='20px';
+            toggle = 0;
+        }
+    });
     // Vérification mot de passe et confirmation
     function checkPasswordMatch() {
         if (confirm.value === "") {
@@ -139,30 +153,41 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Fichiers
-        if (!validateFile(document.getElementById("cv"), ["pdf"], 2)) {
-            valid = false;
-            errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
-        }
-        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 3)) {
-            valid = false;
-            errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
-        }
-        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
-            valid = false;
-            errors.push("Pièce d'identité verso invalide ou manquant (JPG/PNG, max 3 Mo).");
-        }
-        const fileAuth = document.getElementById('stateWorkAuth').files[0];
+        const idRectoInput = document.getElementById("id_doc");
+        const idVersoInput = document.getElementById("id_doc_verso");
+        const workAuthInput = document.getElementById("stateWorkAuth");
+
+        // group A: both sides of ID
+        const hasIdRecto = validateFile(idRectoInput, ["jpg", "png"], 3);
+        const hasIdVerso = validateFile(idVersoInput, ["jpg", "png"], 3);
+        const hasBothIdSides = hasIdRecto && hasIdVerso;
+
+        // group B: work attestation (PDF)
+        let hasWorkAuth = false;
+        const fileAuth = workAuthInput.files[0];
         if (fileAuth) {
-            const ext = fileAuth.name.split('.').pop().toLowerCase();
-            if (ext !== "pdf") {
-                valid = false;
-                errors.push("Extension autorisation de travail invalide (PDF, max 2 Mo).");
-            }
-            const maxSizeBytes = 2 * 1024 * 1024; 
-            if (fileAuth.size > maxSizeBytes) {
-                valid = false;
-                errors.push("Taille autorisation de travail invalide (PDF, max 2 Mo).");
-            }
+        const ext = fileAuth.name.split(".").pop().toLowerCase();
+        const maxSizeBytes = 2 * 1024 * 1024;
+        if (ext === "pdf" && fileAuth.size > 0 && fileAuth.size <= maxSizeBytes) {
+            hasWorkAuth = true;
+        } else {
+            valid = false;
+            errors.push("Autorisation/attestation de travail invalide (PDF, max 2 Mo).");
+        }
+        }
+
+        // at least one group must be satisfied
+        if (!hasBothIdSides && !hasWorkAuth) {
+        valid = false;
+        errors.push(
+            "Veuillez fournir soit la pièce d'identité (recto + verso), soit l'attestation/autorisation de travail."
+        );
+        }
+
+        // if user started ID upload but incomplete
+        if (!hasWorkAuth && (hasIdRecto || hasIdVerso) && !hasBothIdSides) {
+        valid = false;
+        errors.push("Pièce d'identité incomplète : recto ET verso sont requis.");
         }
 
         // Mot de passe

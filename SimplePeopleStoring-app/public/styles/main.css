@@ -51,6 +51,9 @@ nav > a{
 }
 .file-upload{
     position:relative;
+    max-height: 40px;
+    transition: max-height 0.3s ease-in;
+    overflow: hidden!important;
 }
 .file-upload input[type="file"] {
   display: none;
@@ -67,6 +70,7 @@ nav > a{
     cursor: pointer;
     display: flex;
     justify-content: center;
+    
 }
 main img {
     height: 200px;
@@ -258,10 +262,7 @@ footer{
     max-height:20px;
     overflow: hidden;
     transition: max-height 0.5s ease-in;
-}
-.showdown:hover{
-    height:auto;
-    max-height:80px;
+    cursor: pointer;
 }
 .eye-contain{
     position: relative;

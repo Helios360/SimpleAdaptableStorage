@@ -29,6 +29,11 @@ CREATE TABLE IF NOT EXISTS Users (
     email_verify_expires DATETIME NULL,
     is_admin TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS StaffSettings (
+    staff_user_id INT NOT NULL,
+    formation ENUM('btsndrc', 'tpntc', 'fullstack', 'cybersec', 'capaepe', 'btsopticien') NOT NULL,
+    FOREIGN KEY (staff_user_id) REFERENCES Users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS Tests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     question VARCHAR(200),
