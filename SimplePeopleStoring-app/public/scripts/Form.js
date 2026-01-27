@@ -7,7 +7,6 @@ document.addEventListener("DOMContentLoaded", function () {
     telInput.addEventListener('input', () => {
         telInput.value = telInput.value.replace(/\s+/g, "");
     })
-
     const togglePwd = document.getElementById('pwdEye');
     togglePwd.addEventListener('click', ()=>{
         const type = password.getAttribute('type') === "password" ? "text" : "password";
@@ -19,6 +18,21 @@ document.addEventListener("DOMContentLoaded", function () {
         confirm.setAttribute('type', type);
     })
 
+    const stranger = document.getElementById('stranger');
+    let toggle = 0;
+    stranger.addEventListener('click', () => {
+        if (toggle == 0){
+            document.getElementById('doc1').style.maxHeight='0px';
+            document.getElementById('doc2').style.maxHeight='0px';
+            stranger.style.maxHeight='80px';
+            toggle = 1;
+        }else{
+            document.getElementById('doc1').style.maxHeight='40px';
+            document.getElementById('doc2').style.maxHeight='40px';
+            stranger.style.maxHeight='20px';
+            toggle = 0;
+        }
+    });
     // Vérification mot de passe et confirmation
     function checkPasswordMatch() {
         if (confirm.value === "") {

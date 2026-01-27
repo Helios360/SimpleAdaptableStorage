@@ -22,5 +22,4 @@ function adminOnly(req, res, next) {
   }
   next();
 }
-
 module.exports = { authMiddleware, adminOnly };
