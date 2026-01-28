@@ -19,11 +19,8 @@
     <meta property="og:type" content="website">
 </head>
 <body>
-    <header>
-        <a id="toggle-theme"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/></svg></a>
-    </header>
+    <header id="header"></header>
     <main>
-        <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
         <form action="/submit-form" data-ajax method="POST" enctype="multipart/form-data" class="form" novalidate>
             <div class="register">
                 <div>
@@ -56,7 +53,7 @@
                     <input type="text" id="addr" name="addr" required>
                 </div>
                 <div>
-                    <label for="city">Ville/Village</label>
+                    <label for="city">Ville/Village *</label>
                     <input type="text" id="city" name="city" required>
                 </div>
                 <div>
@@ -76,12 +73,20 @@
                         <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
                     </li>
+                    <span class="checks">
+                        <input type="checkbox" id="sejour" name="sejour">
+                        <label for="sejour">J'ai un titre de séjour plutot qu'une pièce d'identité</label>
+                    </span>
+                    <div id="titre-valide">
+                        <label for="titre">Date d'invalidité du titre de séjour *</label>
+                        <input type="date" id="" name="titre" required>
+                    </div>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité / Titre de séjour (recto) *</label><span id="pirCross" class="supprFile">X</span>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) *</label><span id="pirCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité / Titre de séjour (verso) *</label><span id="pivCross" class="supprFile">X</span>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) *</label><span id="pivCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
                     </li>
                 </ul>
@@ -127,6 +132,7 @@
             </div>
         </form>
     </main>
+    <div id="footer"></div>
 </body>
 <script src="/scripts/Main.js" defer></script>
 <script src="scripts/Form.js" defer></script>

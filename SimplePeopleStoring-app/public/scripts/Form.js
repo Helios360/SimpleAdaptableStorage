@@ -18,18 +18,16 @@ document.addEventListener("DOMContentLoaded", function () {
         confirm.setAttribute('type', type);
     })
 
-    const stranger = document.getElementById('stranger');
+    const sejour = document.getElementById('sejour');
+            document.getElementById('titre-valide').style.maxHeight='0px';
+
     let toggle = 0;
-    stranger.addEventListener('click', () => {
+    sejour.addEventListener('click', () => {
         if (toggle == 0){
-            document.getElementById('doc1').style.maxHeight='0px';
-            document.getElementById('doc2').style.maxHeight='0px';
-            stranger.style.maxHeight='80px';
+            document.getElementById('titre-valide').style.maxHeight='0px';
             toggle = 1;
         }else{
-            document.getElementById('doc1').style.maxHeight='40px';
-            document.getElementById('doc2').style.maxHeight='40px';
-            stranger.style.maxHeight='20px';
+            document.getElementById('titre-valide').style.maxHeight='60px';
             toggle = 0;
         }
     });
@@ -240,4 +238,3 @@ document.addEventListener("DOMContentLoaded", function () {
         pivCross.style.display = 'none';
     })
 });
-

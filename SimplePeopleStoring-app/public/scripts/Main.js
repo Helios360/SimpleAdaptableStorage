@@ -1,4 +1,8 @@
-const button = document.getElementById('toggle-theme');
+async function loadComponents(id, file){
+    const res = await fetch('/components/' + file);
+    document.getElementById(id).innerHTML = await res.text();
+}
+
 const root = document.documentElement;
 
 function applyTheme(isDark) {
@@ -13,15 +17,22 @@ function applyTheme(isDark) {
         root.style.setProperty('--tertiary', '#1c1c68');
     }
 }
-window.addEventListener('DOMContentLoaded', () => { applyTheme(localStorage.getItem('dark') === 'true'); });
 
-button.addEventListener('click', () => {
-    const isDark = localStorage.getItem('dark') === 'true' || false;
-    const newTheme = !isDark;
-    localStorage.setItem('dark', newTheme.toString());
-    applyTheme(newTheme);
-});
-
+function constructTheme() { 
+    const button = document.getElementById('toggle-theme'); 
+    if (!button) return; 
+    applyTheme(localStorage.getItem('dark') === 'true'); 
+    button.addEventListener('click', () => { 
+        const isDark = localStorage.getItem('dark') === 'true' || false; 
+        const newTheme = !isDark; localStorage.setItem('dark', newTheme.toString()); 
+        applyTheme(newTheme); 
+    }); 
+}
+(async function init(){ 
+    await loadComponents('footer', "footer.html");
+    await loadComponents('header', "header.html");
+    constructTheme();
+})();
 function notif(message){
     const popup = document.createElement('div');
     popup.className="popup";
@@ -108,3 +119,4 @@ async function api(url, opts = {}){
         throw err;
     }
 }
+

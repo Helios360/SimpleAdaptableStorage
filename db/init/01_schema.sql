@@ -26,7 +26,12 @@ CREATE TABLE IF NOT EXISTS Users (
     email_verified TINYINT(1) NOT NULL DEFAULT 0,
     email_verify_token VARCHAR(64) NULL,
     email_verify_expires DATETIME NULL,
-    is_admin TINYINT DEFAULT 0
+    role TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS Formations (
+    id AUTO_INCREMENT INT NOT NULL,
+    code VARCHAR(50),
+    name VARCHAR(100),
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS StaffSettings (
     staff_user_id INT NOT NULL,
@@ -49,3 +54,11 @@ CREATE TABLE IF NOT EXISTS TestAttempts (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (test_id) REFERENCES Tests(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO Formations ( code, name ) VALUES
+('bts_ndrc', 'BTS NDRC'),
+('tp_ntc', 'TP NTC'),
+('dev_web_fs', 'Dev Web Fullstack'),
+('bts_gpme', 'BTS BPME'),
+('cap_aepe', 'CAP AEPE'),
+('bts_optique', 'BTS Opticien Lunetier');

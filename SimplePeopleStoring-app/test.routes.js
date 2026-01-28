@@ -22,7 +22,7 @@ router.get('/api/test/next', authMiddleware, async (req, res) => {
     const servType = (bucket % 3) + 1;
     // a completed test flag is not used yet, but it should be for when we'll choose to not send the same exercice twice
     const testResults = await q(`SELECT id,question,type,difficulty FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
-    if (testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
+    if (testResults.length === 0) return res.status(404).json({ success: false, message: "Aucun tests disponible pour l'instant" });
     return res.status(200).json({ success: true, test: testResults[0], count: type});
   } catch (e) {
     console.error('DB error on random test fetch: ', e);
