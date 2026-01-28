@@ -27,7 +27,6 @@ start.addEventListener('click', async () => {
       const test = data.test;
       localStorage.setItem('current_test_id', test.id);
       localStorage.setItem('current_test_type', test.type);
-      console.log("New test fetched:", test);
       document.getElementById('test_count').innerText = data.count;
       document.getElementById('question').innerText = test.question;
       popup?.remove();

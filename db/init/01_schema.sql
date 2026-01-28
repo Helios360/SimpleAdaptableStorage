@@ -22,11 +22,12 @@ CREATE TABLE IF NOT EXISTS Users (
     consent TINYINT(1) NOT NULL DEFAULT 0,
     terms_version INT NOT NULL,
     status ENUM('active', 'recherche', 'entreprise', 'archive') NOT NULL DEFAULT 'recherche',
-    formation ENUM('btsndrc', 'tpntc', 'fullstack', 'cybersec', 'capaepe', 'btsopticien') NOT NULL,
+    formation_id INT NOT NULL;
     email_verified TINYINT(1) NOT NULL DEFAULT 0,
     email_verify_token VARCHAR(64) NULL,
     email_verify_expires DATETIME NULL,
-    role TINYINT DEFAULT 0
+    role TINYINT DEFAULT 0,
+    FOREIGN KEY (formation_id) REFERENCES Formations(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS Formations (
     id AUTO_INCREMENT INT NOT NULL,
@@ -35,8 +36,9 @@ CREATE TABLE IF NOT EXISTS Formations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS StaffSettings (
     staff_user_id INT NOT NULL,
-    formation ENUM('btsndrc', 'tpntc', 'fullstack', 'cybersec', 'capaepe', 'btsopticien') NOT NULL,
+    formation_id INT NOT NULL,
     FOREIGN KEY (staff_user_id) REFERENCES Users(id) ON DELETE CASCADE
+    FOREIGN KEY (formation_id) REFERENCES Formations(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS Tests (
     id INT AUTO_INCREMENT PRIMARY KEY,
