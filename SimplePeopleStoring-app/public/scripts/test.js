@@ -3,8 +3,9 @@ const submit = document.getElementById('submit')
 const start = document.getElementById('launch-test');
 const popup = document.getElementById('popup');
 const loader = document.getElementById('loader');
+const mainContent = document.getElementById('main');  
 async function redirectAfterDelay(data) {
-  notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous êtes arrété... Redirection ...');
+  notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous en êtes arrété... Redirection ...');
   await wait(3000);
   window.location.href = '/profile';
 }
@@ -13,6 +14,7 @@ function setLoading(isLoading){
   submit.style.pointerEvents = isLoading ? 'none' : 'auto';
   start.style.pointerEvents = isLoading ? 'none' : 'auto';
   document.body.style.cursor = isLoading ? 'wait' : 'default';
+  mainContent.style.opacity = isLoading ? '0.5' : '1';
 }
 // === Step 1: Launch test (only fetch)
 start.addEventListener('click', async () => {

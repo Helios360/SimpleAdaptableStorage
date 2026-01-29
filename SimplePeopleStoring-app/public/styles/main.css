@@ -288,6 +288,11 @@ button:active{
     transform: translateY(-50%);
     pointer-events: auto;
     cursor: pointer;
+    height: 20px;
+    width: 20px;
+}
+.eye path:first-child {
+    display: none;
 }
 .supprFile{
     position: absolute;

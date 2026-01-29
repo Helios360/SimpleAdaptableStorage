@@ -10,19 +10,28 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 router.get('/api/test/next', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.id;
+    const userType = req.user.user_type;
     const historyResults = await q('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId]);
     // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
     // difficulty = (1 : easy; 2 : medium; 3 : hard)
     const cnt = Number(historyResults?.[0]?.cnt ?? 0) || 0;
     const type = cnt + 1;
-    
-    if(Number(type) > 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
-    const cycleIndex = type % 27;
-    const bucket = Math.floor(cycleIndex / 3);
-    const servType = (bucket % 3) + 1;
-    // a completed test flag is not used yet, but it should be for when we'll choose to not send the same exercice twice
-    const testResults = await q(`SELECT id,question,type,difficulty FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
-    if (testResults.length === 0) return res.status(404).json({ success: false, message: "Aucun tests disponible pour l'instant" });
+    let testResults = [];
+    // Different test itterators depending on the formation
+    if (userType == "dev_web_fs" || userType == "si_cybersec_expert") {
+      if(Number(type) > 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
+      const cycleIndex = type % 27;
+      const bucket = Math.floor(cycleIndex / 3);
+      const servType = (bucket % 3) + 1;
+      // a completed test flag is not used yet, but it should be for when we'll choose to not send the same exercice twice
+      testResults = await q(`SELECT id,question,type,difficulty FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
+      if (testResults.length === 0) return res.status(404).json({ success: false, message: "Aucun tests disponible pour l'instant" });
+    } else {
+      if(Number(type) > 15) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
+      testResults = await q(`SELECT id,question,type,difficulty FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[3]);
+      if (testResults.length === 0) return res.status(404).json({ success: false, message: "Aucun tests disponible pour l'instant" });
+
+    }
     return res.status(200).json({ success: true, test: testResults[0], count: type});
   } catch (e) {
     console.error('DB error on random test fetch: ', e);
@@ -105,7 +114,7 @@ router.post('/api/test/response', authMiddleware, async (req, res) => {
     try { ({ score } = JSON.parse(raw)); }
     catch { score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10))); }
     
-    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [req.user.id, testId, answer, score]);
+    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [req.user.id, testId, answer.trim().replace(/[\r\n]+/g, ' '), score]);
     res.json({ success: true, score });
   } catch (e) {
     console.error('Test/Response Error: ', e);

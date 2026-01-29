@@ -42,7 +42,7 @@ POUR TOUT RESET :
 sudo rm -rf dev
 sudo docker compose down -v --remove-orphans
 sudo docker compose up --build -d
-
+(en dev) sudo docker compose -f docker-compose.override.yml up --build -d
 Pour créer des tests:
 CREATE TABLE IF NOT EXISTS Tests (
     id INT AUTO_INCREMENT PRIMARY KEY,

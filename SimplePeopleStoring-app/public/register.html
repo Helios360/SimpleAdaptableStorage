@@ -24,12 +24,15 @@
         <form action="/submit-form" data-ajax method="POST" enctype="multipart/form-data" class="form" novalidate>
             <div class="register">
                 <div>
-                    <label for="formation">Formation *</label>
-                    <select id="formation" name="formation" required>
-                        <option value="btsndrc">BTS NDRC</option>
-                        <option value="tpntc">TP NTC</option>
-                        <option value="fullstack">Developpeur Web Full Stack</option>
-                        <option value="cybersec">Expert en systeme d'information</option>
+                    <label for="formation_id">Formation *</label>
+                    <select id="formation_id" name="formation_id" required>
+                        <option value="1">BTS NDRC</option>
+                        <option value="2">TP NTC</option>
+                        <option value="3">Developpeur Web Full Stack</option>
+                        <option value="4">Expert en systeme d'information</option>
+                        <option value="5">BTS GPME</option>
+                        <option value="6">CAP AEPE</option>
+                        <option value="7">BTS opticien lunettier</option>
                     </select>
                 </div>
                 <div>
@@ -50,15 +53,15 @@
                 </div>
                 <div>
                     <label for="adresse">Adresse</label>
-                    <input type="text" id="addr" name="addr" required>
+                    <input type="text" id="addr" name="addr">
+                </div>
+                <div>
+                    <label for="postal">Code Postal</label>
+                    <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}">
                 </div>
                 <div>
                     <label for="city">Ville/Village *</label>
                     <input type="text" id="city" name="city" required>
-                </div>
-                <div>
-                    <label for="postal">Code Postal</label>
-                    <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}" required>
                 </div>
                 <div>
                     <label for="birth">Date de naissance *</label>
@@ -79,14 +82,14 @@
                     </span>
                     <div id="titre-valide">
                         <label for="titre">Date d'invalidité du titre de séjour *</label>
-                        <input type="date" id="" name="titre" required>
+                        <input type="date" id="titre-sejour" name="titre">
                     </div>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) *</label><span id="pirCross" class="supprFile">X</span>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) *</label><span id="pivCross" class="supprFile">X</span>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
                         <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
                     </li>
                 </ul>
@@ -108,8 +111,15 @@
                     <label for="password">Mot de passe *</label>
                     <span class="eye-contain">
                         <input class="inputs" type="password" id="password" name="password" required>
-                        <svg id="pwdEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
-                            <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                        <svg id="pwdEye" viewbox="0 0 1200 1200" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
+                            <path id="pwdHide" fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                            <path id="pwdShow"
+                                fill-rule="evenodd"
+                                clip-rule="evenodd"
+                                transform="scale(80)"
+                                d="M14.7649 6.07595C14.9991 6.22231 15.0703 6.53078 14.9239 6.76495C14.4849 7.46742 13.9632 8.10644 13.3702 8.66304L14.5712 9.86405C14.7664 10.0593 14.7664 10.3759 14.5712 10.5712C14.3759 10.7664 14.0593 10.7664 13.8641 10.5712L12.6011 9.30816C11.8049 9.90282 10.9089 10.3621 9.93374 10.651L10.383 12.3276C10.4544 12.5944 10.2961 12.8685 10.0294 12.94C9.76266 13.0115 9.4885 12.8532 9.41703 12.5864L8.95916 10.8775C8.48742 10.958 8.00035 10.9999 7.5 10.9999C6.99964 10.9999 6.51257 10.958 6.04082 10.8775L5.58299 12.5864C5.51153 12.8532 5.23737 13.0115 4.97063 12.94C4.7039 12.8685 4.5456 12.5944 4.61706 12.3277L5.06624 10.651C4.09111 10.3621 3.19503 9.90281 2.3989 9.30814L1.1359 10.5711C0.940638 10.7664 0.624058 10.7664 0.428797 10.5711C0.233537 10.3759 0.233537 10.0593 0.428797 9.86404L1.62982 8.66302C1.03682 8.10643 0.515113 7.46742 0.0760677 6.76495C-0.0702867 6.53078 0.000898544 6.22231 0.235064 6.07595C0.46923 5.9296 0.777703 6.00078 0.924057 6.23495C1.40354 7.00212 1.989 7.68056 2.66233 8.2427C2.67315 8.25096 2.6837 8.25971 2.69397 8.26897C4.00897 9.35527 5.65536 9.9999 7.5 9.9999C10.3078 9.9999 12.6563 8.50629 14.0759 6.23495C14.2223 6.00078 14.5308 5.9296 14.7649 6.07595Z"
+                                fill="var(--secondary)"
+                            />
                         </svg>
                     </span>
                 </div>
@@ -117,8 +127,15 @@
                     <label for="confirm">Confirmer le mot de passe *</label>
                     <span class="eye-contain">
                         <input class="inputs" type="password" id="confirm" name="confirm" required>
-                        <svg id="confirmEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
-                            <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                        <svg id="confirmEye" viewbox="0 0 1200 1200" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
+                            <path id="confirmHide" fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
+                            <path id="confirmShow"
+                                fill-rule="evenodd"
+                                clip-rule="evenodd"
+                                transform="scale(80)"
+                                d="M14.7649 6.07595C14.9991 6.22231 15.0703 6.53078 14.9239 6.76495C14.4849 7.46742 13.9632 8.10644 13.3702 8.66304L14.5712 9.86405C14.7664 10.0593 14.7664 10.3759 14.5712 10.5712C14.3759 10.7664 14.0593 10.7664 13.8641 10.5712L12.6011 9.30816C11.8049 9.90282 10.9089 10.3621 9.93374 10.651L10.383 12.3276C10.4544 12.5944 10.2961 12.8685 10.0294 12.94C9.76266 13.0115 9.4885 12.8532 9.41703 12.5864L8.95916 10.8775C8.48742 10.958 8.00035 10.9999 7.5 10.9999C6.99964 10.9999 6.51257 10.958 6.04082 10.8775L5.58299 12.5864C5.51153 12.8532 5.23737 13.0115 4.97063 12.94C4.7039 12.8685 4.5456 12.5944 4.61706 12.3277L5.06624 10.651C4.09111 10.3621 3.19503 9.90281 2.3989 9.30814L1.1359 10.5711C0.940638 10.7664 0.624058 10.7664 0.428797 10.5711C0.233537 10.3759 0.233537 10.0593 0.428797 9.86404L1.62982 8.66302C1.03682 8.10643 0.515113 7.46742 0.0760677 6.76495C-0.0702867 6.53078 0.000898544 6.22231 0.235064 6.07595C0.46923 5.9296 0.777703 6.00078 0.924057 6.23495C1.40354 7.00212 1.989 7.68056 2.66233 8.2427C2.67315 8.25096 2.6837 8.25971 2.69397 8.26897C4.00897 9.35527 5.65536 9.9999 7.5 9.9999C10.3078 9.9999 12.6563 8.50629 14.0759 6.23495C14.2223 6.00078 14.5308 5.9296 14.7649 6.07595Z"
+                                fill="var(--secondary)"
+                            />
                         </svg>
                     </span>
                 </div>
@@ -132,7 +149,7 @@
             </div>
         </form>
     </main>
-    <div id="footer"></div>
+    <footer id="footer"></footer>
 </body>
 <script src="/scripts/Main.js" defer></script>
 <script src="scripts/Form.js" defer></script>

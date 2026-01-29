@@ -37,21 +37,21 @@ router.post('/submit-form', (req, res) => {
   form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error('Formidable error: ', err);
-      return res.status(400).send('Form parsing error');
+      return res.status(400).send('Impossible de parser le formulaire');
     }
     try {
       const {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
-        postal, birth, password, consent, formation,
+        postal, birth, password, consent, formation_id,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !birth || !consent) return res.status(400).send('Missing required fields');
+      if (!email || !password || !name || !tel || !birth || !consent || !formation_id) return res.status(400).send('Champs de formulaire manquants');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
       const f_cv = files.cv?.[0] || null;
       const f_idr = files.id_doc?.[0] || null;
       const f_idv = files.id_doc_verso?.[0] || null;
-      const [cvTmpAbs, idrTmpAbs, idvTmpAbs, swaTmpAbs] = await Promise.all([
+      const [cvTmpAbs, idrTmpAbs, idvTmpAbs] = await Promise.all([
         copyInto(f_cv, tmpDir),
         copyInto(f_idr, tmpDir),
         copyInto(f_idv, tmpDir),
@@ -59,11 +59,11 @@ router.post('/submit-form', (req, res) => {
 
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation_id];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -252,7 +252,10 @@ router.post('/api/profile', authMiddleware, async (req, res) => {
     return res.status(500).json({ success: false, message: 'DB Error . . .' });
   }
 });
-
+// ------------------------- READ > PROFILE === ADMINS ------------------------- //
+router.get('/api/admin-profile', authMiddleware, async (req, res) => {
+  res.json({success: true, user:req.user });
+});
 // ------------------------- READ > FILE === USERS ------------------------- //
 router.get('/api/me/files/:kind', authMiddleware, allowIframeSelf, async (req, res) => {
   try {

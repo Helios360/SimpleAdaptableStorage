@@ -56,14 +56,17 @@ app.post('/login', loginLimiter, async (req, res) => {
     if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     let staff = null;
     if(user.is_admin){
-      const formationsRow = await q(`SELECT formation FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
-      staff = { formations : formationsRow.map(r=>r.formation) };
+      const formationsRow = await q(`SELECT formation_id FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
+      staff = { formations : formationsRow.map(r=>r.formation_id) };
     }
+    const userTypeRows = await q('SELECT F.id FROM Formations F JOIN Users U ON U.formation_id = F.id WHERE U.id = ?', [user.id]);
+    const userType = userTypeRows[0]?.id || null;
     const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
     const tokenPayload = {
       id: user.id,
       email: user.email,
       name: user.name,
+      user_type: userType,
       is_admin: user.is_admin,
       staff_formations: staff ? staff.formations : null
     };
@@ -97,14 +100,14 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
         ROUND(AVG(ta.score)) AS gen_score
       FROM Users u
       JOIN StaffSettings ss
-      On ss.formation = u.formation
+      On ss.formation_id = u.formation_id
       AND ss.staff_user_id = ?
       LEFT JOIN TestAttempts ta
       ON u.id = ta.user_id
       GROUP BY u.id
     ;`, [req.user.id]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
-    res.json({ success: true, users: results});
+    res.json({ success: true, users: results });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
     res.status(500).json({success: false, message: "DB Error . . ."});

@@ -4,6 +4,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const confirm = document.getElementById("confirm");
     const message = document.getElementById("password-message")
     const telInput = document.getElementById('tel');
+    const titreInput = document.getElementById('titre-sejour');
+
+    const cvCross = document.getElementById('cvCross');
+    const pirCross = document.getElementById('pirCross');
+    const pivCross = document.getElementById('pivCross');
+    const cvUpload = document.getElementById('cv');
+    const pirUpload = document.getElementById('id_doc');
+    const pivUpload = document.getElementById('id_doc_verso');
+    const labelCV = document.getElementById('cvFileName');
+    const labelPir = document.getElementById('piRectoFilename');
+    const labelPiv = document.getElementById('piVersoFilename');
+
+    const confirmShow = document.getElementById('confirmShow');
+    const confirmHide = document.getElementById('confirmHide');
+
+    const pwdShow = document.getElementById('pwdShow');
+    const pwdHide = document.getElementById('pwdHide');
+
     telInput.addEventListener('input', () => {
         telInput.value = telInput.value.replace(/\s+/g, "");
     })
@@ -11,24 +29,37 @@ document.addEventListener("DOMContentLoaded", function () {
     togglePwd.addEventListener('click', ()=>{
         const type = password.getAttribute('type') === "password" ? "text" : "password";
         password.setAttribute('type', type);
+
+        pwdShow.style.display === "none"
+            ? (pwdShow.style.display = "block", pwdHide.style.display = "none")
+            : (pwdShow.style.display = "none", pwdHide.style.display = "block"); 
     })
     const toggleConf = document.getElementById('confirmEye');
     toggleConf.addEventListener('click', ()=>{
         const type = confirm.getAttribute('type') === "password" ? "text" : "password";
         confirm.setAttribute('type', type);
+
+        confirmShow.style.display === "none"
+            ? (confirmShow.style.display = "block", confirmHide.style.display = "none")
+            : (confirmShow.style.display = "none", confirmHide.style.display = "block"); 
     })
 
     const sejour = document.getElementById('sejour');
-            document.getElementById('titre-valide').style.maxHeight='0px';
+    document.getElementById('titre-valide').style.maxHeight='0px';
 
-    let toggle = 0;
-    sejour.addEventListener('click', () => {
-        if (toggle == 0){
+    sejour.addEventListener('change', () => {
+        if (!sejour.checked){
             document.getElementById('titre-valide').style.maxHeight='0px';
             toggle = 1;
-        }else{
+            labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
+            titreInput.ariaDisabled;
+        } else {
             document.getElementById('titre-valide').style.maxHeight='60px';
             toggle = 0;
+            labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
+            titreInput.ariaRequired;
         }
     });
     // Vérification mot de passe et confirmation
@@ -63,12 +94,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const regex = /^0[1-9][0-9]{8}$/;
         return regex.test(normalize);
     }
+    /*
     function validatePostal(postal) {
         if (typeof postal !== 'string') return false;
         const normalize = postal.replace(/\s+/g, "");
         const regex = /^(0[1-9]|[1-8][0-9]|9[0-8])[0-9]{3}$/;
         return regex.test(normalize);
     }
+    */
     // Vérification nom/prénom (lettres uniquement)
     function validateName(name) {
         const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s\-]+$/;
@@ -150,16 +183,21 @@ document.addEventListener("DOMContentLoaded", function () {
             errors.push("Vous devez avoir au moins 18 ans.");
         }
 
+        // Titre de Séjour
+        if (sejour.checked && !titreInput.value){
+            valid = false;
+            errors.push("Date d'invalidité du titre de séjour obligatoire.");
+        }
         // Fichiers
-        if (!validateFile(document.getElementById("cv"), ["pdf"], 2)) {
+        if (!validateFile(cvUpload, ["pdf"], 2)) {
             valid = false;
             errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 3)) {
+        if (!validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
             errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
+        if (!validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
             errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
@@ -198,26 +236,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 else notif(data.message || 'Login failed');
             }
         } catch (e) {
-            if(e.status === 409){
+            if(e && e.status === 409){
                 const emailInput = form.querySelector('#email');
                 if (emailInput) {
                     emailInput.classList.add('is-invalid');
                     emailInput.focus();
                 }
-            }
+            } else notifAlert('Erreur serveur, réessayez.');
         }
     });
-    const cvCross = document.getElementById('cvCross');
-    const pirCross = document.getElementById('pirCross');
-    const pivCross = document.getElementById('pivCross');
-
-    const cvUpload = document.getElementById('cv');
-    const pirUpload = document.getElementById('id_doc');
-    const pivUpload = document.getElementById('id_doc_verso');
-
-    const labelCV = document.getElementById('cvFileName');
-    const labelPir = document.getElementById('piRectoFilename');
-    const labelPiv = document.getElementById('piVersoFilename');
 
     cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
     pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
