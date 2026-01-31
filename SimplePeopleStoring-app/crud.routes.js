@@ -243,7 +243,7 @@ router.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res
 router.post('/api/profile', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
+    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills,formation_id FROM Users WHERE email = ? LIMIT 1', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
     res.json({ success: true, user });
@@ -371,5 +371,69 @@ router.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
     }
   });
 });
+
+// ------------------------- UPDATE > FILE === ADMINS ------------------------- //
+router.post('/api/admin/upload/:id/:kind', authMiddleware, adminOnly, async (req,res)=>{
+  const userId = String(req.params.id || '').trim();
+  const kind = String(req.params.kind || '').trim();
+  if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
+  const userFolder = userDir(userId);
+  await fs.mkdir(userFolder, {recursive : true});
+  try {
+    const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[userId]);
+    const current = results[0]?.[kind];
+    if (current){
+      const oldAbs = toAbsFromStored(current);
+      try { await fs.unlink(oldAbs);} 
+      catch (e) {if (e.code !== 'ENOENT') console.warn('Old file delete error: ', e);}
+    }
+  } catch (e) {
+    console.error('Pre check error: ', e);
+    return res.status(500).json({success: false, message: 'Server Upload Error'});
+  }
+  const form = formidable({
+    uploadDir: userFolder,
+    keepExtensions: true,
+    multiples: false,
+    maxFileSize: 10 * 1024 * 1024,
+    filter: ({mimetype, originalFilename}) => {
+      const ext = path.extname(originalFilename || '').toLowerCase();
+      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
+    },
+    filename: (name, ext, part, form) => {
+      const lowerExt = (ext || path.extname(name || '')).toLowerCase();
+      return `u_${userId}_${kind}_${crypto.randomUUID()}${lowerExt}`;
+    }
+  });
+
+  form.parse(req, async (err, fields, files) => {
+    if(err){
+      console.error('Formidable error: ', err);
+      return res.status(400).json({success: false, message: "Bad upload"});
+    }
+    const f = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!f) return res.status(400).json({success: false, message: 'No file'});
+    const ext = path.extname(f.originalFilename || '').toLowerCase();
+    if (!ALLOWED_MIME.has(f.mimetype) || !ALLOWED_EXT.has(ext)) {
+      return res.status(415).json({success: false, message: 'Unsupported file type'});
+    }
+    try{
+      if(kind == 'cv' && ext === '.pdf'){
+        const tempWatermarked = f.filepath.replace(/\.pdf$/, '_wm.pdf');
+        const success = await addWatermark(f.filepath, tempWatermarked);
+        if (success) await fs.rename(tempWatermarked, f.filepath);
+      }
+      const storedPath = relFromAbs(f.filepath);
+      await q(`UPDATE Users SET ${kind}=? WHERE id=?`, [storedPath, userId]);
+      return res.json({success: true, path : storedPath});
+    } catch (e) {
+      console.error('Path Upload DIR Error: ', e);
+      return res.status(500).json({success: false, message: 'Server Path Upload Error'});
+    }
+  });
+});
+
+
+
 
 module.exports = router;

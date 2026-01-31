@@ -1,5 +1,10 @@
 const nodemailer = require('nodemailer');
 
-// can't begin this script until I get access to the fucking smtp server goddamnit
+app.post('/resetPwd', loginLimiter, async (req, res) => {
+    try{
 
-// well i could but i like things to work when i'm working on it
+    } catch (e){
+        console.error('mailing error: ', e);
+        res.status(500).json({succes: false, message: 'Server Error . . .'})
+    }
+})

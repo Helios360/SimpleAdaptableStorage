@@ -20,23 +20,17 @@
 <body>
     <header id="header"></header>
     <main>
-        <img src="/sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-        <form action="/login" method="POST" class="form" id="sub">
-            <div class="signin">
+        <h3>Réinitialisez votre mot de passe en entrant votre adresse email ci-dessous afin de recevoir un mail (n'oubliez pas de regarder vos spams)</h3>
+
+        <form action="/resetPwd" method="POST" class="form" id="sub">
+            <div class="forgot">
                 <label for="email"></label>
                 <input class="inputs" type="email" id="email" name="email" placeholder="Email . . ." required>
-                <label for="password"></label>
-                <input class="inputs" type="password" id="password" name="password" placeholder="Mot de passe . . ." required>
                 <button type="submit">Envoyer</button>
-                <span>
-                    <a href="register.html"><u>Créer un compte</u></a>
-                    <a href="resetPwd.html"><u>Mot de passe oublié ?</u></a>
-            </span>
             </div>
         </form>
     </main>
     <footer id="footer"></footer>
 </body>
 <script src="/scripts/Main.js" defer></script>
-<script src="/scripts/login.js" defer></script>
 </html>

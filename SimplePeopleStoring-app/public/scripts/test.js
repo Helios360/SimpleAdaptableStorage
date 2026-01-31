@@ -44,7 +44,6 @@ start.addEventListener('click', async () => {
 // === Step 2: Submit test
 submit.addEventListener("click", async event => {
   event.preventDefault();
-
   const answerText = answer.value;
   const testId = localStorage.getItem('current_test_id');
   const type = localStorage.getItem('current_test_type');

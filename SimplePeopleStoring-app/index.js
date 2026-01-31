@@ -33,7 +33,7 @@ app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100 // max 100 requests per 15 minutes
 }));
-const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false});
+const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
 
 // === HTML Routes ===
 app.get('/', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/index.html')));
@@ -54,11 +54,13 @@ app.post('/login', loginLimiter, async (req, res) => {
     const user = results[0];
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
-    let staff = null;
+
+    let staff_formations = null;
     if(user.is_admin){
-      const formationsRow = await q(`SELECT formation_id FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
-      staff = { formations : formationsRow.map(r=>r.formation_id) };
+      const rows = await q(`SELECT formation_id FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
+      staff_formations = rows.map(r=>Number(r.formation_id));
     }
+
     const userTypeRows = await q('SELECT F.id FROM Formations F JOIN Users U ON U.formation_id = F.id WHERE U.id = ?', [user.id]);
     const userType = userTypeRows[0]?.id || null;
     const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
@@ -68,7 +70,7 @@ app.post('/login', loginLimiter, async (req, res) => {
       name: user.name,
       user_type: userType,
       is_admin: user.is_admin,
-      staff_formations: staff ? staff.formations : null
+      staff_formations
     };
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
