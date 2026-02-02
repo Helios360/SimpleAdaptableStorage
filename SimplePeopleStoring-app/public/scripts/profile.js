@@ -163,6 +163,9 @@ if (data.success) {
     if (user.tags !== undefined) {
         currentTags = Array.isArray(user.tags) ? user.tags : JSON.parse(user.tags || '[]');
         document.getElementById('tagsWrapper').style.display = 'flex';
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            api(`/api/admin/reset/${user.id}`, { method: "DELETE"});
+        })
     } else {
         currentTags = [];
         document.getElementById('tagsWrapper').style.display = 'none';

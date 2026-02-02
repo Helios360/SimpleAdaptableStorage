@@ -239,6 +239,11 @@ router.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res
   catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
 });
 
+// ------------------------- RESET > USER === ADMINS ------------------------- //
+router.delete('/api/admin/reset/:id', authMiddleware, adminOnly, async (req, res) => {
+  try{ await q(`DELETE FROM TestAttempts WHERE user_id = ?`, [req.params.id]);}
+  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't reset user's test"});}
+});
 // ------------------------- READ > PROFILE === USERS ------------------------- //
 router.post('/api/profile', authMiddleware, async (req, res) => {
   try{

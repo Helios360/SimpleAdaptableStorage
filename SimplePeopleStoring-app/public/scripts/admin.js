@@ -652,5 +652,8 @@ skills.addEventListener('change', () => {
 
 document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search-form').reset();
+  currentTags = [];
+  currentSkills = [];
+  renderTagsAndSkills();
   renderUser(allUsers);
 })
