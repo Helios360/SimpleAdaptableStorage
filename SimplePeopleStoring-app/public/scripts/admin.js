@@ -73,8 +73,8 @@ function sortUsers(by, ascending = true) {
       valB = new Date(valB);
     }
     if (by === "gen_score") {
-      valA = Number(valA);
-      valB = Number(valB);
+      valA = (valA === null || valA === undefined || valA === "") ? -Infinity : Number(valA);
+      valB = (valB === null || valB === undefined || valB === "") ? -Infinity : Number(valB);
       if (isNaN(valA)) valA = -Infinity;
       if (isNaN(valB)) valB = -Infinity;
     }
@@ -167,11 +167,11 @@ fetch('/api/admin-panel', { method: 'POST'})
           if(isRotated == false) {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("localisation",true);
+            sortUsers("city",true);
           } else {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("localisation",false);
+            sortUsers("city",false);
           }
         }
       }
@@ -231,11 +231,6 @@ fetch('/api/admin-panel', { method: 'POST'})
   }
 })
 .catch(err => { console.error('Error fetching users:', err); });
-
-document.getElementById('reset').addEventListener('click', ()=>{
-  document.getElementById('search-form').reset();
-  renderUser(allUsers);
-})
 
 function filterUsers() {
   const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
@@ -653,3 +648,9 @@ skills.addEventListener('change', () => {
     }
     skills.value = '';
 });
+
+
+document.getElementById('reset').addEventListener('click', ()=>{
+  document.getElementById('search-form').reset();
+  renderUser(allUsers);
+})
