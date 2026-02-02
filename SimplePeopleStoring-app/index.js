@@ -3,12 +3,14 @@ const { authMiddleware, adminOnly } = require('./controllers/authControl');
 const app = express();
 const path = require('path');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q } = require('./helpers.js')
+const { BASE_DIR, q } = require('./helpers');
+const { sendTo } = require('./mailer');
 
 app.disable('x-powered-by');
 app.use(cookieParser());
@@ -91,8 +93,6 @@ app.post('/logout', (req,res) => {
   res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', path: '/'});
   res.json({success: true});
 });
-
-
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
@@ -162,7 +162,48 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res)
     res.status(500).json({success: false, message: 'DB Error . . .'});
   }
 });
-
+// === Send mails to students (admin) ===
+app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
+  try{
+    const { email, password } = req.body;
+    const content = `
+    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
+    <p> Veuillez vous connecter une première fois pour réinitialiser votre mot de passe et changer vos infos</p>
+    <p> Voici vos identifiants actuels </p>
+    <p> Email : ${ email }</p>
+    <p> Mot de passe :  ${ password }</p>
+    <a href="${process.env.APP_URL}signin">Cliquez-ici</a>
+    `
+    sendTo(email, 'Confirmation pour votre nouveau compte', content);
+    res.json({success: true});
+  } catch (e) {
+    console.error('Mail serving Error: ', e);
+    res.status(500).json({success: false, message: 'Mail serving Error . . .'});
+  }
+});
+// === reset password for students (user) ===
+app.post('/reset/request', authMiddleware, async (req, res) => {
+  try{
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.json({success: false, message: "Le champs email est vide"})
+    const emailExists = await q(`SELECT email, id FROM Users WHERE email = ?;`, [email]);
+    if (emailExists.lenght === 0) return res.json({success: true});
+    
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashToken()
+    const content = `
+    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
+    <p> Veuillez vous connecter une première fois pour réinitialiser votre mot de passe et changer vos infos</p>
+    <p> Voici vos identifiants actuels </p>
+    <a href="${process.env.APP_URL}">Cliquez-ici</a>
+    `
+    sendTo(email, 'Confirmation pour votre nouveau compte', content);
+    return res.json({success: true});
+  } catch (e) {
+    console.error('Mail serving Error: ', e);
+    return res.json({success: true});
+  }
+});
 app.use(crudRouter);
 app.use(testRouter);
 // === Global error handler ===
