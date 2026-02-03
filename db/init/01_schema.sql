@@ -24,16 +24,16 @@ CREATE TABLE IF NOT EXISTS Users (
     permis TINYINT(1) NOT NULL DEFAULT 0,
     vehicule TINYINT(1) NOT NULL DEFAULT 0,
     mobile TINYINT(1) NOT NULL DEFAULT 0,
-    date_inscription TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     consent TINYINT(1) NOT NULL DEFAULT 0,
     terms_version INT NOT NULL DEFAULT 1,
     status ENUM('active', 'recherche', 'entreprise', 'archive') NOT NULL DEFAULT 'recherche',
     formation_id INT NOT NULL,
     email_verified TINYINT(1) NOT NULL DEFAULT 0,
-    email_verify_token VARCHAR(64) NULL,
-    email_verify_expires DATETIME NULL,
-    is_admin TINYINT DEFAULT 0,
+    email_verify_token VARCHAR(254) NULL,
+    email_verified_at DATETIME NULL,
+    is_admin TINYINT(1) NOT NULL DEFAULT 0,
     FOREIGN KEY (formation_id) REFERENCES Formations(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS StaffSettings (

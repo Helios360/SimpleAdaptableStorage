@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q } = require('./helpers');
+const { BASE_DIR, q, validUser } = require('./helpers');
 const { sendTo } = require('./mailer');
 
 app.disable('x-powered-by');
@@ -162,7 +162,15 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res)
     res.status(500).json({success: false, message: 'DB Error . . .'});
   }
 });
-// === Send mails to students (admin) ===
+// === Check if user's mail is confirmed (user) ===
+app.post('/api/user/valid', authMiddleware, async (req, res) => {
+  const result = await validUser(req.body.email);
+  if(!result.success) return res.status(404).json({success:false, code:result.code});
+  else if(result.code === "NOT_VERIFIED") res.status(403).json({success: false, code:result.code});
+  else return res.status(200).json({success:true, code:result.code});
+})
+/*
+// === Send mails to students for account creation by admins (admin) ===
 app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
   try{
     const { email, password } = req.body;
@@ -184,10 +192,7 @@ app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
 // === reset password for students (user) ===
 app.post('/reset/request', authMiddleware, async (req, res) => {
   try{
-    const email = String(req.body.email || "").trim().toLowerCase();
-    if (!email) return res.json({success: false, message: "Le champs email est vide"})
-    const emailExists = await q(`SELECT email, id FROM Users WHERE email = ?;`, [email]);
-    if (emailExists.lenght === 0) return res.json({success: true});
+    
     
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken()
@@ -195,15 +200,21 @@ app.post('/reset/request', authMiddleware, async (req, res) => {
     <h1> Bienvenue sur votre nouvel espace étudiant </h1>
     <p> Veuillez vous connecter une première fois pour réinitialiser votre mot de passe et changer vos infos</p>
     <p> Voici vos identifiants actuels </p>
-    <a href="${process.env.APP_URL}">Cliquez-ici</a>
+    <a href="${process.env.APP_URL}resetPwd">Cliquez-ici</a>
     `
-    sendTo(email, 'Confirmation pour votre nouveau compte', content);
+    sendTo(email, 'Validation email', content);
     return res.json({success: true});
   } catch (e) {
     console.error('Mail serving Error: ', e);
     return res.json({success: true});
   }
 });
+app.post('/reset/confirm', authMiddleware, async (req, res) => {
+  try {
+    const email = 
+  }
+});
+*/
 app.use(crudRouter);
 app.use(testRouter);
 // === Global error handler ===

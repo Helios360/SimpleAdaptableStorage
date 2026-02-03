@@ -161,6 +161,16 @@ async function deleteFile(userId, action) {
   return {success: true};
 }
 
+// ------------------------- SQL EMAIL CHECK ------------------------- //
+async function validUser(userEmail){
+  const email = String(userEmail || "").trim().toLowerCase();
+  if(!email) return ({success: false, code:"EMPTY_MAIL"});
+  const rows = await q(`SELECT email_verified FROM Users WHERE email = ?;`, [email]);
+  if(rows.length === 0) return ({success:false, code:"NOT_FOUND"});
+  if(rows[0].email_verified === 0) return ({success:false, code:"NOT_VERIFIED"});
+  return {success:true, code:"VERIFIED"};
+}
+
 module.exports = {
     // === constants ===
     ALLOWED_MIME, ALLOWED_EXT, BASE_DIR, UPLOADS_ROOT, TOS_VERSION, WATERMARK_PATH,
@@ -168,5 +178,5 @@ module.exports = {
     userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark,
     // === db + ops ===
     q, db,
-    deleteUser, kindCheck, deleteFile, allowIframeSelf,
+    deleteUser, kindCheck, deleteFile, allowIframeSelf, validUser,
 };

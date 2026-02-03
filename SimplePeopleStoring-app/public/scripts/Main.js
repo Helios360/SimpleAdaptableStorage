@@ -41,7 +41,7 @@ function notif(message){
     popupContent.textContent=message;
     popup.appendChild(popupContent);
     document.body.appendChild(popup);
-    setTimeout(()=>{ popup.remove(); }, 3000);
+    setTimeout(()=>{ popup.remove(); }, 5000);
 }
 function notifAlert(message){
     const popup = document.createElement('div');
@@ -66,7 +66,7 @@ function alertChoice(message){
             <h1 style="font-size:1.5rem;">${message}</h1>
             <span>
                 <button id="yes">Je confirme</button>
-                <button id="no">Annuler et retour en arrière</button>
+                <button id="no">Plus tard</button>
             </span>
         </div>
         `
@@ -88,7 +88,7 @@ async function parseOrThrow(res){
     let body;
     try {body = isJSON? await res.json() : await res.text(); } catch {body=null;}
     if(!res.ok){
-        const msgFromJSON = isJSON && (body?.message || body?.error);
+        const msgFromJSON = isJSON && (body?.message || body?.error || body?.code);
         const msgFromHTML = !isJSON && typeof body === 'string' ? stripHTML(body).slice(0,300) : null;
         const err = new Error(msgFromJSON || msgFromHTML || 'Une erreur est survenue . . .');
         err.status = res.status;
@@ -110,12 +110,13 @@ async function api(url, opts = {}){
             headers: { 'Accept': 'application/json', ...(opts.headers || {})}, ...opts
         });
         return await parseOrThrow(res);
-    } catch(err){
+    }catch(err){
         let msg = err.message || 'Erreur réseau . . .';
-        if (err.status === 409) msg = 'Cet email est déja enregistré . . .';
+        if (err.code) msg = `Erreur: ${err.code}`;
         else if (err.status === 500) msg = 'Erreur serveur. Réessayez plus tard . . .';
+        else if (err.message) msg = err.message;
         else msg = "Erreur inconnue . . .";
-        notifAlert(msg);
+        notif(msg);
         throw err;
     }
 }

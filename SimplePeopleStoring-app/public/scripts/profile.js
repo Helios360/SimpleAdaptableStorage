@@ -37,11 +37,12 @@ fetch(fetchUrl, { method: 'POST'})
 if (data.success) {
     const user = data.user || data.student;
     targetId = user.id;
+    confirmEmail(user.email);
     if(user.formation_id) populateDatalist(document.getElementById('skillList'), getSkillsFromFormationId(user.formation_id));
     if (adminView) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
         accountDelete.addEventListener('click', async ()=>{
-            const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
+            const choice = await alertChoice(`Supprimer définitivement ${user.email} ? Cette action est irréverssible.`);
             if (choice) {
                 accountDelete.disabled = true;
                 try{
@@ -411,4 +412,28 @@ if(!adminView){
             window.location.href='/signin';
         })
     })
+}
+
+async function confirmEmail(userMail){
+    try{
+        const request = await api('/api/user/valid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:JSON.stringify({email: userMail}),
+        });
+        notif(request?.message || "OK");
+        return;
+    } catch (err) {
+        const code = err?.body?.code || err?.code || err?.message;
+        if(code === "NOT_VERIFIED"){
+            const confirmDir = await alertChoice("Veuillez confirmer votre mail pour modifier vos infos");
+            if (confirmDir?.success) {
+                notif("Rendez vous sur votre boite mail pour valider votre email");
+            } else {
+                notif("Vous pouvez toujours relancer la demande de 2FA en rafraichissant la page");
+            }
+            return;
+        }
+        throw err;
+    }
 }
