@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q, validUser } = require('./helpers');
+const { BASE_DIR, q, validUser, makeToken } = require('./helpers');
 const { sendTo } = require('./mailer');
 
 app.disable('x-powered-by');
@@ -168,7 +168,53 @@ app.post('/api/user/valid', authMiddleware, async (req, res) => {
   if(!result.success) return res.status(404).json({success:false, code:result.code});
   else if(result.code === "NOT_VERIFIED") res.status(403).json({success: false, code:result.code});
   else return res.status(200).json({success:true, code:result.code});
-})
+});
+// === send verif email to user (user) ===
+app.post('/api/user/sendVerif', authMiddleware, async (req, res) => {
+  const result = await validUser(req.body.email);
+  if (result.code === "NOT_VERIFIED") {
+    const {token, tokenHash} = makeToken();
+    const expiresAt = new Date(Date.now()+1000*60*60*24);
+    await q(`UPDATE Users SET email_verify_token=?, email_verify_expires=? WHERE email=?`, [tokenHash, expiresAt, req.body.email]);
+    const verifURL = `${process.env.APP_URL}api/auth/verifMail?token=${token}&email=${encodeURIComponent(req.body.email)}`;
+    const content =`
+    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
+    <p> Pour verifier votre compte</p>
+    <a href="${verifURL}">Cliquez-ici</a>
+    `
+    await sendTo(req.body.email, "Validez votre compte", content);
+    return res.status(200).json({success:true});
+  }
+});
+// === verif email when user clicks the mail button (user) ===
+app.get("/api/auth/verifMail", async (req, res) => {
+  const {token, email} = req.query;
+  if (!token || !email) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const rows = await q(`SELECT email_verify_token, email_verify_expires FROM Users WHERE email=?`,[email]); 
+  if (tokenHash === rows[0].email_verify_token && new Date(rows[0].email_verify_expires) > new Date()) {
+    await q(`UPDATE Users SET email_verified=1, email_verified_at=NOW(), email_verify_token=NULL, email_verify_expires=NULL WHERE email=?`, [email]);
+  } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
+  return res.status(200).json({success:true});
+});
+// === reset password for students (user) ===
+app.post('/reset/request', async (req, res) => {
+  try{
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashToken();
+    const resetPwdURL = "";
+    const content = `
+    <h1> Pour réinitialiser votre mot de passe </h1>
+    <p> Cliquez sur le lien ci-dessous </p>
+    <a href="${resetPwdURL}">Cliquez-ici</a>
+    `
+    sendTo(email, 'Validation email', content);
+    return res.json({success: true});
+  } catch (e) {
+    console.error('Mail serving Error: ', e);
+    return res.json({success: true});
+  }
+});
 /*
 // === Send mails to students for account creation by admins (admin) ===
 app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
@@ -189,26 +235,7 @@ app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({success: false, message: 'Mail serving Error . . .'});
   }
 });
-// === reset password for students (user) ===
-app.post('/reset/request', authMiddleware, async (req, res) => {
-  try{
-    
-    
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = hashToken()
-    const content = `
-    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
-    <p> Veuillez vous connecter une première fois pour réinitialiser votre mot de passe et changer vos infos</p>
-    <p> Voici vos identifiants actuels </p>
-    <a href="${process.env.APP_URL}resetPwd">Cliquez-ici</a>
-    `
-    sendTo(email, 'Validation email', content);
-    return res.json({success: true});
-  } catch (e) {
-    console.error('Mail serving Error: ', e);
-    return res.json({success: true});
-  }
-});
+
 app.post('/reset/confirm', authMiddleware, async (req, res) => {
   try {
     const email = 

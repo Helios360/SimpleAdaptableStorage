@@ -416,19 +416,23 @@ if(!adminView){
 
 async function confirmEmail(userMail){
     try{
-        const request = await api('/api/user/valid', {
+        await api('/api/user/valid', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body:JSON.stringify({email: userMail}),
         });
-        notif(request?.message || "OK");
         return;
     } catch (err) {
         const code = err?.body?.code || err?.code || err?.message;
         if(code === "NOT_VERIFIED"){
             const confirmDir = await alertChoice("Veuillez confirmer votre mail pour modifier vos infos");
-            if (confirmDir?.success) {
+            if (confirmDir === true) {
                 notif("Rendez vous sur votre boite mail pour valider votre email");
+                await api('/api/user/sendVerif', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:JSON.stringify({email: userMail}),
+                })
             } else {
                 notif("Vous pouvez toujours relancer la demande de 2FA en rafraichissant la page");
             }

@@ -6,6 +6,8 @@ const mysql = require('mysql2/promise');
 const helmet = require('helmet');
 const { Router } = require('express');
 const router = Router();
+const crypto = require('crypto');
+
 // ------------------------- CONSTS ------------------------- //
 const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
 const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
@@ -170,12 +172,16 @@ async function validUser(userEmail){
   if(rows[0].email_verified === 0) return ({success:false, code:"NOT_VERIFIED"});
   return {success:true, code:"VERIFIED"};
 }
-
+function makeToken(){
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  return {token, tokenHash};
+}
 module.exports = {
     // === constants ===
     ALLOWED_MIME, ALLOWED_EXT, BASE_DIR, UPLOADS_ROOT, TOS_VERSION, WATERMARK_PATH,
     // === helpers ===
-    userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark,
+    userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark, makeToken,
     // === db + ops ===
     q, db,
     deleteUser, kindCheck, deleteFile, allowIframeSelf, validUser,

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS Users (
     formation_id INT NOT NULL,
     email_verified TINYINT(1) NOT NULL DEFAULT 0,
     email_verify_token VARCHAR(254) NULL,
+    email_verify_expires DATETIME NULL,
     email_verified_at DATETIME NULL,
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
     FOREIGN KEY (formation_id) REFERENCES Formations(id) ON DELETE RESTRICT
