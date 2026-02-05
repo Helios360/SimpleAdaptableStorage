@@ -37,7 +37,6 @@ fetch(fetchUrl, { method: 'POST'})
 if (data.success) {
     const user = data.user || data.student;
     targetId = user.id;
-    confirmEmail(user.email);
     if(user.formation_id) populateDatalist(document.getElementById('skillList'), getSkillsFromFormationId(user.formation_id));
     if (adminView) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
@@ -54,18 +53,47 @@ if (data.success) {
             }
         })
     } else { // User deletes his account
+        //confirmEmail(user.email);
         accountDelete.addEventListener('click', async() => {
             const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
             if (choice) {
                 accountDelete.disabled = true;
                 try{
                     await deleteSelf();
-                    notif(`Compte supprimé. À bientôt chez Cloud Campus`);
+                    notif(`Compte supprimé. À bientôt ...`);
                     window.location.href = '/signin';
                 } catch (e) { notif("Suppression impossible") ; console.error(e);
                 } finally { accountDelete.disabled = false;} 
             }
         });
+        if(user.consent == 0) {
+            const popup = document.createElement('div');
+            popup.className = 'notif-alert';
+            popup.id = 'alertnotif';
+            popup.innerHTML=`
+            <div style="height:60vh;overflow:scroll;position:relative">
+            <h2>Avant de continuer veuillez accepter les conditions générales d'utilisation</h2>
+            <hr>
+            <pre id=cgu></pre>
+            <hr>
+            <p><u>En cliquant sur "J'accepte", vous confirmez avoir lu et accepté les CGU</u></p>
+            <span style="margin-top:1rem;">
+                <a style="cursor:pointer" id="deny"><u>Je refuse</u></a>
+                <a style="cursor:pointer" id="consent"><u>J'accepte</u></a>
+            </span>
+            </div>
+            `
+            loadComponents('cgu', "cgu.html");
+            document.body.appendChild(popup);
+            document.getElementById('consent').addEventListener('click', async ()=>{
+                const resp = await api("/api/user/consent",{method:"POST"});
+                if (resp.success) popup.remove();
+                else notifAlert("Erreur server . . .");
+            });
+            document.getElementById('deny').addEventListener('click', async ()=>{
+                notifAlert("Vous ne pourrez pas utiliser le service tant que vous n'aurez pas accepter les CGU");
+            });
+        }
     }
     // Remplir les infos
     document.getElementById('name').value = user.name.toUpperCase();

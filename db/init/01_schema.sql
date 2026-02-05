@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS Users (
     id_doc VARCHAR(254) NULL,
     id_doc_verso VARCHAR(254) NULL,
     titre_valide DATE NULL,
-    password VARCHAR(254) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     tags JSON,
     skills JSON,
     permis TINYINT(1) NOT NULL DEFAULT 0,
@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS Users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     consent TINYINT(1) NOT NULL DEFAULT 0,
+    consented_at DATETIME NULL,
     terms_version INT NOT NULL DEFAULT 1,
     status ENUM('active', 'recherche', 'entreprise', 'archive') NOT NULL DEFAULT 'recherche',
     formation_id INT NOT NULL,
@@ -34,6 +35,8 @@ CREATE TABLE IF NOT EXISTS Users (
     email_verify_token VARCHAR(254) NULL,
     email_verify_expires DATETIME NULL,
     email_verified_at DATETIME NULL,
+    reset_pwd_token VARCHAR(64) NULL,
+    reset_pwd_expires DATETIME NULL,
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
     FOREIGN KEY (formation_id) REFERENCES Formations(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,6 +1,9 @@
-fetch('/admin-panel')
-  .then(res => res.text())
-  .catch(err => console.error('Erreur admin fetch:', err));
+fetch('/api/admin-panel',{
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+})
+.then(res => res.text())
+.catch(err => console.error('Erreur admin fetch:', err));
   
 const allUsers = [];
 function renderUser (users) {
@@ -27,7 +30,7 @@ function renderUser (users) {
             <option value="archive" ${user.status === 'archive' ? 'selected' : ''}>Archive</option>
         </select>
     </span>
-    <span class="resped"><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
+    <span class="resped"><p class="creationDate">${user.created_at.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
     </div>
     `;
   });
@@ -68,7 +71,7 @@ function sortUsers(by, ascending = true) {
     let valB = b[by];
 
     // Normalize for string or date
-    if (by === 'date_inscription') {
+    if (by === 'created_at') {
       valA = new Date(valA);
       valB = new Date(valB);
     }
@@ -219,11 +222,11 @@ fetch('/api/admin-panel', { method: 'POST'})
           if(isRotated == false) {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("date_inscription",true);
+            sortUsers("created_at",true);
           } else {
             clickedSvg.classList.toggle('rotated', !isRotated);
             clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("date_inscription",false);
+            sortUsers("created_at",false);
           }
         }
       }
@@ -322,115 +325,195 @@ document.getElementById('addStud').addEventListener('click', ()=>{
   const popup = document.createElement('div');
   popup.className = 'notif-alert';
   popup.id = 'alertnotif';
-  popup.innerHTML=`<div class="admin-register"><button id="exit-popup">Retour</button><br><br>
+  popup.innerHTML=`
+  <div class="admin-register">
+  <button id="exit-popup">Retour</button><br><br>
   <form action="/submit-form-admin" data-ajax method="POST" enctype="multipart/form-data" class="form-admin" novalidate>
-    <div>
-        <label for="formation">Formation</label>
-        <select id="formation" name="formation" required>
-            <option value="btsndrc">BTS NDRC</option>
-            <option value="tpntc">TP NTC</option>
-            <option value="fullstack">Developpeur Web Full Stack</option>
-            <option value="cybersec">Expert en systeme d'information</option>
-        </select>
-    </div>
-    <div>
-        <label for="name">Nom</label>
-        <input type="text" id="name" name="name" required>
-    </div>
-    <div>
-        <label for="first-name">Prénom</label>
-        <input type="text" id="fname" name="fname" required>
-    </div>
-    <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required>
-    </div>
-    <div>
-        <label for="tel">Téléphone</label>
-        <input type="tel" id="tel" name="tel" required>
-    </div>
-    <div>
-        <label for="adresse">Adresse</label>
-        <input type="text" id="addr" name="addr" required>
-    </div>
-    <div>
-        <label for="city">Ville/Village</label>
-        <input type="text" id="city" name="city" required>
-    </div>
-    <div>
-        <label for="postal">Code Postal</label>
-        <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}" required>
-    </div>
-    <div>
-        <label for="birth">Date de naissance</label>
-        <input type="date" id="birth" name="birth" required>
-    </div>
-        <ul class="form2 inputs" >
-            <p>Documents :</p>
-            <li class="file-upload inputs">
-                <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label><span id="cvCross" class="supprFile">X</span>
-                <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
-            </li>
-            <li class="file-upload">
-                <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) (.png/.jpg)</label><span id="pirCross" class="supprFile">X</span>
-                <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
-            </li>
-            <li class="file-upload">
-                <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) (.png/.jpg)</label><span id="pivCross" class="supprFile">X</span>
-                <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
-            </li>
-            <div class="showdown">
-                <p>Je suis étudiant étrangé arrivé en france ⬇️</p>
-                <li class="file-upload">
-                    <label class="inputs" for="stateWorkAuth" id="stateWorkAuthFilename">Autorisation de travail (.pdf)</label><span id="stateWorkAuthCross" class="supprFile">X</span>
-                    <input class="inputs" type="file" id="stateWorkAuth" name="stateWorkAuth" accept=".pdf">
-                </li>
+            <div class="register">
+                <div>
+                    <label for="formation_id">Formation *</label>
+                    <select id="formation_id" name="formation_id" required>
+                        <option value="1">BTS NDRC</option>
+                        <option value="2">TP NTC</option>
+                        <option value="3">Developpeur Web Full Stack</option>
+                        <option value="4">Expert en systeme d'information</option>
+                        <option value="5">BTS GPME</option>
+                        <option value="6">CAP AEPE</option>
+                        <option value="7">BTS opticien lunettier</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="name">Nom *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div>
+                    <label for="first-name">Prénom *</label>
+                    <input type="text" id="fname" name="fname" required>
+                </div>
+                <div>
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div>
+                    <label for="tel">Téléphone *</label>
+                    <input type="tel" id="tel" name="tel" required>
+                </div>
+                <div>
+                    <label for="adresse">Adresse</label>
+                    <input type="text" id="addr" name="addr">
+                </div>
+                <div>
+                    <label for="postal">Code Postal</label>
+                    <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}">
+                </div>
+                <div>
+                    <label for="city">Ville/Village *</label>
+                    <input type="text" id="city" name="city" required>
+                </div>
+                <div>
+                    <label for="birth">Date de naissance *</label>
+                    <input type="date" id="birth" name="birth" required>
+                </div>
             </div>
-        </ul>
-        <div>
-            <span>
-                <input type="checkbox" id="permis" name="permis">
-                <label for="permis">Permis B</label>
-            </span><br>
-            <span>
-                <input type="checkbox" id="vehicule" name="vehicule">
-                <label for="vehicule">Véhiculé</label>
-            </span><br>
-            <span>    
-                <input type="checkbox" id="mobile" name="mobile">
-                <label for="mobile">Mobile geographiquement</label>
-            </span>
-        </div>
-        <div>
-            <label for="password">Mot de passe</label>
-            <span class="eye-contain">
-                <input class="inputs" type="password" id="password" name="password" required>
-                <svg id="pwdEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
-                    <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
-                </svg>
-            </span>
-        </div>
-        <div>
-            <label for="confirm">Confirmer le mot de passe</label>
-            <span class="eye-contain">
-                <input class="inputs" type="password" id="confirm" name="confirm" required>
-                <svg id="confirmEye" class="eye" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 1200 1200" xml:space="preserve">
-                    <path fill="var(--secondary)" d="M779.843 599.925c0 95.331-80.664 172.612-180.169 172.612-99.504 0-180.168-77.281-180.168-172.612 0-95.332 80.664-172.612 180.168-172.612 99.505-.001 180.169 77.281 180.169 172.612M600 240.521c-103.025.457-209.814 25.538-310.904 73.557C214.038 351.2 140.89 403.574 77.394 468.219 46.208 501.218 6.431 549 0 599.981c.76 44.161 48.13 98.669 77.394 131.763 59.543 62.106 130.786 113.018 211.702 154.179C383.367 931.674 487.712 958.015 600 959.48c103.123-.464 209.888-25.834 310.866-73.557 75.058-37.122 148.243-89.534 211.74-154.179 31.185-32.999 70.962-80.782 77.394-131.763-.76-44.161-48.13-98.671-77.394-131.764-59.543-62.106-130.824-112.979-211.74-154.141C816.644 268.36 712.042 242.2 600 240.521m-.076 89.248c156.119 0 282.675 120.994 282.675 270.251S756.043 870.27 599.924 870.27 317.249 749.275 317.249 600.02c0-149.257 126.556-270.251 282.675-270.251"/>
-                </svg>
-            </span>
-        </div>
-        <span id="password-message"></span>
-        <div class="checkbox">
-            <label for="consent">Je reconnais avoir lu et compris les conditions d’utilisations de Cloud Testing</label>
-            <input type="checkbox" id="consent" name="consent" required>                
-        </div>
-        <button type="submit" id="send">Enregistrer</button>
-  </form><br>
-  
-</div>
-  `
-  const form = document.querySelector("form");
-  form.addEventListener("submit", async function (e) {
+            <hr style="width:100%">
+            <div class="register">
+                <ul class="form2 inputs" >
+                    <p>Documents :</p>
+                    <li class="file-upload inputs">
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
+                    </li>
+                    <span class="checks">
+                        <input type="checkbox" id="sejour" name="sejour">
+                        <label for="sejour">L'étudiant a un titre de séjour plutot qu'une pièce d'identité</label>
+                    </span>
+                    <div id="titre-valide">
+                        <label for="titre">Date d'invalidité du titre de séjour *</label>
+                        <input type="date" id="titre-sejour" name="titre">
+                    </div>
+                    <li class="file-upload">
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
+                    </li>
+                    <li class="file-upload">
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
+                    </li>
+                </ul>
+                <div>
+                    <span class="checks admin-checks">
+                        <input type="checkbox" id="permis" name="permis">
+                        <label for="permis">Permis B</label>
+                    </span>
+                    <span class="checks admin-checks">
+                        <input type="checkbox" id="vehicule" name="vehicule">
+                        <label for="vehicule">Véhiculé</label>
+                    </span>
+                    <span class="checks admin-checks">    
+                        <input type="checkbox" id="mobile" name="mobile">
+                        <label for="mobile">Mobile geographiquement</label>
+                    </span>
+                </div>
+                <span id="password-message"></span>
+                <button type="submit" id="send">Envoyer</button>
+            </div>
+        </form><br>
+    </div>
+    `
+    document.body.appendChild(popup);
+    const form = popup.querySelector("form");
+    const message = document.getElementById("password-message")
+    const telInput = document.getElementById('tel');
+    const titreInput = document.getElementById('titre-sejour');
+
+    const cvCross = document.getElementById('cvCross');
+    const pirCross = document.getElementById('pirCross');
+    const pivCross = document.getElementById('pivCross');
+    const cvUpload = document.getElementById('cv');
+    const pirUpload = document.getElementById('id_doc');
+    const pivUpload = document.getElementById('id_doc_verso');
+    const labelCV = document.getElementById('cvFileName');
+    const labelPir = document.getElementById('piRectoFilename');
+    const labelPiv = document.getElementById('piVersoFilename');
+
+    telInput.addEventListener('input', () => {
+        telInput.value = telInput.value.replace(/\s+/g, "");
+    })
+
+    const sejour = document.getElementById('sejour');
+    document.getElementById('titre-valide').style.height='0px';
+    document.getElementById('titre-valide').style.overflow='hidden';
+
+    sejour.addEventListener('change', () => {
+        if (!sejour.checked){
+            document.getElementById('titre-valide').style.height='0px';
+            toggle = 1;
+            labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
+            titreInput.ariaDisabled;
+        } else {
+            document.getElementById('titre-valide').style.height='65px';
+            toggle = 0;
+            labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
+            titreInput.ariaRequired;
+        }
+    });
+
+    // Vérification email
+    function validateEmail(email) {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    }
+    // Vérification téléphone (10 chiffres minimum)
+    function validatePhone(phone) {
+        if (typeof phone !== 'string') return false;
+        const normalize = phone.replace(/[\s\-()]/g, "");
+        const regex = /^0[1-9][0-9]{8}$/;
+        return regex.test(normalize);
+    }
+    /*
+    function validatePostal(postal) {
+        if (typeof postal !== 'string') return false;
+        const normalize = postal.replace(/\s+/g, "");
+        const regex = /^(0[1-9]|[1-8][0-9]|9[0-8])[0-9]{3}$/;
+        return regex.test(normalize);
+    }
+    */
+    // Vérification nom/prénom (lettres uniquement)
+    function validateName(name) {
+        const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s\-]+$/;
+        return regex.test(name);
+    }
+
+    // Vérification date de naissance (18 ans minimum)
+    function validateBirth(dateString) {
+        const birthDate = new Date(dateString);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        return age > 18 || (age === 18 && m >= 0);
+    }
+
+    // Vérification fichiers
+    function validateFile(input, allowedExtensions, maxSizeMB) {
+      if (!input.files.length) return false;
+      const file = input.files[0];
+
+      // Vérification extension
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!allowedExtensions.includes(ext)) return false;
+
+      // Vérification taille
+      const maxSizeBytes = maxSizeMB * 1024 * 1024; 
+      if (file.size > maxSizeBytes || file.size == 0) {
+          return false;
+      }
+      return true;
+    }
+
+    // Validation globale avant envoi
+    form.addEventListener("submit", async function (e) {
         e.preventDefault();
         let valid = true;
         let errors = [];
@@ -457,63 +540,29 @@ document.getElementById('addStud').addEventListener('click', ()=>{
             errors.push("Téléphone invalide (10 chiffres).");
         }
 
-        // Adresse, ville et code postal
-        if (!document.getElementById("addr").value.trim()) {
-            valid = false;
-            errors.push("Adresse obligatoire.");
-        }
-        if (!document.getElementById("city").value.trim()) {
-            valid = false;
-            errors.push("Ville obligatoire.");
-        }
-        if (!validatePostal(document.getElementById("postal").value)) {
-            valid = false;
-            errors.push("Code postal invalide (5 chiffres).");
-        }
-
-
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {
             valid = false;
             errors.push("Vous devez avoir au moins 18 ans.");
         }
 
+        // Titre de Séjour
+        if (sejour.checked && !titreInput.value){
+            valid = false;
+            errors.push("Date d'invalidité du titre de séjour obligatoire.");
+        }
         // Fichiers
-        if (!validateFile(document.getElementById("cv"), ["pdf"], 2)) {
+        if (!validateFile(cvUpload, ["pdf"], 2)) {
             valid = false;
             errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc"), ["jpg", "png"], 3)) {
+        if (!validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
             errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
-        if (!validateFile(document.getElementById("id_doc_verso"), ["jpg", "png"], 3)) {
+        if (!validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide ou manquant (JPG/PNG, max 3 Mo).");
-        }
-        const fileAuth = document.getElementById('stateWorkAuth').files[0];
-        if (fileAuth) {
-            const ext = fileAuth.name.split('.').pop().toLowerCase();
-            if (ext !== "pdf") {
-                valid = false;
-                errors.push("Extension autorisation de travail invalide (PDF, max 2 Mo).");
-            }
-            const maxSizeBytes = 2 * 1024 * 1024; 
-            if (fileAuth.size > maxSizeBytes) {
-                valid = false;
-                errors.push("Taille autorisation de travail invalide (PDF, max 2 Mo).");
-            }
-        }
-
-        // Mot de passe
-        if (!checkPasswordMatch()) {
-            valid = false;
-            errors.push("Les mots de passe ne correspondent pas.");
-        }
-        // Conditions
-        if (!document.getElementById("consent").checked) {
-            valid = false;
-            errors.push("Vous devez accepter les conditions.");
+            errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
         // Si erreur -> bloquer envoi
         if (!valid) {
@@ -523,24 +572,44 @@ document.getElementById('addStud').addEventListener('click', ()=>{
 
         const fd = new FormData(form);
         const email = (fd.get('email') || '').toString().trim().toLowerCase();
-        const password = fd.get('password');
         fd.set('email', email);
         try{
-            await api(form.action || '/submit-form', { method: 'POST', body: fd});
-            await notif("Le compte a bien été créé");
+            await api(form.action, { method: 'POST', body: fd});
+            notif("Le compte a bien été créé.");
         } catch (e) {
-            if(e.status === 409){
+            if(e && e.status === 409){
                 const emailInput = form.querySelector('#email');
                 if (emailInput) {
                     emailInput.classList.add('is-invalid');
                     emailInput.focus();
                 }
-            }
+            } else notifAlert('Erreur serveur, réessayez.');
         }
     });
-  popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
-  document.body.appendChild(popup);
+
+    cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
+    pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
+    pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name; pivCross.style.display = 'block';})
+    cvCross.addEventListener('click', ()=>{
+        labelCV.innerText = 'CV (.pdf)';
+        cvUpload.value = '';
+        cvCross.style.display = 'none';
+    })
+    pirCross.addEventListener('click', ()=>{
+        labelPir.innerText = "Pièce d'identité (recto) (.png/.jpg/.pdf)";
+        pirUpload.value = '';
+        pirCross.style.display = 'none';
+    })
+    pivCross.addEventListener('click', ()=>{
+        labelPiv.innerText = "Pièce d'identité (verso) (.png/.jpg/.pdf)";
+        pivUpload.value = '';
+        pivCross.style.display = 'none';
+    })
+    popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
 })
+
+
+
 
 function buildAllowedLists(formationIds = []){
   const skills = new Set();
@@ -656,4 +725,4 @@ document.getElementById('reset').addEventListener('click', ()=>{
   currentSkills = [];
   renderTagsAndSkills();
   renderUser(allUsers);
-})
+});

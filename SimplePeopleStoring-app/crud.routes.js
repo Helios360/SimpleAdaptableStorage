@@ -4,7 +4,8 @@ const { formidable } = require('formidable');
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
-const {allowIframeSelf} = require('./helpers.js')
+const {allowIframeSelf, makeToken} = require('./helpers.js')
+const { sendTo } = require('./mailer');
 const bcrypt = require('bcrypt');
 const { 
   q, userDir, relFromAbs, toAbsFromStored, kindCheck, guessContentType, deleteFile,
@@ -139,9 +140,9 @@ router.post('/submit-form-admin', (req, res) => {
     try {
       const {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
-        postal, birth, password, consent, formation,
+        postal, birth, formation_id,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !birth || !consent) return res.status(400).send('Missing required fields');
+      if (!email || !name || !tel || !birth || !formation_id) return res.status(400).send('Missing required fields');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
@@ -153,14 +154,17 @@ router.post('/submit-form-admin', (req, res) => {
         copyInto(f_idr, tmpDir),
         copyInto(f_idv, tmpDir),
       ]);
-
+      const randomPwd = crypto.randomBytes(24).toString('hex');
+      const {token, tokenHash} = makeToken();
+      const expiresAt = new Date(Date.now()+1000*60*60*48);
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, formation_id, email_verified, reset_pwd_token, reset_pwd_expires)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation];
+      const url = `${process.env.APP_URL}reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+      const hashedPassword = await bcrypt.hash(randomPwd, 12);
+      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, formation_id, 0, tokenHash, expiresAt];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
@@ -191,6 +195,10 @@ router.post('/submit-form-admin', (req, res) => {
           console.error('DB Update Error after first Insert : ', e);
           res.status(500).send('Database Error after Insert');
         }
+        await sendTo(email, "Activation de votre compte",`
+        <h1>Votre compte a bien été créé. Définissez votre mot de passe (lien valable 48h) :</h1>
+        <a href="${url}">Définir mon mot de passe</a>
+          `);
       } catch (e) {
         console.error('DB Insert Error: ', e);
         fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
@@ -220,13 +228,23 @@ router.post('/api/update-tags', authMiddleware, async (req, res) => {
      SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, permis=?, vehicule=?, mobile=?, postal = ?, tags = ?, skills = ?
      WHERE id = ?`,
     [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tagsJSON, skillsJSON, userId]);
-    res.json({ success: true, message: 'Profile updated successfully' });
+    res.json({ success: true, message: 'Profil mis a jour avec succés' });
   } catch (e) {
     console.error('DB Profile Update Error: ', e);
     res.status(500).json({ success: false, message: 'Database error . . .' });
   }
 });
-
+// ------------------------- GIVE CONSENT > USER === USERS ------------------------- //
+router.post('/api/user/consent', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  try{
+    await q("UPDATE Users SET consent = 1, consented_at=NOW() WHERE id=?", [userId]);
+    res.json({ success: true, message: 'Profil mis a jour avec succés' });
+  } catch (e) {
+    console.error('DB consent update error :', e);
+    res.status(500).json({ success: false, message: 'Database error . . .' });
+  }
+});
 // ------------------------- DELETE > USER === USERS ------------------------- //
 router.delete('/api/delete', authMiddleware, async (req, res) => {
   try { await deleteUser(req.user.id); res.json({success: true});}
@@ -248,7 +266,7 @@ router.delete('/api/admin/reset/:id', authMiddleware, adminOnly, async (req, res
 router.post('/api/profile', authMiddleware, async (req, res) => {
   try{
     const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills,formation_id FROM Users WHERE email = ? LIMIT 1', [userId]);
+    const results = await q ('SELECT name,fname,email,tel,addr,city,permis,vehicule,mobile,postal,birth,cv,id_doc,id_doc_verso,skills,formation_id,consent FROM Users WHERE email = ? LIMIT 1', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     const user = results[0];
     res.json({ success: true, user });

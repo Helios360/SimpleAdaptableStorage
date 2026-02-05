@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const password = fd.get('password');
         fd.set('email', email);
         try{
-            await api(form.action || '/submit-form', { method: 'POST', body: fd});
+            await api(form.action, { method: 'POST', body: fd});
             const choice = await alertChoice("Votre compte a bien été créé, veuiller cliquer suivant pour passer au test.");
             if (choice) {
                 const response = await fetch('/login', {

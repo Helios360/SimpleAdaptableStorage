@@ -5,11 +5,13 @@ const popup = document.getElementById('popup');
 const loader = document.getElementById('loader');
 const mainContent = document.getElementById('main');  
 async function redirectAfterDelay(data) {
+  popup?.remove();
   notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous en êtes arrété... Redirection ...');
   await wait(3000);
   window.location.href = '/profile';
 }
 function setLoading(isLoading){
+  popup?.remove();
   loader.style.display = isLoading ? 'flex' : 'none';
   submit.style.pointerEvents = isLoading ? 'none' : 'auto';
   start.style.pointerEvents = isLoading ? 'none' : 'auto';
@@ -33,6 +35,7 @@ start.addEventListener('click', async () => {
       document.getElementById('question').innerText = test.question;
       popup?.remove();
     } else {
+      popup?.remove();
       await redirectAfterDelay(data);
     }
   } catch(e){

@@ -45,6 +45,7 @@ app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_D
 app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'admin.html'));});
 app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
 app.get('/legal', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/legal.html')));
+app.get('/reset-password', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/reset-password.html')));
 
 // === /login Route ===
 app.post('/login', loginLimiter, async (req, res) => {
@@ -76,7 +77,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     };
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    if (stillTest[0].testNum<=26 && !user.is_admin){
+    if ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3) && !user.is_admin){
       redirectTo = '/test';
     } else if (user.is_admin){
       redirectTo = '/admin-panel';
@@ -98,16 +99,21 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
     const results = await q(`
     SELECT 
-        u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.date_inscription, u.birth, u.status, u.tags, u.skills,
-        ROUND(AVG(ta.score)) AS gen_score
-      FROM Users u
-      JOIN StaffSettings ss
-      On ss.formation_id = u.formation_id
-      AND ss.staff_user_id = ?
-      LEFT JOIN TestAttempts ta
-      ON u.id = ta.user_id
-      GROUP BY u.id
-    ;`, [req.user.id]);
+      u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, 
+      u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
+      ROUND(AVG(ta.score)) AS gen_score
+    FROM Users u
+    JOIN Formations f ON f.id = u.formation_id
+    LEFT JOIN TestAttempts ta ON u.id = ta.user_id
+    WHERE EXISTS (
+      SELECT 1
+      FROM StaffSettings ss
+      WHERE ss.staff_user_id = ?
+      AND ss.formation_id = u.formation_id
+    )
+    GROUP BY u.id
+    ORDER BY u.created_at DESC;
+    `, [req.user.id]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
     res.json({ success: true, users: results });
   } catch (e) {
@@ -185,6 +191,7 @@ app.post('/api/user/sendVerif', authMiddleware, async (req, res) => {
     await sendTo(req.body.email, "Validez votre compte", content);
     return res.status(200).json({success:true});
   }
+  return res.status(200).json({success:true});
 });
 // === verif email when user clicks the mail button (user) ===
 app.get("/api/auth/verifMail", async (req, res) => {
@@ -192,55 +199,60 @@ app.get("/api/auth/verifMail", async (req, res) => {
   if (!token || !email) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const rows = await q(`SELECT email_verify_token, email_verify_expires FROM Users WHERE email=?`,[email]); 
+  if (!rows || rows.length === 0) return res.redirect(`${APP_URL}profile`);
   if (tokenHash === rows[0].email_verify_token && new Date(rows[0].email_verify_expires) > new Date()) {
     await q(`UPDATE Users SET email_verified=1, email_verified_at=NOW(), email_verify_token=NULL, email_verify_expires=NULL WHERE email=?`, [email]);
   } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
-  return res.status(200).json({success:true});
+  return res.redirect(`${process.env.APP_URL}profile`);
 });
 // === reset password for students (user) ===
 app.post('/reset/request', async (req, res) => {
   try{
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = hashToken();
-    const resetPwdURL = "";
+    const email = (req.body.email || "").trim().toLowerCase();
+    const rows = await q(`SELECT id, email FROM Users WHERE email=? LIMIT 1`, [email]);
+    if (!rows || rows.length === 0) return res.status(200).json({success: true});
+    const {token, tokenHash} = makeToken();
+    const expiresAt = new Date(Date.now()+1000*60*60);
+    await q(`UPDATE Users SET reset_pwd_token=?, reset_pwd_expires=? WHERE email=?`, [tokenHash, expiresAt, email]);
+    const resetPwdURL = `${process.env.APP_URL}reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     const content = `
     <h1> Pour réinitialiser votre mot de passe </h1>
-    <p> Cliquez sur le lien ci-dessous </p>
+    <p> Cliquez sur le lien ci-dessous (valable 1 heure) :</p>
     <a href="${resetPwdURL}">Cliquez-ici</a>
     `
-    sendTo(email, 'Validation email', content);
-    return res.json({success: true});
+    await sendTo(email, 'Réinitialisation de mot de passe', content);
+    return res.status(200).json({success: true});
   } catch (e) {
     console.error('Mail serving Error: ', e);
-    return res.json({success: true});
+    return res.status(200).json({success: true});
+  }
+});
+// === reset password for students (user) ===
+app.post('/reset/confirm', async (req, res) => {
+  try{
+    const email = (req.body.email || "").trim().toLowerCase();
+    const token = (req.body.token || "").trim();
+    const newPassword = req.body.password || "";
+    if (!token || !email || !newPassword) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const rows = await q(`SELECT id, reset_pwd_token, reset_pwd_expires FROM Users WHERE email=? LIMIT 1`,[email]); 
+    if (!rows || rows.length === 0) return res.status(403).json({success: false, message: "Lien invalide ou éxpiré"});
+    if (tokenHash === rows[0].reset_pwd_token && new Date(rows[0].reset_pwd_expires) > new Date()) {
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL WHERE email=?`, [passwordHash, email]);
+    } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
+    return res.status(200).json({success:true});
+  } catch (e){
+    console.error("Reset confirm error: ", e);
+    return res.status(500).json({success:false});
   }
 });
 /*
-// === Send mails to students for account creation by admins (admin) ===
-app.post('/api/sendMail', authMiddleware, adminOnly, async (req, res) => {
-  try{
-    const { email, password } = req.body;
-    const content = `
-    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
-    <p> Veuillez vous connecter une première fois pour réinitialiser votre mot de passe et changer vos infos</p>
-    <p> Voici vos identifiants actuels </p>
-    <p> Email : ${ email }</p>
-    <p> Mot de passe :  ${ password }</p>
-    <a href="${process.env.APP_URL}signin">Cliquez-ici</a>
-    `
-    sendTo(email, 'Confirmation pour votre nouveau compte', content);
-    res.json({success: true});
-  } catch (e) {
-    console.error('Mail serving Error: ', e);
-    res.status(500).json({success: false, message: 'Mail serving Error . . .'});
-  }
-});
-
-app.post('/reset/confirm', authMiddleware, async (req, res) => {
-  try {
-    const email = 
-  }
-});
+When a commercial creates an account, the user gets a token and 
+the flow is the same as the password reset
+so the user is created with
+email verified = 0 and status invited or something
+i can definitely reuse the reset code, just have to change the texts here and there
 */
 app.use(crudRouter);
 app.use(testRouter);

@@ -43,13 +43,12 @@ html{
     font-family: main-font;
 }
 header{
-    height:110px;
     position:relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 20px 20px;
+    padding: 0.3rem 1rem;
 }
 nav > a{
     cursor: pointer;
@@ -72,7 +71,6 @@ main{
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top:2.5rem;
     flex:1;
 }
 select{
@@ -270,11 +268,6 @@ h3{padding:3rem;}
     background-color: var(--tertiary);
 }
 #send{width: 100%;}
-#stateWorkAuthFilename{
-    text-align: left;
-    justify-content: left;
-    align-items: center;
-}
 .showdown{
     max-height:20px;
     overflow: hidden;
