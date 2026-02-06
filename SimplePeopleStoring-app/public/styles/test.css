@@ -19,6 +19,7 @@ textarea{
     border-radius: 8px;
     margin: 2rem;
     padding: 1rem;
+    cursor: pointer;
 }
 .ready-popup{
     position:absolute;

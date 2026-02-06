@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS Users (
     tel VARCHAR(32) NOT NULL,
     addr TEXT NULL,
     city VARCHAR(64) NOT NULL,
+    lon DECIMAL(10,7) NULL,
+    lat DECIMAL(10,7) NULL,
     postal VARCHAR(16) NULL,
     birth DATE NOT NULL,
     cv VARCHAR(254) NULL,

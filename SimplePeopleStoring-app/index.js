@@ -99,7 +99,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
     const results = await q(`
     SELECT 
-      u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, 
+      u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
       u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
       ROUND(AVG(ta.score)) AS gen_score
     FROM Users u
@@ -115,6 +115,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     ORDER BY u.created_at DESC;
     `, [req.user.id]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
+
     res.json({ success: true, users: results });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
@@ -125,7 +126,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
 app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT * FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, score, birth, permis, vehicule, postal FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {

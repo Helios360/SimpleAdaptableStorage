@@ -57,14 +57,25 @@ router.post('/submit-form', (req, res) => {
         copyInto(f_idr, tmpDir),
         copyInto(f_idv, tmpDir),
       ]);
-
+      let lon = null;
+      let lat = null;
+      const url = `https://geo.api.gouv.fr/communes?nom=${city}&boost=population&fields=centre&limit=1`;
+      try{
+        const geoRes = await fetch(url);
+        if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
+        const data = await geoRes.json();
+        if (!Array.isArray(data) || data.lenght === 0 || !data[0]?.centre?.coordinates) throw new Error("City not found");
+        [lon, lat] = data[0].centre.coordinates;
+      } catch(e) {
+        console.warn(`Geocoding failed for city: ${city}, user:${email} (${e.message})`);
+      }
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, lon, lat, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation_id];
+      const insertValues = [name, fname, email, tel, addr, city, lon, lat, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, consent ? 1 : 0, TOS_VERSION, formation_id];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;

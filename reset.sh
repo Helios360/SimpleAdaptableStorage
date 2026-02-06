@@ -5,7 +5,7 @@ echo "@                         FILE REBOOT START                            @"
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 
 source .env
-sudo rm -rf dev
+sudo rm -rf mysql_data
 
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 echo "@                         FILE REBOOT DONE                             @"
@@ -21,18 +21,6 @@ sudo docker compose -f docker-compose.override.yml up --build -d
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 echo "@                           DOCKER DONE                                @"
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-echo "@                         SEEDING START                                @"
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-
-sudo docker exec -i simplepeoplestoring-mysql-1 \
-    sh -lc 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE"' \
-    < seeder.sql
-
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-echo "@                         SEEDING DONE                                 @"
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
 
 echo "@@@@@@@@@@@@@@@@@@@@@@@@@ MYSQL LOGS @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
 sudo docker logs --tail=100 -f simplepeoplestoring-mysql-1 || true

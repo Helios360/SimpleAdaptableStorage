@@ -1,10 +1,3 @@
-fetch('/api/admin-panel',{
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-})
-.then(res => res.text())
-.catch(err => console.error('Erreur admin fetch:', err));
-  
 const allUsers = [];
 function renderUser (users) {
   const list = document.getElementById('list');
@@ -52,7 +45,7 @@ function renderUser (users) {
         if (data.success) {
           console.log(`Status updated for user ${userId}`);
           const userToUpdate = allUsers.find(user => user.id == userId);
-          if (userToUpdate) userToUpdate.status = parseInt(newStatus, 10);
+          if (userToUpdate) userToUpdate.status = newStatus;
         } else {
           throw new Error(data.message);
         }
@@ -92,6 +85,45 @@ function sortUsers(by, ascending = true) {
   });
 
   renderUser(sorted);
+}
+function haversine(lat1, lon1, lat2, lon2){
+  const toRad = (v) => (v*Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return 6371*c;
+}
+const geoCache = new Map();
+async function calculateUsersInArea(city){
+  const key = (city || '').trim().toLowerCase();
+  if(!key) return null;
+  if(geoCache.has(key)) return geoCache.get(key);
+  const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(key)}&boost=population&fields=centre&limit=1`;
+  try{
+    const geoRes = await fetch(url);
+    if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
+    const data = await geoRes.json();
+
+    if (!Array.isArray(data) || data.length === 0 || !data[0]?.centre?.coordinates) {
+      geoCache.set(key, null);
+      return null;
+    }
+    const [lon, lat] = data[0].centre.coordinates;
+    const center = {lat: Number(lat), lon: Number(lon)};
+    geoCache.set(key, center);
+    return center;
+  } catch(e) {
+    notif(`Geocoding failed for city: ${city} (${e})`);
+    geoCache.set(key, null);
+    return null;
+  }
 }
 
 fetch('/api/admin-panel', { method: 'POST'})
@@ -235,11 +267,13 @@ fetch('/api/admin-panel', { method: 'POST'})
 })
 .catch(err => { console.error('Error fetching users:', err); });
 
-function filterUsers() {
+async function filterUsers() {
   const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
   const statusRaw = (document.getElementById('searchStatus')?.value || '');
   const statusValue = statusRaw.toLowerCase();
   const placeValue = (document.getElementById('place')?.value || '').toLowerCase();
+  const radiusRaw = (document.getElementById('radius')?.value || '').trim;
+  const radiusValue = radiusRaw === '' ? 0 : Number(radiusRaw);
   const postalValue = (document.getElementById('postal')?.value || '').toLowerCase();
   const ageValue = (document.getElementById('age')?.value || '');
   const trancheValue = (document.getElementById('trancheAge')?.value || '');
@@ -252,11 +286,12 @@ function filterUsers() {
     !nameValue &&
     !(statusRaw || statusRaw === 'all') &&
     !placeValue &&
+    !(radiusValue > 0) &&
     !postalValue &&
     !ageValue &&
     !trancheValue &&
-    !skillsValue.length === 0 &&
-    !tagsValue.length === 0 &&
+    skillsValue.length === 0 &&
+    tagsValue.length === 0 &&
     !permisValue &&
     !vehiculeValue &&
     !mobileValue;
@@ -265,6 +300,19 @@ function filterUsers() {
     renderUser(allUsers);
     return;
   }
+
+  let center = null;
+  const useRadius = Number.isFinite(radiusValue) && radiusValue > 0 && placeValue.length > 0;
+
+  if (useRadius){
+    center = await calculateUsersInArea(placeValue);
+    if(!center) {
+      notif(`Ville introuvable : ${placeValue}`);
+      renderUser(allUsers);
+      return;
+    }
+  }
+
   const filtered = allUsers.filter(user => {
     if (!user) return false;
     // Calculate age
@@ -276,7 +324,24 @@ function filterUsers() {
     const fullName = `${user.name} ${user.fname}`.toLowerCase();
     const matchName = nameValue === '' || fullName.includes(nameValue);
     const matchStatus = statusValue === '' || user.status === statusValue;
-    const matchPlace = placeValue === '' || user.city?.toLowerCase().includes(placeValue);
+
+
+    const matchPlace = useRadius ? true : (placeValue === '' || user.city?.toLowerCase().includes(placeValue));
+    let matchRadius = true;
+    if (useRadius){
+      const uLat = Number(user.lat);
+      const uLon = Number(user.lon);
+      if(!Number.isFinite(uLat) || !Number.isFinite(uLon)){
+        matchRadius = false;
+      } else {
+        const d = haversine(center.lat, center.lon, uLat, uLon);
+        user._distanceKm = d;
+        matchRadius = d <= radiusValue;
+      }
+    } else {
+      delete user._distanceKm;
+    }
+
     const matchPostal = postalValue === '' || user.postal?.toLowerCase().includes(postalValue);
     const matchAge = ageValue === '' || age === parseInt(ageValue);
     let matchTranche = true;
@@ -290,7 +355,7 @@ function filterUsers() {
     const matchPermis = !permisValue || user.permis === permisValue;
     const matchVehicule = !vehiculeValue || user.vehicule === vehiculeValue;
     const matchMobile = !mobileValue || user.mobile === mobileValue;
-    return matchName && matchStatus && matchPlace && matchPostal && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile;
+    return matchName && matchStatus && matchPlace && matchPostal && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile && matchRadius;
   });
   renderUser(filtered);
 }
