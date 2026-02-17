@@ -61,11 +61,11 @@ async function renderUser (users) {
             const userId = event.target.getAttribute('data-user-id');
             try {
                 const data = await api('/api/admin/update-status', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                    id: userId,
-                    status: newStatus
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                        id: userId,
+                        status: newStatus
                     })
                 });
                 if (!data.success) return;
@@ -584,3 +584,40 @@ document.getElementById('reset').addEventListener('click', ()=>{
   renderTagsAndSkills();
   renderUser(allUsers);
 });
+let lastSearchedPayload = null;
+let controller = null;
+function debounce(fn, delay = 400){
+    let t;
+
+}
+document.getElementById('search-form').addEventListener('change', debouncedSearch);
+async function buildPayload(pageIndex){
+    const payload = {
+        q: document.getElementById('nomPrenom').value.trim(),
+        status: document.getElementById('searchStatus').value || "",
+        city: document.getElementById('place').value.trim(),
+        postal: document.getElementById('postal').value.trim(),
+        age: document.getElementById('age').value
+            ? Number(document.getElementById('age').value) : null,
+        trancheAge: document.getElementById('trancheAge').value || "",
+        permis: document.getElementById('permis').checked,
+        vehicule: document.getElementById('vehicule').checked,
+        mobile: document.getElementById('mobile').checked,
+
+        tags: getSelectedTags(),
+        skills: getSelectedSkills(),
+        page: 1,
+        pageSize: 10,
+    };
+    try{
+        const results = await api('/api/admin-panel', {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+
+    } catch (err) {
+        console.error(err);
+    }
+
+}

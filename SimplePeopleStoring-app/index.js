@@ -98,30 +98,71 @@ app.post('/logout', (req,res) => {
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
-    const body = req.body ?? {};
-    const page = Math.max(parseInt(body.page ?? "1", 10), 1);
-    const pageSize = Math.min(Math.max(parseInt(body.pageSize ?? "10", 10), 1), 100);
+    const b = req.body ?? {};
+    // Pagination
+    const page = Math.max(parseInt(b.page ?? "1", 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(b.pageSize ?? "10", 10), 1), 100);
     const offset = (page - 1) * pageSize;
-    const countRows = await q(`SELECT COUNT(*) AS total FROM Users u WHERE EXISTS(SELECT 1 FROM StaffSettings ss WHERE ss.staff_user_id = ? AND ss.formation_id = u.formation_id)`, [req.user.id]);
-    const total = Number(countRows?.[0]?.total ?? 0);
-    const results = await q(`
-    SELECT 
-      u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
-      u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
-      ROUND(AVG(ta.score)) AS gen_score
-    FROM Users u
-    JOIN Formations f ON f.id = u.formation_id
-    LEFT JOIN TestAttempts ta ON u.id = ta.user_id
-    WHERE EXISTS (
-      SELECT 1
-      FROM StaffSettings ss
-      WHERE ss.staff_user_id = ?
-      AND ss.formation_id = u.formation_id
-    )
-    GROUP BY u.id
-    ORDER BY u.created_at DESC
-    LIMIT ${offset}, ${pageSize};
-    `, [req.user.id]);
+    // Sorting
+    const qStr = (b.q ?? "").toString().trim();
+    const status = (b.status ?? "").toString().trim();
+    const like = `%${qStr}%`;
+    const permis = b.permis === true ? 1 : 0;
+    const vehicule = b.vehicule === true ? 1 : 0;
+    const mobile = b.mobile === true ? 1 : 0;
+
+    const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean).map(String) : [];
+    const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
+    const extraWhere = [];
+    const extraParams = [];
+    for (const t of tags) { // All Tags
+      extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
+      extraParams.push(t);
+    }
+    for (const s of skills) { // All Skills
+      extraWhere.push(`JSON_CONTAINS(u.skills, JSON_QUOTE(?))`);
+      extraParams.push(s);
+    }
+    const extraSql = extraWhere.length ? `AND ${extraWhere.join("AND")}`: "";
+    const query = `
+      SELECT 
+        u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
+        u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
+        ROUND(AVG(ta.score)) AS gen_score
+      FROM Users u
+      JOIN Formations f ON f.id = u.formation_id
+      LEFT JOIN TestAttempts ta ON u.id = ta.user_id
+      WHERE EXISTS (
+        SELECT 1 FROM StaffSettings ss
+        WHERE ss.staff_user_id = ?
+        AND ss.formation_id = u.formation_id
+      )
+      AND (? = '' OR (
+        u.name LIKE ? OR
+        u.fname LIKE ? OR
+        CONCAT(u.name,' ',u.fname) LIKE ? OR
+        CONCAT(u.fname,' ',u.name) LIKE ?
+      ))
+      AND (? = '' OR u.status = ?)
+      AND (? = 0 OR u.permis = 1)
+      AND (? = 0 OR u.vehicule = 1)
+      AND (? = 0 OR u.mobile = 1)
+      ${extraSql}
+      GROUP BY u.id
+      ORDER BY created_at DESC
+      LIMIT ?, ?;
+    `;
+    const params = [
+      req.user.id,
+      qStr, like, like, like, like,
+      status, status,
+      permis,
+      vehicule,
+      mobile,
+      ...extraParams,
+      offset, pageSize
+    ];
+    const results = await q(query, params);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
     res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {

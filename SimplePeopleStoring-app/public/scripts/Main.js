@@ -80,6 +80,7 @@ function alertChoice(message){
         document.body.appendChild(popup);
     }) 
 }
+
 function wait(ms) {return new Promise(resolve => setTimeout(resolve, ms));}
 
 async function parseOrThrow(res){
@@ -106,9 +107,7 @@ function stripHTML(html){
 
 async function api(url, opts = {}){
     try{
-        const res = await fetch(url, {
-            headers: { 'Accept': 'application/json', ...(opts.headers || {})}, ...opts
-        });
+        const res = await fetch(url, { headers: { 'Accept': 'application/json', ...(opts.headers || {})}, ...opts });
         return await parseOrThrow(res);
     }catch(err){
         let msg = err.message || 'Erreur réseau . . .';
