@@ -500,65 +500,63 @@ const skills = document.getElementById('add_skills');
 let currentTags = [];
 let currentSkills = [];
 
-async function renderTagsAndSkills() {
+function renderTagsAndSkills() {
     const tagList = document.getElementById('tags');
     const skillList = document.getElementById('skills');
     tagList.innerHTML = '';
     skillList.innerHTML = '';
     currentTags.forEach(t => {
-        const span = document.createElement('span');
-        span.textContent = t;
+        const div = document.createElement('div');
+        div.textContent = t;
         let confirming = false;
-        span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
-        span.onmouseleave = () => {
-            span.style.textDecoration = 'none';
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
             if (confirming) {
-                span.textContent = t;
-                span.style.color = 'var(--secondary)';
+                div.textContent = t;
+                div.style.color = 'var(--secondary)';
                 confirming = false;
             }
         };
-        span.onclick = () => {
+        div.onclick = () => {
             if (!confirming) {
-                span.textContent += ' ?';
-                span.style.color = 'red';
+                div.textContent += ' ?';
+                div.style.color = 'red';
                 confirming = true;
             } else {
                 currentTags = currentTags.filter(tag => tag !== t);
                 renderTagsAndSkills();
-                filterUsers();
             }
         };
-        tagList.appendChild(span);
+        tagList.appendChild(div);
     });
     currentSkills.forEach(s => {
-        const span = document.createElement('span');
+        const div = document.createElement('div');
         const type = formationCatalog[s] || 'unknown';
         const bgColor = typeColors[type];
-        span.textContent = s;
-        span.style.backgroundColor = bgColor;
+        div.textContent = s;
+        div.style.backgroundColor = bgColor;
         let confirming = false;
-        span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
-        span.onmouseleave = () => {
-            span.style.textDecoration = 'none';
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
             if (confirming) {
-                span.textContent = s;
-                span.style.color = 'var(--secondary)';
+                div.textContent = s;
+                div.style.color = 'var(--secondary)';
                 confirming = false;
             }
         };
-        span.onclick = () => {
+        div.onclick = () => {
             if (!confirming) {
-                span.textContent += ' ?';
-                span.style.color = 'red';
+                div.textContent += ' ?';
+                div.style.color = 'red';
                 confirming = true;
             } else {
                 currentSkills = currentSkills.filter(tag => tag !== s);
                 renderTagsAndSkills();
-                filterUsers();
             }
         };
-        skillList.appendChild(span);
+        skillList.appendChild(div);
     });
 }
 // When tag input loses focus or user presses Enter

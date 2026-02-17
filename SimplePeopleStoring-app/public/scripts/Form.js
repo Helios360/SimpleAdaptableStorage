@@ -38,15 +38,12 @@ document.addEventListener("DOMContentLoaded", function () {
     toggleConf.addEventListener('click', ()=>{
         const type = confirm.getAttribute('type') === "password" ? "text" : "password";
         confirm.setAttribute('type', type);
-
         confirmShow.style.display === "none"
             ? (confirmShow.style.display = "block", confirmHide.style.display = "none")
             : (confirmShow.style.display = "none", confirmHide.style.display = "block"); 
     })
-
     const sejour = document.getElementById('sejour');
     document.getElementById('titre-valide').style.maxHeight='0px';
-
     sejour.addEventListener('change', () => {
         if (!sejour.checked){
             document.getElementById('titre-valide').style.maxHeight='0px';
@@ -78,10 +75,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return false;
         }
     }
-
     password.addEventListener("input", checkPasswordMatch);
     confirm.addEventListener("input", checkPasswordMatch);
-
     // Vérification email
     function validateEmail(email) {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,20 +89,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const regex = /^0[1-9][0-9]{8}$/;
         return regex.test(normalize);
     }
-    /*
     function validatePostal(postal) {
         if (typeof postal !== 'string') return false;
         const normalize = postal.replace(/\s+/g, "");
         const regex = /^(0[1-9]|[1-8][0-9]|9[0-8])[0-9]{3}$/;
         return regex.test(normalize);
     }
-    */
     // Vérification nom/prénom (lettres uniquement)
     function validateName(name) {
         const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s\-]+$/;
         return regex.test(name);
     }
-
     // Vérification date de naissance (18 ans minimum)
     function validateBirth(dateString) {
         const birthDate = new Date(dateString);
@@ -116,16 +108,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const m = today.getMonth() - birthDate.getMonth();
         return age > 18 || (age === 18 && m >= 0);
     }
-
     // Vérification fichiers
     function validateFile(input, allowedExtensions, maxSizeMB) {
       if (!input.files.length) return false;
       const file = input.files[0];
-
       // Vérification extension
       const ext = file.name.split('.').pop().toLowerCase();
       if (!allowedExtensions.includes(ext)) return false;
-
       // Vérification taille
       const maxSizeBytes = maxSizeMB * 1024 * 1024; 
       if (file.size > maxSizeBytes || file.size == 0) {
@@ -133,13 +122,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       return true;
     }
-
     // Validation globale avant envoi
     form.addEventListener("submit", async function (e) {
         e.preventDefault();
         let valid = true;
         let errors = [];
-
         // Nom et prénom
         if (!validateName(document.getElementById("name").value)) {
             valid = false;
@@ -149,24 +136,20 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Prénom invalide (lettres uniquement).");
         }
-
         // Email
         if (!validateEmail(document.getElementById("email").value)) {
             valid = false;
             errors.push("Email invalide.");
         }
-
         // Téléphone
         if (!validatePhone(document.getElementById("tel").value)) {
             valid = false;
             errors.push("Téléphone invalide (10 chiffres).");
-        }
-/*
-        // Adresse, ville et code postal
+        }/*
         if (!document.getElementById("addr").value.trim()) {
             valid = false;
             errors.push("Adresse obligatoire.");
-        }
+        }*/
         if (!document.getElementById("city").value.trim()) {
             valid = false;
             errors.push("Ville obligatoire.");
@@ -175,14 +158,11 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Code postal invalide (5 chiffres).");
         }
-*/
-
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {
             valid = false;
             errors.push("Vous devez avoir au moins 18 ans.");
         }
-
         // Titre de Séjour
         if (sejour.checked && !titreInput.value){
             valid = false;
@@ -201,7 +181,6 @@ document.addEventListener("DOMContentLoaded", function () {
             valid = false;
             errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
         }
-
         // Mot de passe
         if (!checkPasswordMatch()) {
             valid = false;
@@ -217,7 +196,6 @@ document.addEventListener("DOMContentLoaded", function () {
             notifAlert("Infos manquantes :<br>- " + errors.join("<br>- "));
             return;
         }
-
         const fd = new FormData(form);
         const email = (fd.get('email') || '').toString().trim().toLowerCase();
         const password = fd.get('password');
@@ -245,7 +223,6 @@ document.addEventListener("DOMContentLoaded", function () {
             } else notifAlert('Erreur serveur, réessayez.');
         }
     });
-
     cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
     pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
     pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name; pivCross.style.display = 'block';})

@@ -103,21 +103,6 @@ select{
     width: 100%;
     position: relative;
 }
-.box{
-    border: 2px var(--secondary) solid;
-    border-radius: 8px;
-    padding:20px 7px;
-    flex-wrap: wrap;
-    flex-direction: row!important;
-}
-.box span{
-    border: 2px var(--secondary) solid;
-    border-radius: 6px;
-    padding:7px;
-    margin:15px 5px;
-    width: fit-content;
-    cursor:pointer;
-}
 .taging{
     border: 2px var(--secondary) solid;
     color:var(--secondary);
