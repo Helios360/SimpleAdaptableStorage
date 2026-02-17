@@ -1,63 +1,82 @@
-const allUsers = [];
-function renderUser (users) {
-  const list = document.getElementById('list');
-  list.innerHTML='';
-  users.forEach(user => {
-    const rawScore = user.gen_score;
-    const displayScore = rawScore == null ? "N/A" : rawScore;
-    if (rawScore == null) scoreColor = "var(--secondary)";
-    else if (rawScore < 20) scoreColor="#E02424";
-    else if (rawScore < 40) scoreColor="#F54927";
-    else if (rawScore < 60) scoreColor="#D5DB1F";
-    else scoreColor="#32DB1F";
-    list.innerHTML+=`
-    <div class="user" data-user-id="${user.id}">
-    <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
-    <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
-    <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
-    <span>
-        <select class="status-select" data-user-id="${user.id}">
-            <option value="active" ${user.status === 'active' ? 'selected' : ''}>Recherche active</option>
-            <option value="recherche" ${user.status === 'recherche' ? 'selected' : ''}>En recherche</option>
-            <option value="entreprise" ${user.status === 'entreprise' ? 'selected' : ''}>En Entreprise</option>
-            <option value="archive" ${user.status === 'archive' ? 'selected' : ''}>Archive</option>
-        </select>
-    </span>
-    <span class="resped"><p class="creationDate">${user.created_at.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
-    </div>
-    `;
-  });
-  document.querySelectorAll('.status-select').forEach(select => {
-    select.addEventListener('change', event => {
-      const newStatus = event.target.value;
-      const userId = event.target.getAttribute('data-user-id');
+const nextPage = document.getElementById('next-page');
+const previousPage = document.getElementById('previous-page');
+const actualPage = document.getElementById('actual-page');
 
-      fetch('/api/admin/update-status', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          id: userId,
-          status: newStatus
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          console.log(`Status updated for user ${userId}`);
-          const userToUpdate = allUsers.find(user => user.id == userId);
-          if (userToUpdate) userToUpdate.status = newStatus;
-        } else {
-          throw new Error(data.message);
-        }
-      })
-      .catch(err => {
-        console.error(`Failed to update status for user ${userId}:`, err);
-        notif("Erreur lors de la mise à jour du statut.");
-      });
-    });
-  });
+const allUsers = [];
+async function renderPage(pageIndex){
+    try{
+        const data = await api('/api/admin-panel',{
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({page: pageIndex, pageSize: 10}),
+        });
+        if(!data.success) return;
+        actualPage.innerText = data.pagination?.page ?? pageIndex;
+        const users = Array.isArray(data.users) ? data.users : [];
+        allUsers.lenght=0;
+        allUsers.push(...data.users);
+        renderUser(users);
+    } catch (e) { console.error(e); }
 }
-function sortUsers(by, ascending = true) {
+renderPage(1);
+nextPage.addEventListener('click', async () => {
+    renderPage(parseInt(actualPage.innerText) + 1);
+})
+previousPage.addEventListener('click', async () => {
+    renderPage(parseInt(actualPage.innerText) - 1);
+})
+
+async function renderUser (users) {
+    const list = document.getElementById('list');
+    list.innerHTML='';
+    let scoreColor;
+    users.forEach(user => {
+        const rawScore = user.gen_score;
+        const displayScore = rawScore == null ? "N/A" : rawScore;
+        if (rawScore == null) scoreColor = "var(--secondary)";
+        else if (rawScore < 20) scoreColor="#E02424";
+        else if (rawScore < 40) scoreColor="#F54927";
+        else if (rawScore < 60) scoreColor="#D5DB1F";
+        else scoreColor="#32DB1F";
+        list.innerHTML+=`
+        <div class="user" data-user-id="${user.id}">
+        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+        <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
+        <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
+        <span>
+            <select class="status-select" data-user-id="${user.id}">
+                <option value="active" ${user.status === 'active' ? 'selected' : ''}>Recherche active</option>
+                <option value="recherche" ${user.status === 'recherche' ? 'selected' : ''}>En recherche</option>
+                <option value="entreprise" ${user.status === 'entreprise' ? 'selected' : ''}>En Entreprise</option>
+                <option value="archive" ${user.status === 'archive' ? 'selected' : ''}>Archive</option>
+            </select>
+        </span>
+        <span class="resped"><p class="creationDate">${user.created_at.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
+        </div>
+        `;
+    });
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', async event => {
+            const newStatus = event.target.value;
+            const userId = event.target.getAttribute('data-user-id');
+            try {
+                const data = await api('/api/admin/update-status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                    id: userId,
+                    status: newStatus
+                    })
+                });
+                if (!data.success) return;
+                console.log(`Status updated for user ${userId}`);
+                const userToUpdate = allUsers.find(user => user.id == userId);
+                if (userToUpdate) userToUpdate.status = parseInt(newStatus, 10);
+            } catch (e) { console.error(e); }
+        });
+    });
+};
+async function sortUsers(by, ascending = true) {
   const sorted = [...allUsers];
   sorted.sort((a, b) => {
     let valA = a[by];
@@ -125,259 +144,54 @@ async function calculateUsersInArea(city){
     return null;
   }
 }
-
-fetch('/api/admin-panel', { method: 'POST'})
-.then(res => res.json())
-.then(data => {
-  if (data.success) {
-    const users = data.users;
+async function sortArrow(){
+    const users = allUsers || [];
     allUsers.push(...users);
     renderUser(users);
     attachFormListeners();
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#name-fname');
-      if (wrapper) {
-      const clickedSvg = wrapper.querySelector('svg');
-      document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-        .forEach(svg => {
-          if (svg !== clickedSvg) {
-            svg.classList.remove('rotated');
-            svg.classList.add('unrotate');
-          }
-        });
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("name",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("name",false);
-          }
+
+    const SORT_HEADERS = [
+      {wrapper: '#name-fname', key:'name'},
+      {wrapper: '#score', key:'gen_score'},
+      {wrapper: '#localisation', key:'city'},
+      {wrapper: '#status', key:'status'},
+      {wrapper: '#creation-date', key:'created_at'},
+    ];
+    const ALL_SVG_SELECTOR = SORT_HEADERS.map(h=>`${h.wrapper} svg`).join(', ');
+
+    async function resetOtherArrows(clickedSvg){
+      document.querySelectorAll(ALL_SVG_SELECTOR).forEach(svg => {
+        if(svg !== clickedSvg) {
+          svg.classList.remove('rotated');
+          svg.classList.add('unrotate');
         }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#score');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("gen_score",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("gen_score",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#localisation');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("city",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("city",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#status');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("status",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("status",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#creation-date');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("created_at",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("created_at",false);
-          }
-        }
-      }
-    });
-  }
-})
-.catch(err => { console.error('Error fetching users:', err); });
-
-async function filterUsers() {
-  const nameValue = (document.getElementById('nomPrenom')?.value || '').toLowerCase();
-  const statusRaw = (document.getElementById('searchStatus')?.value || '');
-  const statusValue = statusRaw.toLowerCase();
-  const placeValue = (document.getElementById('place')?.value || '').toLowerCase();
-  const radiusRaw = (document.getElementById('radius')?.value || '').trim;
-  const radiusValue = radiusRaw === '' ? 0 : Number(radiusRaw);
-  const postalValue = (document.getElementById('postal')?.value || '').toLowerCase();
-  const ageValue = (document.getElementById('age')?.value || '');
-  const trancheValue = (document.getElementById('trancheAge')?.value || '');
-  const skillsValue = [...document.querySelectorAll('#skills span')].map(span => span.textContent);
-  const tagsValue = [...document.querySelectorAll('#tags span')].map(span => span.textContent);
-  const permisValue = Number(document.getElementById('permis').checked);
-  const vehiculeValue = Number(document.getElementById('vehicule').checked);
-  const mobileValue = Number(document.getElementById('mobile').checked);
-  const noFilters = 
-    !nameValue &&
-    !(statusRaw || statusRaw === 'all') &&
-    !placeValue &&
-    !(radiusValue > 0) &&
-    !postalValue &&
-    !ageValue &&
-    !trancheValue &&
-    skillsValue.length === 0 &&
-    tagsValue.length === 0 &&
-    !permisValue &&
-    !vehiculeValue &&
-    !mobileValue;
-  
-  if (noFilters) {
-    renderUser(allUsers);
-    return;
-  }
-
-  let center = null;
-  const useRadius = Number.isFinite(radiusValue) && radiusValue > 0 && placeValue.length > 0;
-
-  if (useRadius){
-    center = await calculateUsersInArea(placeValue);
-    if(!center) {
-      notif(`Ville introuvable : ${placeValue}`);
-      renderUser(allUsers);
-      return;
+      });
     }
-  }
-
-  const filtered = allUsers.filter(user => {
-    if (!user) return false;
-    // Calculate age
-    const birthDate = new Date(user.birth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-    const fullName = `${user.name} ${user.fname}`.toLowerCase();
-    const matchName = nameValue === '' || fullName.includes(nameValue);
-    const matchStatus = statusValue === '' || user.status === statusValue;
-
-
-    const matchPlace = useRadius ? true : (placeValue === '' || user.city?.toLowerCase().includes(placeValue));
-    let matchRadius = true;
-    if (useRadius){
-      const uLat = Number(user.lat);
-      const uLon = Number(user.lon);
-      if(!Number.isFinite(uLat) || !Number.isFinite(uLon)){
-        matchRadius = false;
-      } else {
-        const d = haversine(center.lat, center.lon, uLat, uLon);
-        user._distanceKm = d;
-        matchRadius = d <= radiusValue;
-      }
-    } else {
-      delete user._distanceKm;
+    async function setArrowState(svg, asc){
+      svg.classList.toggle('rotated', asc);
+      svg.classList.toggle('unrotate', !asc);
     }
-
-    const matchPostal = postalValue === '' || user.postal?.toLowerCase().includes(postalValue);
-    const matchAge = ageValue === '' || age === parseInt(ageValue);
-    let matchTranche = true;
-    if (trancheValue !== ''){
-      const [minAge, maxAge] = trancheValue.split('-').map(v=>parseInt(v,10));
-      matchTranche = age >= minAge && age <= maxAge;
+    async function handleSortClick(wrapperSelector, sortKey, e){
+      const wrapper = e.target.closest(wrapperSelector);
+      if (!wrapper) return false;
+      const svg = wrapper.querySelector('svg');
+      if (!svg) return true;
+      resetOtherArrows(svg);
+      const nextAsc = !svg.classList.contains('rotated');
+      setArrowState(svg, nextAsc);
+      sortUsers(sortKey, nextAsc);
+      return true;
     }
-    const matchSkills = skillsValue.length === 0 || skillsValue.every(term => (user.skills || []).some(skill => skill.toLowerCase().includes(term.trim().toLowerCase())));
-    const matchTags = tagsValue.length === 0 || tagsValue.every(term => (user.tags || []).some(tag => tag.toLowerCase().includes(term.trim().toLowerCase())));
-
-    const matchPermis = !permisValue || user.permis === permisValue;
-    const matchVehicule = !vehiculeValue || user.vehicule === vehiculeValue;
-    const matchMobile = !mobileValue || user.mobile === mobileValue;
-    return matchName && matchStatus && matchPlace && matchPostal && matchAge && matchTranche && matchSkills && matchTags && matchPermis && matchVehicule && matchMobile && matchRadius;
-  });
-  renderUser(filtered);
+    document.addEventListener('click', (e) => {
+      for (const {wrapper, key} of SORT_HEADERS) { if (handleSortClick(wrapper, key, e)) break; }
+    });
 }
-
-function attachFormListeners() {
+async function attachFormListeners() {
   const form = document.getElementById('search-form');
   form.querySelectorAll('input, select, textarea').forEach(field => {
     field.addEventListener('input', filterUsers);
     field.addEventListener('change', filterUsers);
   });
-}
-function refreshUserList() {
-  fetch('/api/admin-panel', {method: 'POST'})
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      allUsers.length = 0; // Vider l'ancien tableau
-      allUsers.push(...data.users); // Remplir avec les vraies données
-      renderUser(data.users);
-    }
-  })
-  .catch(err => {console.error('Erreur lors du refresh:', err);});
 }
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
@@ -487,7 +301,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     `
     document.body.appendChild(popup);
     const form = popup.querySelector("form");
-    const message = document.getElementById("password-message")
     const telInput = document.getElementById('tel');
     const titreInput = document.getElementById('titre-sejour');
 
@@ -582,7 +395,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
         e.preventDefault();
         let valid = true;
         let errors = [];
-
         // Nom et prénom
         if (!validateName(document.getElementById("name").value)) {
             valid = false;
@@ -592,25 +404,21 @@ document.getElementById('addStud').addEventListener('click', ()=>{
             valid = false;
             errors.push("Prénom invalide (lettres uniquement).");
         }
-
         // Email
         if (!validateEmail(document.getElementById("email").value)) {
             valid = false;
             errors.push("Email invalide.");
         }
-
         // Téléphone
         if (!validatePhone(document.getElementById("tel").value)) {
             valid = false;
             errors.push("Téléphone invalide (10 chiffres).");
         }
-
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {
             valid = false;
             errors.push("Vous devez avoir au moins 18 ans.");
         }
-
         // Titre de Séjour
         if (sejour.checked && !titreInput.value){
             valid = false;
@@ -634,7 +442,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
             notifAlert("Infos manquantes :<br>- " + errors.join("<br>- "));
             return;
         }
-
         const fd = new FormData(form);
         const email = (fd.get('email') || '').toString().trim().toLowerCase();
         fd.set('email', email);
@@ -673,9 +480,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
 })
 
-
-
-
 function buildAllowedLists(formationIds = []){
   const skills = new Set();
   formationIds.forEach(fid => {
@@ -683,27 +487,26 @@ function buildAllowedLists(formationIds = []){
     if(!cfg) return;
     Object.keys(cfg).forEach(skill=>skills.add(skill));
   });
-  return {
-    skills: [...skills].sort()
-  }
-}
+  return { skills: [...skills].sort() };
+};
 
 async function initAdminAllowedFilters(){
-  const res = await fetch('/api/admin-profile');
-  const data = await res.json();
-  if (!data.success) return;
-  const formationIds = data.user.staff_formations || [];
-  const allowed = buildAllowedLists(formationIds);
-  populateDatalist(document.getElementById('skillList'), allowed.skills);
+    try {
+        const data = await api('/api/admin-profile');
+        if (!data.success) return;
+        const formationIds = data.user.staff_formations || [];
+        const allowed = buildAllowedLists(formationIds);
+        populateDatalist(document.getElementById('skillList'), allowed.skills);
+    } catch (e) { console.error(e); }
 };
-initAdminAllowedFilters().catch(console.error);
+initAdminAllowedFilters();
 
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
 let currentTags = [];
 let currentSkills = [];
 
-function renderTagsAndSkills() {
+async function renderTagsAndSkills() {
     const tagList = document.getElementById('tags');
     const skillList = document.getElementById('skills');
     tagList.innerHTML = '';
@@ -782,8 +585,6 @@ skills.addEventListener('change', () => {
     }
     skills.value = '';
 });
-
-
 document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search-form').reset();
   currentTags = [];

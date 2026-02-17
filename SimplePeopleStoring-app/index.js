@@ -11,6 +11,7 @@ const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
 const { BASE_DIR, q, validUser, makeToken } = require('./helpers');
 const { sendTo } = require('./mailer');
+const { totalmem } = require('os');
 
 app.disable('x-powered-by');
 app.use(cookieParser());
@@ -97,6 +98,12 @@ app.post('/logout', (req,res) => {
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
+    const body = req.body ?? {};
+    const page = Math.max(parseInt(body.page ?? "1", 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(body.pageSize ?? "10", 10), 1), 100);
+    const offset = (page - 1) * pageSize;
+    const countRows = await q(`SELECT COUNT(*) AS total FROM Users u WHERE EXISTS(SELECT 1 FROM StaffSettings ss WHERE ss.staff_user_id = ? AND ss.formation_id = u.formation_id)`, [req.user.id]);
+    const total = Number(countRows?.[0]?.total ?? 0);
     const results = await q(`
     SELECT 
       u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
@@ -112,11 +119,11 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       AND ss.formation_id = u.formation_id
     )
     GROUP BY u.id
-    ORDER BY u.created_at DESC;
+    ORDER BY u.created_at DESC
+    LIMIT ${offset}, ${pageSize};
     `, [req.user.id]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
-
-    res.json({ success: true, users: results });
+    res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
     res.status(500).json({success: false, message: "DB Error . . ."});

@@ -205,7 +205,25 @@ p{padding: 0; margin:0;}
     display: flex;
     flex-direction: column;
 }
-
+.pages{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    justify-items: center;
+    gap:1rem;
+    font-size: 1.5rem;
+}
+.pages a {
+    cursor: pointer;
+    padding:0.3rem 0.8rem;
+    margin:0.5rem;
+    border-radius: 8px;
+    border: 2px solid var(--secondary);
+}
+.pages p {
+    cursor: default;
+    padding:1rem;
+}
 @media (max-width:1230px){
     main{
         flex-direction: column;
