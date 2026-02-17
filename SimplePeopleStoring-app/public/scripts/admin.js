@@ -13,7 +13,7 @@ async function renderPage(pageIndex){
         if(!data.success) return;
         actualPage.innerText = data.pagination?.page ?? pageIndex;
         const users = Array.isArray(data.users) ? data.users : [];
-        allUsers.lenght=0;
+        allUsers.length=0;
         allUsers.push(...data.users);
         renderUser(users);
     } catch (e) { console.error(e); }
@@ -76,8 +76,9 @@ async function renderUser (users) {
         });
     });
 };
+
 async function sortUsers(by, ascending = true) {
-  const sorted = [...allUsers];
+  const sorted = allUsers;
   sorted.sort((a, b) => {
     let valA = a[by];
     let valB = b[by];
@@ -106,47 +107,43 @@ async function sortUsers(by, ascending = true) {
   renderUser(sorted);
 }
 function haversine(lat1, lon1, lat2, lon2){
-  const toRad = (v) => (v*Math.PI) / 180;
-
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return 6371*c;
+    const toRad = (v) => (v*Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return 6371*c;
 }
 const geoCache = new Map();
 async function calculateUsersInArea(city){
-  const key = (city || '').trim().toLowerCase();
-  if(!key) return null;
-  if(geoCache.has(key)) return geoCache.get(key);
-  const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(key)}&boost=population&fields=centre&limit=1`;
-  try{
-    const geoRes = await fetch(url);
-    if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
-    const data = await geoRes.json();
+    const key = (city || '').trim().toLowerCase();
+    if(!key) return null;
+    if(geoCache.has(key)) return geoCache.get(key);
+    const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(key)}&boost=population&fields=centre&limit=1`;
+    try{
+        const geoRes = await fetch(url);
+        if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
+        const data = await geoRes.json();
 
-    if (!Array.isArray(data) || data.length === 0 || !data[0]?.centre?.coordinates) {
-      geoCache.set(key, null);
-      return null;
+        if (!Array.isArray(data) || data.length === 0 || !data[0]?.centre?.coordinates) {
+            geoCache.set(key, null);
+            return null;
+        }
+        const [lon, lat] = data[0].centre.coordinates;
+        const center = {lat: Number(lat), lon: Number(lon)};
+        geoCache.set(key, center);
+        return center;
+    } catch(e) {
+        notif(`Geocoding failed for city: ${city} (${e})`);
+        geoCache.set(key, null);
+        return null;
     }
-    const [lon, lat] = data[0].centre.coordinates;
-    const center = {lat: Number(lat), lon: Number(lon)};
-    geoCache.set(key, center);
-    return center;
-  } catch(e) {
-    notif(`Geocoding failed for city: ${city} (${e})`);
-    geoCache.set(key, null);
-    return null;
-  }
 }
-async function sortArrow(){
+function sortArrow(){
     const users = allUsers || [];
-    allUsers.push(...users);
     renderUser(users);
     attachFormListeners();
 
@@ -159,39 +156,36 @@ async function sortArrow(){
     ];
     const ALL_SVG_SELECTOR = SORT_HEADERS.map(h=>`${h.wrapper} svg`).join(', ');
 
-    async function resetOtherArrows(clickedSvg){
-      document.querySelectorAll(ALL_SVG_SELECTOR).forEach(svg => {
-        if(svg !== clickedSvg) {
-          svg.classList.remove('rotated');
-          svg.classList.add('unrotate');
-        }
-      });
+    function resetOtherArrows(clickedSvg){
+        document.querySelectorAll(ALL_SVG_SELECTOR).forEach(svg => {
+            if(svg !== clickedSvg) {
+                svg.classList.remove('rotated');
+                svg.classList.add('unrotate');
+            }
+        });
     }
-    async function setArrowState(svg, asc){
-      svg.classList.toggle('rotated', asc);
-      svg.classList.toggle('unrotate', !asc);
+    function setArrowState(svg, asc){
+        svg.classList.toggle('rotated', asc);
+        svg.classList.toggle('unrotate', !asc);
     }
-    async function handleSortClick(wrapperSelector, sortKey, e){
-      const wrapper = e.target.closest(wrapperSelector);
-      if (!wrapper) return false;
-      const svg = wrapper.querySelector('svg');
-      if (!svg) return true;
-      resetOtherArrows(svg);
-      const nextAsc = !svg.classList.contains('rotated');
-      setArrowState(svg, nextAsc);
-      sortUsers(sortKey, nextAsc);
-      return true;
+    function handleSortClick(wrapperSelector, sortKey, e){
+        const wrapper = e.target.closest(wrapperSelector);
+        if (!wrapper) return false;
+        const svg = wrapper.querySelector('svg');
+        if (!svg) return true;
+        resetOtherArrows(svg);
+        const nextAsc = !svg.classList.contains('rotated');
+        setArrowState(svg, nextAsc);
+        sortUsers(sortKey, nextAsc);
+        return true;
     }
     document.addEventListener('click', (e) => {
-      for (const {wrapper, key} of SORT_HEADERS) { if (handleSortClick(wrapper, key, e)) break; }
+        for (const {wrapper, key} of SORT_HEADERS) { if (handleSortClick(wrapper, key, e)) break; }
     });
 }
+sortArrow();
 async function attachFormListeners() {
   const form = document.getElementById('search-form');
-  form.querySelectorAll('input, select, textarea').forEach(field => {
-    field.addEventListener('input', filterUsers);
-    field.addEventListener('change', filterUsers);
-  });
 }
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
