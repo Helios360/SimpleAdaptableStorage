@@ -117,8 +117,6 @@ p{padding: 0; margin:0;}
 .list{
     border:2px solid var(--secondary);
     border-radius: 8px;
-    display: flex;
-    flex-direction: column;
     width:55vw;
 }
 .header{

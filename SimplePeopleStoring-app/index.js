@@ -52,7 +52,7 @@ app.get('/reset-password', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/
 app.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-
+    let redirectTo = '/profile';
     const results = await q(`SELECT * FROM Users WHERE email = ?`, [email]);
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
@@ -78,7 +78,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     };
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    if ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3) && !user.is_admin){
+    if (!user.is_admin && ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3))){
       redirectTo = '/test';
     } else if (user.is_admin){
       redirectTo = '/admin-panel';
@@ -123,47 +123,46 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       extraWhere.push(`JSON_CONTAINS(u.skills, JSON_QUOTE(?))`);
       extraParams.push(s);
     }
-    const extraSql = extraWhere.length ? `AND ${extraWhere.join("AND")}`: "";
+    const baseParams = [
+      req.user.id,
+      qStr, like, like, like, like,
+      status, status,
+      permis, vehicule, mobile,
+      ...extraParams
+    ];
+    const extraSql = extraWhere.length ? ` AND ${extraWhere.join(" AND ")}`: "";
+    const whereSql = `
+    WHERE EXISTS (
+      SELECT 1 FROM StaffSettings ss
+      WHERE ss.staff_user_id = ?
+      AND ss.formation_id = u.formation_id
+    )
+    AND (? = '' OR (
+      u.name LIKE ? OR
+      u.fname LIKE ? OR
+      CONCAT(u.name,' ',u.fname) LIKE ? OR
+      CONCAT(u.fname,' ',u.name) LIKE ?
+    ))
+    AND (? = '' OR u.status = ?)
+    AND (? = 0 OR u.permis = 1)
+    AND (? = 0 OR u.vehicule = 1)
+    AND (? = 0 OR u.mobile = 1)
+    ${extraSql}`;
+    const countRows = await q(`SELECT COUNT(*) AS total FROM Users u ${whereSql}`, baseParams);
+    const total = Number(countRows?.[0]?.total ?? 0);
     const query = `
       SELECT 
         u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
         u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
-        ROUND(AVG(ta.score)) AS gen_score
+        ta.gen_score
       FROM Users u
       JOIN Formations f ON f.id = u.formation_id
-      LEFT JOIN TestAttempts ta ON u.id = ta.user_id
-      WHERE EXISTS (
-        SELECT 1 FROM StaffSettings ss
-        WHERE ss.staff_user_id = ?
-        AND ss.formation_id = u.formation_id
-      )
-      AND (? = '' OR (
-        u.name LIKE ? OR
-        u.fname LIKE ? OR
-        CONCAT(u.name,' ',u.fname) LIKE ? OR
-        CONCAT(u.fname,' ',u.name) LIKE ?
-      ))
-      AND (? = '' OR u.status = ?)
-      AND (? = 0 OR u.permis = 1)
-      AND (? = 0 OR u.vehicule = 1)
-      AND (? = 0 OR u.mobile = 1)
-      ${extraSql}
-      GROUP BY u.id
-      ORDER BY created_at DESC
-      LIMIT ?, ?;
+      LEFT JOIN ( SELECT user_id, ROUND(AVG(score)) AS gen_score FROM TestAttempts GROUP BY user_id ) ta ON ta.user_id = u.id
+      ${whereSql}
+      ORDER BY u.created_at DESC
+      LIMIT ${offset}, ${pageSize};
     `;
-    const params = [
-      req.user.id,
-      qStr, like, like, like, like,
-      status, status,
-      permis,
-      vehicule,
-      mobile,
-      ...extraParams,
-      offset, pageSize
-    ];
-    const results = await q(query, params);
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
+    const results = await q(query, baseParams);
     res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
@@ -174,7 +173,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
 app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, score, birth, permis, vehicule, postal FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, birth, permis, vehicule, postal FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {
@@ -248,7 +247,7 @@ app.get("/api/auth/verifMail", async (req, res) => {
   if (!token || !email) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const rows = await q(`SELECT email_verify_token, email_verify_expires FROM Users WHERE email=?`,[email]); 
-  if (!rows || rows.length === 0) return res.redirect(`${APP_URL}profile`);
+  if (!rows || rows.length === 0) return res.redirect(`${process.env.APP_URL}profile`);
   if (tokenHash === rows[0].email_verify_token && new Date(rows[0].email_verify_expires) > new Date()) {
     await q(`UPDATE Users SET email_verified=1, email_verified_at=NOW(), email_verify_token=NULL, email_verify_expires=NULL WHERE email=?`, [email]);
   } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}

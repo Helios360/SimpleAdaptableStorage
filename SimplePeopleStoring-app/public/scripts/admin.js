@@ -1,20 +1,45 @@
 const nextPage = document.getElementById('next-page');
 const previousPage = document.getElementById('previous-page');
 const actualPage = document.getElementById('actual-page');
+const tag = document.getElementById('add_tags');
+const skills = document.getElementById('add_skills');
+
+let currentTags = [];
+let currentSkills = [];
+
+function buildPayload(pageIndex){
+    return {
+        q: document.getElementById('nomPrenom').value.trim(),
+        status: document.getElementById('searchStatus').value || "",
+        city: document.getElementById('place').value.trim(),
+        postal: document.getElementById('postal').value.trim(),
+        age: document.getElementById('age').value
+            ? Number(document.getElementById('age').value) : null,
+        trancheAge: document.getElementById('trancheAge').value || "",
+        permis: document.getElementById('permis').checked,
+        vehicule: document.getElementById('vehicule').checked,
+        mobile: document.getElementById('mobile').checked,
+        tags: currentTags,
+        skills: currentSkills,
+        page: pageIndex,
+        pageSize: 10,
+    };
+}
 
 const allUsers = [];
 async function renderPage(pageIndex){
     try{
+        const payload = buildPayload(pageIndex);
         const data = await api('/api/admin-panel',{
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({page: pageIndex, pageSize: 10}),
+            body: JSON.stringify(payload),
         });
         if(!data.success) return;
         actualPage.innerText = data.pagination?.page ?? pageIndex;
         const users = Array.isArray(data.users) ? data.users : [];
         allUsers.length=0;
-        allUsers.push(...data.users);
+        allUsers.push(...users);
         renderUser(users);
     } catch (e) { console.error(e); }
 }
@@ -23,7 +48,8 @@ nextPage.addEventListener('click', async () => {
     renderPage(parseInt(actualPage.innerText) + 1);
 })
 previousPage.addEventListener('click', async () => {
-    renderPage(parseInt(actualPage.innerText) - 1);
+    const p = Math.max(1, parseInt(actualPage.innerText, 10) -1)
+    if (p >= 1) renderPage(p);
 })
 
 async function renderUser (users) {
@@ -71,7 +97,7 @@ async function renderUser (users) {
                 if (!data.success) return;
                 console.log(`Status updated for user ${userId}`);
                 const userToUpdate = allUsers.find(user => user.id == userId);
-                if (userToUpdate) userToUpdate.status = parseInt(newStatus, 10);
+                if (userToUpdate) userToUpdate.status = newStatus;
             } catch (e) { console.error(e); }
         });
     });
@@ -266,11 +292,11 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                     </div>
                     <li class="file-upload">
                         <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg" required>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf" required>
                     </li>
                     <li class="file-upload">
                         <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg" required>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf" required>
                     </li>
                 </ul>
                 <div>
@@ -495,11 +521,6 @@ async function initAdminAllowedFilters(){
 };
 initAdminAllowedFilters();
 
-const tag = document.getElementById('add_tags');
-const skills = document.getElementById('add_skills');
-let currentTags = [];
-let currentSkills = [];
-
 function renderTagsAndSkills() {
     const tagList = document.getElementById('tags');
     const skillList = document.getElementById('skills');
@@ -526,6 +547,7 @@ function renderTagsAndSkills() {
             } else {
                 currentTags = currentTags.filter(tag => tag !== t);
                 renderTagsAndSkills();
+                renderPage(1);
             }
         };
         tagList.appendChild(div);
@@ -554,6 +576,7 @@ function renderTagsAndSkills() {
             } else {
                 currentSkills = currentSkills.filter(tag => tag !== s);
                 renderTagsAndSkills();
+                renderPage(1);
             }
         };
         skillList.appendChild(div);
@@ -582,42 +605,32 @@ document.getElementById('reset').addEventListener('click', ()=>{
   currentTags = [];
   currentSkills = [];
   renderTagsAndSkills();
-  renderUser(allUsers);
+  renderPage(1);
 });
 let lastSearchedPayload = null;
 let controller = null;
 function debounce(fn, delay = 400){
     let t;
-
-}
-document.getElementById('search-form').addEventListener('change', debouncedSearch);
-async function buildPayload(pageIndex){
-    const payload = {
-        q: document.getElementById('nomPrenom').value.trim(),
-        status: document.getElementById('searchStatus').value || "",
-        city: document.getElementById('place').value.trim(),
-        postal: document.getElementById('postal').value.trim(),
-        age: document.getElementById('age').value
-            ? Number(document.getElementById('age').value) : null,
-        trancheAge: document.getElementById('trancheAge').value || "",
-        permis: document.getElementById('permis').checked,
-        vehicule: document.getElementById('vehicule').checked,
-        mobile: document.getElementById('mobile').checked,
-
-        tags: getSelectedTags(),
-        skills: getSelectedSkills(),
-        page: 1,
-        pageSize: 10,
+    return function (...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), delay);
     };
+}
+
+const debouncedSearch = debounce( async () => {
     try{
+        const payload = buildPayload(1);
         const results = await api('/api/admin-panel', {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload),
         });
-
+        if(!results?.success) return;
+        renderUser(results.users);
+        if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
     } catch (err) {
         console.error(err);
     }
+}, 400);
 
-}
+document.getElementById('search-form').addEventListener('input', debouncedSearch);
