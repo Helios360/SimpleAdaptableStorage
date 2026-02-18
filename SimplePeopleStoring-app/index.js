@@ -106,13 +106,28 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     // Sorting
     const qStr = (b.q ?? "").toString().trim();
     const status = (b.status ?? "").toString().trim();
+    const city = (b.city ?? "").toString().trim();
+    const postal = (b.postal ?? "").toString().trim();
     const like = `%${qStr}%`;
+    const cityLike = `%${city}%`;
+    const postalLike = `%${postal}%`;
     const permis = b.permis === true ? 1 : 0;
     const vehicule = b.vehicule === true ? 1 : 0;
     const mobile = b.mobile === true ? 1 : 0;
-
     const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean).map(String) : [];
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
+    const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
+    const orderKey = (b.order ?? "created_at").toString().trim();
+    const ORDER_COLS = {
+      name: "u.name",
+      fname: "u.fname",
+      city: "u.city",
+      status: "u.status",
+      created_at: "u.created_at",
+      gen_score: "ta.gen_score",
+    };
+    const orderCol = ORDER_COLS[orderKey] || "ta.gen_score";
+    const orderDir = dirRaw === "ASC" ? "ASC" : "DESC";
     const extraWhere = [];
     const extraParams = [];
     for (const t of tags) { // All Tags
@@ -126,6 +141,8 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const baseParams = [
       req.user.id,
       qStr, like, like, like, like,
+      city, cityLike,
+      postal, postalLike,
       status, status,
       permis, vehicule, mobile,
       ...extraParams
@@ -138,11 +155,12 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       AND ss.formation_id = u.formation_id
     )
     AND (? = '' OR (
-      u.name LIKE ? OR
-      u.fname LIKE ? OR
+      u.name LIKE ? OR u.fname LIKE ? OR
       CONCAT(u.name,' ',u.fname) LIKE ? OR
       CONCAT(u.fname,' ',u.name) LIKE ?
     ))
+    AND (? = '' OR u.city LIKE ?)
+    AND (? = '' OR u.postal LIKE ?)
     AND (? = '' OR u.status = ?)
     AND (? = 0 OR u.permis = 1)
     AND (? = 0 OR u.vehicule = 1)
@@ -159,7 +177,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       JOIN Formations f ON f.id = u.formation_id
       LEFT JOIN ( SELECT user_id, ROUND(AVG(score)) AS gen_score FROM TestAttempts GROUP BY user_id ) ta ON ta.user_id = u.id
       ${whereSql}
-      ORDER BY u.created_at DESC
+      ORDER BY ${orderCol} ${orderDir}
       LIMIT ${offset}, ${pageSize};
     `;
     const results = await q(query, baseParams);

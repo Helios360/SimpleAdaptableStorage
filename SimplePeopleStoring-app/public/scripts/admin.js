@@ -7,7 +7,7 @@ const skills = document.getElementById('add_skills');
 let currentTags = [];
 let currentSkills = [];
 
-function buildPayload(pageIndex){
+function buildPayload(pageIndex, orderBy = "desc", order = "score"){
     return {
         q: document.getElementById('nomPrenom').value.trim(),
         status: document.getElementById('searchStatus').value || "",
@@ -23,6 +23,8 @@ function buildPayload(pageIndex){
         skills: currentSkills,
         page: pageIndex,
         pageSize: 10,
+        orderBy: orderBy,
+        order: order,
     };
 }
 
@@ -102,36 +104,6 @@ async function renderUser (users) {
         });
     });
 };
-
-async function sortUsers(by, ascending = true) {
-  const sorted = allUsers;
-  sorted.sort((a, b) => {
-    let valA = a[by];
-    let valB = b[by];
-
-    // Normalize for string or date
-    if (by === 'created_at') {
-      valA = new Date(valA);
-      valB = new Date(valB);
-    }
-    if (by === "gen_score") {
-      valA = (valA === null || valA === undefined || valA === "") ? -Infinity : Number(valA);
-      valB = (valB === null || valB === undefined || valB === "") ? -Infinity : Number(valB);
-      if (isNaN(valA)) valA = -Infinity;
-      if (isNaN(valB)) valB = -Infinity;
-    }
-    if (typeof valA === 'string') {
-      valA = valA.toLowerCase();
-      valB = valB.toLowerCase();
-    }
-
-    if (valA < valB) return ascending ? -1 : 1;
-    if (valA > valB) return ascending ? 1 : -1;
-    return 0;
-  });
-
-  renderUser(sorted);
-}
 function haversine(lat1, lon1, lat2, lon2){
     const toRad = (v) => (v*Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
@@ -168,6 +140,7 @@ async function calculateUsersInArea(city){
         return null;
     }
 }
+// Sort users based on the arrows on the first line (only desc and asc) and dynamic
 function sortArrow(){
     const users = allUsers || [];
     renderUser(users);
@@ -194,7 +167,7 @@ function sortArrow(){
         svg.classList.toggle('rotated', asc);
         svg.classList.toggle('unrotate', !asc);
     }
-    function handleSortClick(wrapperSelector, sortKey, e){
+    async function handleSortClick(wrapperSelector, sortKey, e){
         const wrapper = e.target.closest(wrapperSelector);
         if (!wrapper) return false;
         const svg = wrapper.querySelector('svg');
@@ -202,11 +175,26 @@ function sortArrow(){
         resetOtherArrows(svg);
         const nextAsc = !svg.classList.contains('rotated');
         setArrowState(svg, nextAsc);
-        sortUsers(sortKey, nextAsc);
-        return true;
+        try{
+            const dir = nextAsc ? "asc" : "desc";
+            const payload = buildPayload(1, dir, sortKey);
+            const results = await api('/api/admin-panel', {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload),
+            });
+            if(!results?.success) return;
+            renderUser(results.users);
+            if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+        } catch (err) {
+            console.error(err || "error");
+        }
     }
-    document.addEventListener('click', (e) => {
-        for (const {wrapper, key} of SORT_HEADERS) { if (handleSortClick(wrapper, key, e)) break; }
+    document.addEventListener('click', async (e) => {
+        for (const {wrapper, key} of SORT_HEADERS) {
+            const handled = await handleSortClick(wrapper, key, e);
+            if (handled) break; 
+        }
     });
 }
 sortArrow();
