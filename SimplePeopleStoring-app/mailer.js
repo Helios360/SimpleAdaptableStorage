@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
-const privateKeyRaw = process.env.SERVICE_CLIENT_SECRET;
+let privateKeyRaw = process.env.SERVICE_CLIENT_SECRET;
 if (!privateKeyRaw) console.warn("Mailer disabled: SERVICE_CLIENT is not set");
-else privateKeyRaw.replace(/\\n/g, "\n");
+privateKeyRaw = privateKeyRaw?.replace(/\\n/g, "\n");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com", // Shortcut for Gmail's SMTP settings - see Well-Known Services

@@ -7,11 +7,12 @@ const skills = document.getElementById('add_skills');
 let currentTags = [];
 let currentSkills = [];
 
-function buildPayload(pageIndex, orderBy = "desc", order = "score"){
+function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
     return {
         q: document.getElementById('nomPrenom').value.trim(),
         status: document.getElementById('searchStatus').value || "",
         city: document.getElementById('place').value.trim(),
+        radius: document.getElementById('radius').value.trim(),
         postal: document.getElementById('postal').value.trim(),
         age: document.getElementById('age').value
             ? Number(document.getElementById('age').value) : null,
@@ -104,42 +105,6 @@ async function renderUser (users) {
         });
     });
 };
-function haversine(lat1, lon1, lat2, lon2){
-    const toRad = (v) => (v*Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return 6371*c;
-}
-const geoCache = new Map();
-async function calculateUsersInArea(city){
-    const key = (city || '').trim().toLowerCase();
-    if(!key) return null;
-    if(geoCache.has(key)) return geoCache.get(key);
-    const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(key)}&boost=population&fields=centre&limit=1`;
-    try{
-        const geoRes = await fetch(url);
-        if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
-        const data = await geoRes.json();
-
-        if (!Array.isArray(data) || data.length === 0 || !data[0]?.centre?.coordinates) {
-            geoCache.set(key, null);
-            return null;
-        }
-        const [lon, lat] = data[0].centre.coordinates;
-        const center = {lat: Number(lat), lon: Number(lon)};
-        geoCache.set(key, center);
-        return center;
-    } catch(e) {
-        notif(`Geocoding failed for city: ${city} (${e})`);
-        geoCache.set(key, null);
-        return null;
-    }
-}
 // Sort users based on the arrows on the first line (only desc and asc) and dynamic
 function sortArrow(){
     const users = allUsers || [];

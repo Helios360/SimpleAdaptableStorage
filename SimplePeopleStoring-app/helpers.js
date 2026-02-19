@@ -177,11 +177,27 @@ function makeToken(){
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   return {token, tokenHash};
 }
+async function getCityCoords(city) {
+  let lon = null;
+  let lat = null;
+  const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(city)}&boost=population&fields=centre&limit=1`;
+  try{
+    const geoRes = await fetch(url);
+    if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
+    const data = await geoRes.json();
+    if (!Array.isArray(data) || data.length === 0 || !data[0]?.centre?.coordinates) throw new Error("City not found");
+    [lon, lat] = data[0].centre.coordinates;
+    return [lon, lat];
+  } catch(e) {
+    console.warn(`Geocoding failed for city: ${city}, (${e.message})`);
+    return null;
+  }
+}
 module.exports = {
     // === constants ===
     ALLOWED_MIME, ALLOWED_EXT, BASE_DIR, UPLOADS_ROOT, TOS_VERSION, WATERMARK_PATH,
     // === helpers ===
-    userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark, makeToken,
+    userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark, makeToken, getCityCoords,
     // === db + ops ===
     q, db,
     deleteUser, kindCheck, deleteFile, allowIframeSelf, validUser,

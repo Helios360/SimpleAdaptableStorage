@@ -4,7 +4,7 @@ const { formidable } = require('formidable');
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
-const {allowIframeSelf, makeToken} = require('./helpers.js')
+const {allowIframeSelf, makeToken, getCityCoords} = require('./helpers.js')
 const { sendTo } = require('./mailer');
 const bcrypt = require('bcrypt');
 const { 
@@ -45,7 +45,7 @@ router.post('/submit-form', (req, res) => {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
         postal, birth, password, consent, formation_id,
       } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !birth || !consent || !formation_id) return res.status(400).send('Champs de formulaire manquants');
+      if (!email || !password || !name || !tel || !birth || !consent || !formation_id || !city) return res.status(400).send('Champs de formulaire manquants');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
@@ -59,16 +59,7 @@ router.post('/submit-form', (req, res) => {
       ]);
       let lon = null;
       let lat = null;
-      const url = `https://geo.api.gouv.fr/communes?nom=${city}&boost=population&fields=centre&limit=1`;
-      try{
-        const geoRes = await fetch(url);
-        if (!geoRes.ok) throw new Error(`GeoAPI failed: ${geoRes.status}`);
-        const data = await geoRes.json();
-        if (!Array.isArray(data) || data.lenght === 0 || !data[0]?.centre?.coordinates) throw new Error("City not found");
-        [lon, lat] = data[0].centre.coordinates;
-      } catch(e) {
-        console.warn(`Geocoding failed for city: ${city}, user:${email} (${e.message})`);
-      }
+      [lon, lat] = await getCityCoords(city);
       const insertSql = `
         INSERT INTO Users
           (name, fname, email, tel, addr, city, lon, lat, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation_id)
@@ -149,11 +140,12 @@ router.post('/submit-form-admin', (req, res) => {
       return res.status(400).send('Form parsing error');
     }
     try {
+      const first = (v) => Array.isArray(v) ? v[0] : v;
       const {
         name, fname, email, tel, addr, city, permis, vehicule, mobile,
         postal, birth, formation_id,
-      } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !name || !tel || !birth || !formation_id) return res.status(400).send('Missing required fields');
+      } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, first(v)]));
+      if (!email || !name || !tel || !birth || !formation_id || !city) return res.status(400).send('Missing required fields');
       
       const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
       await fs.mkdir(tmpDir, {recursive: true});
@@ -168,14 +160,18 @@ router.post('/submit-form-admin', (req, res) => {
       const randomPwd = crypto.randomBytes(24).toString('hex');
       const {token, tokenHash} = makeToken();
       const expiresAt = new Date(Date.now()+1000*60*60*48);
+      let lon = null;
+      let lat = null;
+      const coords = await getCityCoords(city);
+      if (coords) [lon, lat] = coords;
       const insertSql = `
         INSERT INTO Users
-          (name, fname, email, tel, addr, city, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, formation_id, email_verified, reset_pwd_token, reset_pwd_expires)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (name, fname, email, tel, addr, city, lon, lat, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, formation_id, email_verified, reset_pwd_token, reset_pwd_expires)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const url = `${process.env.APP_URL}reset-password?token=${token}&email=${encodeURIComponent(email)}`;
       const hashedPassword = await bcrypt.hash(randomPwd, 12);
-      const insertValues = [name, fname, email, tel, addr, city, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, formation_id, 0, tokenHash, expiresAt];
+      const insertValues = [name, fname, email, tel, addr, city, lon, lat, permis ? 1 : 0, vehicule ? 1 : 0, mobile ? 1 : 0, postal, birth, null, null, null, hashedPassword, formation_id, 0, tokenHash, expiresAt];
       try{
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;

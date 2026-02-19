@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q, validUser, makeToken } = require('./helpers');
+const { BASE_DIR, q, validUser, makeToken, getCityCoords } = require('./helpers');
 const { sendTo } = require('./mailer');
 const { totalmem } = require('os');
 
@@ -108,6 +108,8 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const status = (b.status ?? "").toString().trim();
     const city = (b.city ?? "").toString().trim();
     const postal = (b.postal ?? "").toString().trim();
+    const radiusRaw = b.radius ?? null;
+    const radius = Number.isFinite(Number(radiusRaw)) ? Number(radiusRaw) : null;
     const like = `%${qStr}%`;
     const cityLike = `%${city}%`;
     const postalLike = `%${postal}%`;
@@ -118,6 +120,15 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
+    let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
+    if (city && radius !== null) {
+      const coords = await getCityCoords(city);
+      if (coords) [cityLon, cityLat] = coords;
+    }
+    if(cityLon !== null && cityLat !== null) {
+      geoSql = `AND ST_Distance_Sphere(POINT(u.lon,u.lat), POINT(?, ?)) <= ? * 1000`;
+      geoParams.push(cityLon, cityLat, radius);
+    }
     const ORDER_COLS = {
       name: "u.name",
       fname: "u.fname",
@@ -145,26 +156,16 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       postal, postalLike,
       status, status,
       permis, vehicule, mobile,
+      ...geoParams,
       ...extraParams
     ];
     const extraSql = extraWhere.length ? ` AND ${extraWhere.join(" AND ")}`: "";
     const whereSql = `
-    WHERE EXISTS (
-      SELECT 1 FROM StaffSettings ss
-      WHERE ss.staff_user_id = ?
-      AND ss.formation_id = u.formation_id
-    )
-    AND (? = '' OR (
-      u.name LIKE ? OR u.fname LIKE ? OR
-      CONCAT(u.name,' ',u.fname) LIKE ? OR
-      CONCAT(u.fname,' ',u.name) LIKE ?
-    ))
-    AND (? = '' OR u.city LIKE ?)
-    AND (? = '' OR u.postal LIKE ?)
-    AND (? = '' OR u.status = ?)
-    AND (? = 0 OR u.permis = 1)
-    AND (? = 0 OR u.vehicule = 1)
-    AND (? = 0 OR u.mobile = 1)
+    WHERE EXISTS (SELECT 1 FROM StaffSettings ss WHERE ss.staff_user_id = ? AND ss.formation_id = u.formation_id )
+    AND (? = '' OR ( u.name LIKE ? OR u.fname LIKE ? OR CONCAT(u.name,' ',u.fname) LIKE ? OR CONCAT(u.fname,' ',u.name) LIKE ? ))
+    AND (? = '' OR u.city LIKE ?) AND (? = '' OR u.postal LIKE ?) AND (? = '' OR u.status = ?)
+    AND (? = 0 OR u.permis = 1) AND (? = 0 OR u.vehicule = 1) AND (? = 0 OR u.mobile = 1)
+    ${geoSql} 
     ${extraSql}`;
     const countRows = await q(`SELECT COUNT(*) AS total FROM Users u ${whereSql}`, baseParams);
     const total = Number(countRows?.[0]?.total ?? 0);
