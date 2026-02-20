@@ -12,7 +12,7 @@ const testRouter = require('./test.routes');
 const { BASE_DIR, q, validUser, makeToken, getCityCoords } = require('./helpers');
 const { sendTo } = require('./mailer');
 const { totalmem } = require('os');
-
+const fs = require('fs').promises;
 app.disable('x-powered-by');
 app.use(cookieParser());
 
@@ -34,19 +34,66 @@ app.use(express.static(path.join(BASE_DIR, 'public')));
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100 // max 100 requests per 15 minutes
+  max: 200 // max 100 requests per 15 minutes
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
-
-// === HTML Routes ===
-app.get('/', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/index.html')));
-app.get('/register', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/register.html')));
-app.get('/signin', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/signin.html')));
-app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR, 'views', 'profile.html'));});
-app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'admin.html'));});
-app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
-app.get('/legal', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/legal.html')));
-app.get('/reset-password', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/reset-password.html')));
+let header = "";
+let footer = "";
+// === HTML Comp Routes ===
+async function bootstrap(){
+  [header, footer] = await Promise.all([
+    fs.readFile(path.join(BASE_DIR, 'public/components/header.html'), "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/footer.html'), "utf-8"),
+  ]);
+  app.get('/', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, "public/index.html"), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/register', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public/register.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/signin', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public/signin.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/profile', authMiddleware, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'profile.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/admin-panel', authMiddleware, adminOnly, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'admin.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/test', authMiddleware, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'test.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/legal', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'legal.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/reset-password', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'reset-password.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.use(crudRouter);
+  app.use(testRouter);
+  // === Global error handler ===
+  app.use((err, req, res, next) => {
+    console.error('Global error handler:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  });
+  // === Fallback route ===
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+  });
+  app.listen(PORT, HOST, () => console.log(`:D Server running at http://${HOST}:${PORT}`));
+}
+bootstrap().catch((err) => {
+  console.error("Startup failed :", err);
+  process.exit(1);
+});
 
 // === /login Route ===
 app.post('/login', loginLimiter, async (req, res) => {
@@ -324,18 +371,3 @@ so the user is created with
 email verified = 0 and status invited or something
 i can definitely reuse the reset code, just have to change the texts here and there
 */
-app.use(crudRouter);
-app.use(testRouter);
-// === Global error handler ===
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
-});
-// === Fallback route ===
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
-});
-// === Start Server ===
-app.listen(PORT, HOST, () => {
-  console.log(`:D Server running at http://${HOST}:${PORT}`);
-});

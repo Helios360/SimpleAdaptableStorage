@@ -1,8 +1,3 @@
-async function loadComponents(id, file){
-    const res = await fetch('/components/' + file);
-    document.getElementById(id).innerHTML = await res.text();
-}
-
 const root = document.documentElement;
 
 function applyTheme(isDark) {
@@ -28,11 +23,6 @@ function constructTheme() {
         applyTheme(newTheme); 
     }); 
 }
-(async function init(){ 
-    await loadComponents('footer', "footer.html");
-    await loadComponents('header', "header.html");
-    constructTheme();
-})();
 function notif(message){
     const popup = document.createElement('div');
     popup.className="popup";
