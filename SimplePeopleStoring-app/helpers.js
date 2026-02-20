@@ -172,11 +172,14 @@ async function validUser(userEmail){
   if(rows[0].email_verified === 0) return ({success:false, code:"NOT_VERIFIED"});
   return {success:true, code:"VERIFIED"};
 }
+
+// ------------------------- TOKEN GENERATOR (PWD RESET) ------------------------- //
 function makeToken(){
   const token = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   return {token, tokenHash};
 }
+// ------------------------- Lat and Lon coords of a city ------------------------- //
 async function getCityCoords(city) {
   let lon = null;
   let lat = null;

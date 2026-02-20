@@ -106,12 +106,12 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     // Sorting
     const qStr = (b.q ?? "").toString().trim();
     const status = (b.status ?? "").toString().trim();
-    const city = (b.city ?? "").toString().trim();
+    let city = (b.city ?? "").toString().trim();
     const postal = (b.postal ?? "").toString().trim();
     const radiusRaw = b.radius ?? null;
     const radius = Number.isFinite(Number(radiusRaw)) ? Number(radiusRaw) : null;
     const like = `%${qStr}%`;
-    const cityLike = `%${city}%`;
+    let cityLike = `%${city}%`;
     const postalLike = `%${postal}%`;
     const permis = b.permis === true ? 1 : 0;
     const vehicule = b.vehicule === true ? 1 : 0;
@@ -128,6 +128,8 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     if(cityLon !== null && cityLat !== null) {
       geoSql = `AND ST_Distance_Sphere(POINT(u.lon,u.lat), POINT(?, ?)) <= ? * 1000`;
       geoParams.push(cityLon, cityLat, radius);
+      city = "";
+      cityLike = "";
     }
     const ORDER_COLS = {
       name: "u.name",
@@ -182,6 +184,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       LIMIT ${offset}, ${pageSize};
     `;
     const results = await q(query, baseParams);
+    console.log(results);
     res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
