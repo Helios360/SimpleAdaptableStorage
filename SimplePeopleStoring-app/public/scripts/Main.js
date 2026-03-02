@@ -5,7 +5,6 @@ function applyTheme(isDark) {
         root.style.setProperty('--primary', '#141414');
         root.style.setProperty('--secondary', '#dff6f6');
         root.style.setProperty('--tertiary', '#46c2c2ff');
-
     } else {
         root.style.setProperty('--primary', '#dff6f6');
         root.style.setProperty('--secondary', '#141414');
@@ -13,16 +12,17 @@ function applyTheme(isDark) {
     }
 }
 
-function constructTheme() { 
-    const button = document.getElementById('toggle-theme'); 
-    if (!button) return; 
-    applyTheme(localStorage.getItem('dark') === 'true'); 
-    button.addEventListener('click', () => { 
-        const isDark = localStorage.getItem('dark') === 'true' || false; 
-        const newTheme = !isDark; localStorage.setItem('dark', newTheme.toString()); 
-        applyTheme(newTheme); 
-    }); 
-}
+const cog = document.getElementById('cog');
+const button = document.getElementById('toggle-theme'); 
+cog.addEventListener('click', () => { button.classList.toggle('open'); cog.classList.toggle('open')})
+
+applyTheme(localStorage.getItem('dark') === 'true'); 
+button.addEventListener('click', () => { 
+    const isDark = localStorage.getItem('dark') === 'true' || false; 
+    const newTheme = !isDark; localStorage.setItem('dark', newTheme.toString()); 
+    applyTheme(newTheme); 
+}); 
+
 function notif(message){
     const popup = document.createElement('div');
     popup.className="popup";

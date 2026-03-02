@@ -1,0 +1,1 @@
+xargs -n 1 codium --install-extension < .vscode/extensions.txt

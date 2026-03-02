@@ -39,7 +39,7 @@ app.use(rateLimit({
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
 let header = "";
 let footer = "";
-// === HTML Comp Routes ===
+// === HTML Comp Routes (Prod) ===
 async function bootstrap(){
   [header, footer] = await Promise.all([
     fs.readFile(path.join(BASE_DIR, 'public/components/header.html'), "utf-8"),
@@ -94,7 +94,66 @@ bootstrap().catch((err) => {
   console.error("Startup failed :", err);
   process.exit(1);
 });
-
+/*
+// === HTML Comp Routes (dev only) ===
+async function injectLayout(pagePath) {
+  const [page, header, footer] = await Promise.all([
+    fs.readFile(pagePath, "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/header.html'), "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/footer.html'), "utf-8"),
+  ]);
+  return page.replace("<!--header-->", header).replace("<!--footer-->", footer);
+}
+async function bootstrap(){
+  app.get('/', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/index.html"));
+    res.type("html").send(page);
+  });
+  app.get('/register', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/register.html"));
+    res.type("html").send(page);
+  });
+  app.get('/signin', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/signin.html"));
+    res.type("html").send(page);
+  });
+  app.get('/profile', authMiddleware, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/profile.html"));
+    res.type("html").send(page);
+  });
+  app.get('/admin-panel', authMiddleware, adminOnly, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/admin.html"));
+    res.type("html").send(page);
+  });
+  app.get('/test', authMiddleware, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/index.html"));
+    res.type("html").send(page);
+  });
+  app.get('/legal', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/legal.html"));
+    res.type("html").send(page);
+  });
+  app.get('/reset-password', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/reset-password.html"));
+    res.type("html").send(page);
+  });
+  app.use(crudRouter);
+  app.use(testRouter);
+  // === Global error handler ===
+  app.use((err, req, res, next) => {
+    console.error('Global error handler:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  });
+  // === Fallback route ===
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+  });
+  app.listen(PORT, HOST, () => console.log(`:D Server running at http://${HOST}:${PORT}`));
+}
+bootstrap().catch((err) => {
+  console.error("Startup failed :", err);
+  process.exit(1);
+});*/
 // === /login Route ===
 app.post('/login', loginLimiter, async (req, res) => {
   try {
@@ -231,7 +290,6 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       LIMIT ${offset}, ${pageSize};
     `;
     const results = await q(query, baseParams);
-    console.log(results);
     res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
