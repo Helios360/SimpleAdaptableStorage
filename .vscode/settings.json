@@ -4,7 +4,7 @@
   "git.enableSmartCommit": true,
   "explorer.confirmDelete": false,
   "explorer.confirmDragAndDrop": false,
-  "workbench.colorTheme": "wallbash",
+  "workbench.colorTheme": "Default High Contrast",
   "workbench.editor.showTabs": "none",
   "window.customTitleBarVisibility": "windowed",
   "workbench.activityBar.location": "top",
