@@ -1,0 +1,59 @@
+:root{
+    --primary:#dff6f6;
+    --secondary:#141414;
+    --tertiary:#16166c;
+    transition: all 0.5s ease;
+}
+html.dark{
+    --primary:#141414;
+    --secondary:#dff6f6;
+    --tertiary:#46c2c2ff;
+    transition: all 0.5s ease;
+}
+@font-face {
+    font-family: main-font;
+    src: url('lib/assets/Raleway/Raleway-VariableFont_wght.ttf');
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+/* Firefox */
+input[type=number] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+*{
+    box-sizing: border-box;    
+    scrollbar-width: none;
+}
+a:link {color: var(--secondary);}
+a:visited{color: var(--secondary);}
+a:hover {color: var(--tertiary);}
+a:active {color: #1c7567;}
+
+button {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+	outline: none;
+	cursor: pointer;
+}
+
+body{
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height:100vh;
+}
+html{
+    padding:0;
+    margin:0;
+    background-color: var(--primary);
+    color:var(--secondary);
+    height:100%;
+    font-family: main-font;
+}
