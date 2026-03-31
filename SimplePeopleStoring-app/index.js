@@ -28,8 +28,6 @@ if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// === Static Files ===
-app.use(express.static(path.join(BASE_DIR, 'public')));
 
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
@@ -77,6 +75,13 @@ async function bootstrap(){
     const page = await fs.readFile(path.join(BASE_DIR, 'public', 'reset-password.html'), "utf-8");
     res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
   });
+  app.get('/resetPwd', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'resetPwd.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+
+  // === Statics ===
+  app.use(express.static(path.join(BASE_DIR, 'public')));
   app.use(crudRouter);
   app.use(testRouter);
   // === Global error handler ===

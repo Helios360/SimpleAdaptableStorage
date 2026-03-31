@@ -363,6 +363,26 @@ h3{padding:3rem;}
     width: fit-content;
     cursor:pointer;
 }
+.orga-select{
+    display: flex;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    gap:5rem;
+    flex-wrap: wrap;
+}
+.orga-select > div {
+    min-width: 350px;
+    max-width: 500px;
+    border-radius: 14px;
+    padding:1rem;
+    color:var(--primary);
+    background-color: var(--secondary);
+    cursor: pointer;
+}
+.orga-select :hover{
+    color:var(--tertiary);
+}
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}
     to { transform: translateY(0px); opacity: 1;}

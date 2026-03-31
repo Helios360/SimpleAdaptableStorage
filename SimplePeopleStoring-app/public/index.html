@@ -9,10 +9,9 @@
     <meta name="robots" content="noindex, nofollow">
 
     <title>Cloud-testing</title>
+    <script src="/scripts/theme-init.js"></script>
     <link rel="stylesheet" href="/styles/main.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
-    <script src="/scripts/theme-init.js" defer></script>
-    <script src="/scripts/Main.js"></script>
 
     <meta property="og:title" content="Cloud-testing">
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
@@ -22,14 +21,32 @@
 <body>
     <!--header-->
     <main>
-        <img src="sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-        <div class="normal">
-            <h1>Bienvenue sur Cloud-Testing</h1>
-            <p>Cette plateforme est encore en beta, si vous rencontrez des problemes n'hésitez pas a prévenir l'administration ou l'ingénieur en chef</p>
-            <a href="mailto:elias@cloud-campus.fr">J'ai un probleme</a>
-            <a href="/signin">Acceder au site</a>
+        <h1>Choisissez l'organisme qui vous convient.</h1>
+        <div class="orga-select">
+            <div id="cc">
+                <img src="sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
+                <h1>Cloud Campus</h1>
+            </div>
+            <div id="skalys">
+                <img src="sources/LogoCBS_icone_FondBlanc.webp" alt="Skalys">
+                <h1>Skalys</h1>
+            </div>
         </div>
     </main>
     <!--footer-->
 </body>
+<script src="/scripts/Main.js"></script>
+<script>
+    const skalys = document.getElementById('skalys');
+    const cc = document.getElementById('cc');
+
+    function selectOrga(logoPath) {
+        // Store an absolute path so it works from any route (/signin, /profile, ...)
+        localStorage.setItem('logo', logoPath);
+        window.location.href = '/signin';
+    }
+
+    cc.addEventListener('click', () => selectOrga('/sources/LogoBleuOmbre-edited.png'));
+    skalys.addEventListener('click', () => selectOrga('/sources/LogoCBS_icone_FondBlanc.webp'));
+</script>
 </html>

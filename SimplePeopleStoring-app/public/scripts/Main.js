@@ -449,3 +449,11 @@ const typeColors = {
   other: '#b0bec5ff',
   unknown: 'transparent'
 };
+
+
+const logos = document.getElementsByClassName('logo');
+const savedLogo = localStorage.getItem('logo');
+
+for (let i = 0; i < logos.length; i++) {
+    logos[i].src = savedLogo;
+}
