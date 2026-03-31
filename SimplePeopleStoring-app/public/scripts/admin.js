@@ -453,26 +453,26 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
 })
 
-function buildAllowedLists(formationIds = []){
-  const skills = new Set();
-  formationIds.forEach(fid => {
-    const cfg = formationCatalog[fid];
-    if(!cfg) return;
-    Object.keys(cfg).forEach(skill=>skills.add(skill));
+function buildAllSkillsList(){
+  const out = new Set();
+  Object.values(formationCatalog || {}).forEach(cfg => {
+    if (!cfg) return;
+    Object.keys(cfg).forEach(skill => out.add(skill));
   });
-  return { skills: [...skills].sort() };
-};
+  return [...out].sort();
+}
 
-async function initAdminAllowedFilters(){
-    try {
-        const data = await api('/api/admin-profile');
-        if (!data.success) return;
-        const formationIds = data.user.staff_formations || [];
-        const allowed = buildAllowedLists(formationIds);
-        populateDatalist(document.getElementById('skillList'), allowed.skills);
-    } catch (e) { console.error(e); }
-};
-initAdminAllowedFilters();
+function getTypeForSkill(skill){
+  const catalog = formationCatalog || {};
+  for (const fid of Object.keys(catalog)) {
+    const t = catalog[fid]?.[skill];
+    if (t) return t;
+  }
+  return 'unknown';
+}
+
+// Remplit la datalist "Compétences" sans appel API (liste condensée/dédupliquée)
+populateDatalist(document.getElementById('skillList'), buildAllSkillsList());
 
 function renderTagsAndSkills() {
     const tagList = document.getElementById('tags');
@@ -507,7 +507,7 @@ function renderTagsAndSkills() {
     });
     currentSkills.forEach(s => {
         const div = document.createElement('div');
-        const type = formationCatalog[s] || 'unknown';
+        const type = getTypeForSkill(s);
         const bgColor = typeColors[type];
         div.textContent = s;
         div.style.backgroundColor = bgColor;
@@ -586,4 +586,9 @@ const debouncedSearch = debounce( async () => {
     }
 }, 400);
 
-document.getElementById('search-form').addEventListener('input', debouncedSearch);
+const searchForm = document.getElementById('search-form');
+// "input" couvre les champs texte/number, mais certains navigateurs ne déclenchent pas
+// toujours correctement l'événement sur les checkbox lors d'un déclicage.
+// "change" garantit le rafraîchissement du filtre pour checkbox/select/datalist.
+searchForm.addEventListener('input', debouncedSearch);
+searchForm.addEventListener('change', debouncedSearch);

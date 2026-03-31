@@ -70,7 +70,7 @@ async function bootstrap(){
     res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
   });
   app.get('/legal', async (_, res) => {
-    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'legal.html'), "utf-8");
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'legal.html'), "utf-8");
     res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
   });
   app.get('/reset-password', async (_, res) => {
@@ -300,7 +300,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
 app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, birth, permis, vehicule, postal FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {
