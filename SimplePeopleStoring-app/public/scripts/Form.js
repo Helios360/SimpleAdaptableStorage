@@ -202,7 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
         fd.set('email', email);
         try{
             await api(form.action, { method: 'POST', body: fd});
-            const choice = await alertChoice("Votre compte a bien été créé, veuiller cliquer suivant pour passer au test.");
+            const choice = await alertChoice("Votre compte a bien été créé, veuillez cliquer sur \"Je confirme\" pour accéder à votre profil.");
             if (choice) {
                 const response = await fetch('/login', {
                     method: 'POST',
@@ -210,7 +210,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     body: JSON.stringify({ email, password })
                 });
                 const data = await response.json();
-                if (data.success) window.location.href = '/test';
+                if (data.success) window.location.href = data.redirectTo || '/profile';
                 else notif(data.message || 'Login failed');
             }
         } catch (e) {

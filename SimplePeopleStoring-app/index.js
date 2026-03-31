@@ -178,7 +178,7 @@ app.post('/login', loginLimiter, async (req, res) => {
 
     const userTypeRows = await q('SELECT F.id FROM Formations F JOIN Users U ON U.formation_id = F.id WHERE U.id = ?', [user.id]);
     const userType = userTypeRows[0]?.id || null;
-    const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
+
     const tokenPayload = {
       id: user.id,
       email: user.email,
@@ -187,15 +187,14 @@ app.post('/login', loginLimiter, async (req, res) => {
       is_admin: user.is_admin,
       staff_formations
     };
+
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    if (!user.is_admin && ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3))){
-      redirectTo = '/test';
-    } else if (user.is_admin){
-      redirectTo = '/admin-panel';
-    } else {
-      redirectTo = '/profile';
-    }
+
+    // Do not force users into the test flow on login.
+    // Admins go to the admin panel; everyone else goes to their profile.
+    redirectTo = user.is_admin ? '/admin-panel' : '/profile';
+
     return res.json({ success: true, redirectTo, user: { email: user.email, name: user.name, sec: user.is_admin} });
   } catch (e) {
     console.error('Login error: ', e);
