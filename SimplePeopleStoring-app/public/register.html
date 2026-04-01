@@ -59,9 +59,10 @@
                     <label for="postal">Code Postal</label>
                     <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}">
                 </div>
-                <div>
+                <div class="place">
                     <label for="city">Ville/Village *</label>
-                    <input type="text" id="city" name="city" required>
+                    <input type="text" id="place" name="city" placeholder="Lieu..." required>
+                    <div id="cityDropdown" class="dropdown"></div>
                 </div>
                 <div>
                     <label for="birth">Date de naissance *</label>
@@ -70,7 +71,7 @@
             </div>
             <hr>
             <div class="register">
-                <ul class="form2 inputs" >
+                <ul class="form2 inputs">
                     <p>Documents :</p>
                     <li class="file-upload inputs">
                         <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
@@ -152,5 +153,5 @@
     <!--footer-->
 </body>
 <script src="/scripts/Main.js" defer></script>
-<script src="scripts/Form.js" defer></script>
+<script src="/scripts/Form.js" defer></script>
 </html>

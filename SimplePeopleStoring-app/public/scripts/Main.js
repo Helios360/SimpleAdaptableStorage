@@ -13,15 +13,26 @@ function applyTheme(isDark) {
 }
 
 const cog = document.getElementById('cog');
-const button = document.getElementById('toggle-theme'); 
-cog.addEventListener('click', () => { button.classList.toggle('open'); cog.classList.toggle('open')})
+const button = document.getElementById('toggle-theme');
 
-applyTheme(localStorage.getItem('dark') === 'true'); 
-button.addEventListener('click', () => { 
-    const isDark = localStorage.getItem('dark') === 'true' || false; 
-    const newTheme = !isDark; localStorage.setItem('dark', newTheme.toString()); 
-    applyTheme(newTheme); 
-}); 
+// Some pages (e.g. register) don't render the theme toggle UI.
+if (cog && button) {
+    cog.addEventListener('click', () => {
+        button.classList.toggle('open');
+        cog.classList.toggle('open');
+    });
+
+    applyTheme(localStorage.getItem('dark') === 'true');
+    button.addEventListener('click', () => {
+        const isDark = localStorage.getItem('dark') === 'true' || false;
+        const newTheme = !isDark;
+        localStorage.setItem('dark', newTheme.toString());
+        applyTheme(newTheme);
+    });
+} else {
+    // Still apply saved theme even if the toggle button isn't present.
+    applyTheme(localStorage.getItem('dark') === 'true');
+}
 
 function notif(message){
     const popup = document.createElement('div');
@@ -455,5 +466,91 @@ const logos = document.getElementsByClassName('logo');
 const savedLogo = localStorage.getItem('logo');
 
 for (let i = 0; i < logos.length; i++) {
-    logos[i].src = savedLogo;
+  logos[i].src = savedLogo;
 }
+
+// ------------------------- City suggestions (public API) -------------------------
+// Admin uses #place, register/profile use #city.
+const cityInput = document.getElementById('place') || document.getElementById('city');
+const cityDropdown = document.getElementById('cityDropdown');
+const postalInput = document.getElementById('postal');
+
+if (cityInput && cityDropdown) {
+    let cities = [];
+    let isFocused = false;
+    let activeRequest = 0;
+
+    function hideDropdown() {
+        cityDropdown.innerHTML = '';
+        cityDropdown.style.display = 'none';
+    }
+
+    function showDropdown() {
+        if (cityDropdown.children.length > 0 && isFocused) cityDropdown.style.display = 'block';
+    }
+
+    cityInput.addEventListener('focus', () => {
+        isFocused = true;
+        if (cityInput.value.trim().length >= 2) showDropdown();
+    });
+
+    cityInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            isFocused = false;
+            hideDropdown();
+        }, 150);
+    });
+
+    cityInput.addEventListener('input', async () => {
+        const q = cityInput.value.trim();
+        const requestId = ++activeRequest;
+        if (q.length < 2) {
+            cities = [];
+            hideDropdown();
+            return;
+        }
+
+        try {
+            const res = await fetch(
+                `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&boost=population&fields=nom,code,codesPostaux&limit=5`
+            );
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            // Ignore outdated responses
+            if (requestId !== activeRequest) return;
+
+            cities = Array.isArray(data) ? data : [];
+            cityDropdown.innerHTML = '';
+            if (!isFocused || cities.length === 0) {
+                hideDropdown();
+                return;
+            }
+
+            cities.forEach((city) => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.textContent = `${city.nom} (${city.codesPostaux?.[0] || ''})`;
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    cityInput.value = city.nom;
+                    if (postalInput) postalInput.value = city.codesPostaux?.[0] || '';
+                    hideDropdown();
+                });
+                cityDropdown.appendChild(item);
+            });
+
+            showDropdown();
+        } catch (err) {
+            console.error('City fetch error:', err);
+            hideDropdown();
+        }
+    });
+
+    // Close dropdown when clicking outside the input/dropdown.
+    document.addEventListener('click', (e) => {
+        const clickedInDropdown = e.target && e.target.closest && e.target.closest('#cityDropdown');
+        if (e.target !== cityInput && !clickedInDropdown) hideDropdown();
+    });
+}
+hideDropdown();

@@ -145,18 +145,20 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!validatePhone(document.getElementById("tel").value)) {
             valid = false;
             errors.push("Téléphone invalide (10 chiffres).");
-        }/*
+        }
+        /*
         if (!document.getElementById("addr").value.trim()) {
             valid = false;
             errors.push("Adresse obligatoire.");
-        }*/
-        if (!document.getElementById("city").value.trim()) {
-            valid = false;
-            errors.push("Ville obligatoire.");
         }
         if (!validatePostal(document.getElementById("postal").value)) {
             valid = false;
             errors.push("Code postal invalide (5 chiffres).");
+        }    
+        */
+        if (!document.getElementById("place").value.trim()) {
+            valid = false;
+            errors.push("Ville obligatoire.");
         }
         // Date de naissance
         if (!validateBirth(document.getElementById("birth").value)) {

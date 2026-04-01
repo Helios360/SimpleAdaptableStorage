@@ -37,10 +37,12 @@
                 <option value="entreprise">En entreprise</option>
             </select>
             <span class="place">
-                <input placeholder="Lieu . . ." id="place">
+                <input type="text" id="place" placeholder="Lieu...">
+                <div id="cityDropdown" class="dropdown"></div>
                 <input placeholder="Radius" id="radius">
                 <input placeholder="Postal" id="postal">
             </span>
+            <datalist id="cityList"></datalist>
                 <span class="place1">
                 <input placeholder="Age" type="number" id="age">
                 <select name="tranche-age" id="trancheAge">

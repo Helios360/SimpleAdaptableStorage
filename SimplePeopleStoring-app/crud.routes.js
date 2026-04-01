@@ -71,6 +71,7 @@ router.post('/submit-form', (req, res) => {
         const results = await q(insertSql, insertValues);
         const newId = results.insertId;
         const finalDir = userDir(newId);
+        let image;
         await fs.mkdir(finalDir, {recursive: true});
         const moveToFinal = async (absPath) => {
           if(!absPath) return null;
@@ -85,9 +86,14 @@ router.post('/submit-form', (req, res) => {
           moveToFinal(idvTmpAbs),
         ])
         if(cvFinalRel && cvFinalRel.toLowerCase().endsWith('.pdf')){
+          const formationId = Number(formation_id); // important if formation_id comes as "2"
+          const image =
+            (formationId === 2 || formationId === 3)
+              ? 'public/sources/LogoBleuOmbre-edited.png'
+              : 'public/sources/LogoCBS_icone_FondBlanc.webp';
           const absCvPath = toAbsFromStored(cvFinalRel);
           const tempWatermarkedPath = absCvPath.replace(/\.pdf$/,'_wm.pdf');
-          const success = await addWatermark(absCvPath, tempWatermarkedPath);
+          const success = await addWatermark(absCvPath, tempWatermarkedPath, image);
           if (success) await fs.rename(tempWatermarkedPath, absCvPath);
         }
         try{

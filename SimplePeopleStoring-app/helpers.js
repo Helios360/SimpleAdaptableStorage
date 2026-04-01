@@ -15,7 +15,6 @@ const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
 const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
 const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR || path.join(BASE_DIR, 'uploads'));
 const TOS_VERSION = process.env.TOS_VERSION;
-const WATERMARK_PATH = path.resolve('./public/sources/LogoBleuOmbre-edited.png');
 
 const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
 const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
@@ -89,13 +88,13 @@ function guessContentType(p){
 }
 
 // ------------------------- ADDS WATERMARKS FOR PDFS ------------------------- //
-async function addWatermark(pdfPath, outputPath){
+async function addWatermark(pdfPath, outputPath, image){
   try{
     // charge existing pdf
     const existingPdfBytes = await fs.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     // charge watermark
-    const watermarkImageBytes = await fs.readFile(WATERMARK_PATH);
+    const watermarkImageBytes = await fs.readFile(path.resolve(image));
     const watermarkImage = await pdfDoc.embedPng(watermarkImageBytes);
     const watermarkDims = watermarkImage.scale(0.1);
     const pages = pdfDoc.getPages();
@@ -198,7 +197,7 @@ async function getCityCoords(city) {
 }
 module.exports = {
     // === constants ===
-    ALLOWED_MIME, ALLOWED_EXT, BASE_DIR, UPLOADS_ROOT, TOS_VERSION, WATERMARK_PATH,
+    ALLOWED_MIME, ALLOWED_EXT, BASE_DIR, UPLOADS_ROOT, TOS_VERSION,
     // === helpers ===
     userDir, relFromAbs, toAbsFromStored, guessContentType, addWatermark, makeToken, getCityCoords,
     // === db + ops ===
