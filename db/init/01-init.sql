@@ -1,4 +1,4 @@
-USE simplepeoplestoring;
+USE SAS;
 CREATE TABLE IF NOT EXISTS Formations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
