@@ -218,9 +218,10 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                     <label for="postal">Code Postal</label>
                     <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}">
                 </div>
-                <div>
+                <div class="place">
                     <label for="city">Ville/Village *</label>
-                    <input type="text" id="city" name="city" required>
+                    <input type="text" id="place" name="city" placeholder="Lieu..." required>
+                    <div id="cityDropdown" class="dropdown"></div>
                 </div>
                 <div>
                     <label for="birth">Date de naissance *</label>
@@ -273,37 +274,48 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     </div>
     `
     document.body.appendChild(popup);
-    const form = popup.querySelector("form");
-    const telInput = document.getElementById('tel');
-    const titreInput = document.getElementById('titre-sejour');
 
-    const cvCross = document.getElementById('cvCross');
-    const pirCross = document.getElementById('pirCross');
-    const pivCross = document.getElementById('pivCross');
-    const cvUpload = document.getElementById('cv');
-    const pirUpload = document.getElementById('id_doc');
-    const pivUpload = document.getElementById('id_doc_verso');
-    const labelCV = document.getElementById('cvFileName');
-    const labelPir = document.getElementById('piRectoFilename');
-    const labelPiv = document.getElementById('piVersoFilename');
+    // Scope all queries to the popup because the admin page already contains
+    // elements with the same IDs (#place, #postal, etc.).
+    const form = popup.querySelector("form");
+    const $ = (sel) => popup.querySelector(sel);
+
+    // Enable city suggestions for the newly injected register form
+    if (typeof window !== 'undefined' && typeof window.initCitySuggestions === 'function') {
+        window.initCitySuggestions(popup);
+    }
+
+    const telInput = $('#tel');
+    const titreInput = $('#titre-sejour');
+
+    const cvCross = $('#cvCross');
+    const pirCross = $('#pirCross');
+    const pivCross = $('#pivCross');
+    const cvUpload = $('#cv');
+    const pirUpload = $('#id_doc');
+    const pivUpload = $('#id_doc_verso');
+    const labelCV = $('#cvFileName');
+    const labelPir = $('#piRectoFilename');
+    const labelPiv = $('#piVersoFilename');
 
     telInput.addEventListener('input', () => {
         telInput.value = telInput.value.replace(/\s+/g, "");
     })
 
-    const sejour = document.getElementById('sejour');
-    document.getElementById('titre-valide').style.height='0px';
-    document.getElementById('titre-valide').style.overflow='hidden';
+    const sejour = $('#sejour');
+    const titreValide = $('#titre-valide');
+    titreValide.style.height='0px';
+    titreValide.style.overflow='hidden';
 
     sejour.addEventListener('change', () => {
         if (!sejour.checked){
-            document.getElementById('titre-valide').style.height='0px';
+            titreValide.style.height='0px';
             toggle = 1;
             labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
             titreInput.ariaDisabled;
         } else {
-            document.getElementById('titre-valide').style.height='65px';
+            titreValide.style.height='65px';
             toggle = 0;
             labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
@@ -369,26 +381,26 @@ document.getElementById('addStud').addEventListener('click', ()=>{
         let valid = true;
         let errors = [];
         // Nom et prénom
-        if (!validateName(document.getElementById("name").value)) {
+        if (!validateName(form.querySelector("#name")?.value || "")) {
             valid = false;
             errors.push("Nom invalide (lettres uniquement).");
         }
-        if (!validateName(document.getElementById("fname").value)) {
+        if (!validateName(form.querySelector("#fname")?.value || "")) {
             valid = false;
             errors.push("Prénom invalide (lettres uniquement).");
         }
         // Email
-        if (!validateEmail(document.getElementById("email").value)) {
+        if (!validateEmail(form.querySelector("#email")?.value || "")) {
             valid = false;
             errors.push("Email invalide.");
         }
         // Téléphone
-        if (!validatePhone(document.getElementById("tel").value)) {
+        if (!validatePhone(telInput?.value || "")) {
             valid = false;
             errors.push("Téléphone invalide (10 chiffres).");
         }
         // Date de naissance
-        if (!validateBirth(document.getElementById("birth").value)) {
+        if (!validateBirth(form.querySelector("#birth")?.value || "")) {
             valid = false;
             errors.push("Vous devez avoir au moins 18 ans.");
         }

@@ -470,12 +470,21 @@ for (let i = 0; i < logos.length; i++) {
 }
 
 // ------------------------- City suggestions (public API) -------------------------
-// Admin uses #place, register/profile use #city.
-const cityInput = document.getElementById('place') || document.getElementById('city');
-const cityDropdown = document.getElementById('cityDropdown');
-const postalInput = document.getElementById('postal');
+// Supports static forms (register/profile) and dynamic ones (admin "create student" popup).
+function initCitySuggestions(scope = document) {
+    // Query inside the given scope so it also works when IDs are duplicated in a popup.
+    const cityInput = scope.querySelector('#place') || scope.querySelector('#city');
+    const cityDropdown = scope.querySelector('#cityDropdown');
+    const postalInput = scope.querySelector('#postal');
 
-if (cityInput && cityDropdown) {
+    if (!cityInput || !cityDropdown) return;
+    if (cityInput.dataset.citySuggestInit === '1') return;
+    cityInput.dataset.citySuggestInit = '1';
+
+    const controller = new AbortController();
+    // Stored for potential cleanup if the caller removes the DOM.
+    cityInput.__citySuggestAbort = controller;
+
     let cities = [];
     let isFocused = false;
     let activeRequest = 0;
@@ -492,14 +501,14 @@ if (cityInput && cityDropdown) {
     cityInput.addEventListener('focus', () => {
         isFocused = true;
         if (cityInput.value.trim().length >= 2) showDropdown();
-    });
+    }, { signal: controller.signal });
 
     cityInput.addEventListener('blur', () => {
         setTimeout(() => {
             isFocused = false;
             hideDropdown();
         }, 150);
-    });
+    }, { signal: controller.signal });
 
     cityInput.addEventListener('input', async () => {
         const q = cityInput.value.trim();
@@ -536,7 +545,7 @@ if (cityInput && cityDropdown) {
                     cityInput.value = city.nom;
                     if (postalInput) postalInput.value = city.codesPostaux?.[0] || '';
                     hideDropdown();
-                });
+                }, { signal: controller.signal });
                 cityDropdown.appendChild(item);
             });
 
@@ -545,12 +554,18 @@ if (cityInput && cityDropdown) {
             console.error('City fetch error:', err);
             hideDropdown();
         }
-    });
+    }, { signal: controller.signal });
 
     // Close dropdown when clicking outside the input/dropdown.
     document.addEventListener('click', (e) => {
         const clickedInDropdown = e.target && e.target.closest && e.target.closest('#cityDropdown');
         if (e.target !== cityInput && !clickedInDropdown) hideDropdown();
-    });
+    }, { signal: controller.signal });
+
+    hideDropdown();
 }
-hideDropdown();
+
+// Init on initial page render.
+initCitySuggestions();
+// Expose for dynamically injected forms (admin popup).
+if (typeof window !== 'undefined') window.initCitySuggestions = initCitySuggestions;
