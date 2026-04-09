@@ -1,38 +1,41 @@
-import { pgTable, serial, bigserial, varchar, text, integer, boolean, date, timestamp, numeric, jsonb, primaryKey, pgEnum, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+	mysqlTable,
+	int,
+	tinyint,
+	varchar,
+	text,
+	bigint,
+	timestamp,
+	index
+} from 'drizzle-orm/mysql-core';
 import { users } from './user.schema';
 
-// ========== TESTS ==========
-export const tests = pgTable('tests', {
-	id: serial('id').primaryKey(),
+export const tests = mysqlTable('Tests', {
+	id: int('id').autoincrement().primaryKey(),
 	question: varchar('question', { length: 200 }).notNull(),
 	answer: varchar('answer', { length: 1000 }).notNull(),
-	type: integer('type').notNull(),
-	difficulty: integer('difficulty').notNull()
+	type: tinyint('type').notNull(),
+	difficulty: tinyint('difficulty').notNull()
 });
 
-// ========== STUDENTS TESTS HISTORY ==========
-export const testAttempts = pgTable(
-	'test_attempts',
+export const testAttempts = mysqlTable(
+	'TestAttempts',
 	{
-		id: bigserial('id', { mode: 'number' }).primaryKey(),
-		userId: integer('user_id')
+		id: bigint('id', { mode: 'number' }).autoincrement().primaryKey(),
+		userId: int('user_id')
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
-
-		testId: integer('test_id')
+		testId: int('test_id')
 			.notNull()
 			.references(() => tests.id, { onDelete: 'cascade' }),
-
 		response: text('response'),
-		score: integer('score'),
-		creation: timestamp('creation', { mode: 'date' })
-			.notNull()
-			.defaultNow()
+		score: int('score'),
+		creation: timestamp('creation', { mode: 'date' }).notNull().defaultNow()
 	},
 	(table) => ({
-		userIdx: index('test_attempts_user_id_idx').on(table.userId),
-		testIdx: index('test_attempts_test_id_idx').on(table.testId),
-		userTestCreationIdx: index('test_attempts_user_test_creation_idx').on(
+		userIdx: index('TestAttempts_user_id_idx').on(table.userId),
+		testIdx: index('TestAttempts_test_id_idx').on(table.testId),
+		userTestCreationIdx: index('TestAttempts_user_test_creation_idx').on(
 			table.userId,
 			table.testId,
 			table.creation

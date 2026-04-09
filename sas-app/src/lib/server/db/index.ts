@@ -1,10 +1,21 @@
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import mysql from 'mysql2/promise';
+import { drizzle } from 'drizzle-orm/mysql2';
 import * as schema from './schema';
 
-if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+const { MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE } = process.env;
 
-const client = postgres(process.env.DATABASE_URL);
+if (!MYSQL_HOST || !MYSQL_USER || !MYSQL_DATABASE) {
+	throw new Error('Missing MySQL env vars (MYSQL_HOST, MYSQL_USER, MYSQL_DATABASE)');
+}
 
-export const db = drizzle(client, { schema });
+export const pool = mysql.createPool({
+	host: MYSQL_HOST,
+	user: MYSQL_USER,
+	password: MYSQL_PASSWORD,
+	database: MYSQL_DATABASE,
+	waitForConnections: true,
+	connectionLimit: 10
+});
+
+export const db = drizzle(pool, { schema, mode: 'default' });

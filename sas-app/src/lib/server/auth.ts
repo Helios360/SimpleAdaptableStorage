@@ -1,14 +1,29 @@
-import { betterAuth } from 'better-auth/minimal';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { sveltekitCookies } from 'better-auth/svelte-kit';
+import jwt from 'jsonwebtoken';
 import { env } from '$env/dynamic/private';
-import { getRequestEvent } from '$app/server';
-import { db } from '$lib/server/db';
 
-export const auth = betterAuth({
-	baseURL: env.ORIGIN,
-	secret: env.BETTER_AUTH_SECRET,
-	database: drizzleAdapter(db, { provider: 'pg' }),
-	emailAndPassword: { enabled: true },
-	plugins: [sveltekitCookies(getRequestEvent)] // make sure this is the last plugin in the array
-});
+export type SessionUser = {
+	id: number;
+	email: string;
+	name: string;
+	fname: string;
+	formation_id: number | null;
+	is_admin: boolean;
+	staff_formations: number[] | null;
+};
+
+function getSecret() {
+	if (!env.JWT_SECRET) throw new Error('JWT_SECRET is not set');
+	return env.JWT_SECRET;
+}
+
+export function signUserToken(user: SessionUser) {
+	return jwt.sign(user, getSecret(), { expiresIn: '2h' });
+}
+
+export function verifyUserToken(token: string): SessionUser | null {
+	try {
+		return jwt.verify(token, getSecret()) as SessionUser;
+	} catch {
+		return null;
+	}
+}

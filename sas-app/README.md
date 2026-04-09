@@ -1,42 +1,39 @@
-# sv
+# sas-app
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit rewrite of the old `SimplePeopleStoring-app`.
 
-## Creating a project
+## Dev database (MySQL)
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+A basic MySQL container is provided:
 
 ```sh
-# recreate this project
-bun x sv@0.12.7 create --template minimal --types ts --add prettier drizzle="database:postgresql+postgresql:postgres.js+docker:yes" better-auth="demo:password" vitest="usages:unit,component" eslint playwright --install bun sas-app
+docker compose -f compose.yaml up -d
 ```
+
+The schema/seeds are loaded from `../db/init`.
+
+## Environment variables
+
+The app expects:
+
+- `MYSQL_HOST`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_DATABASE`
+- `JWT_SECRET`
+
+If you use `compose.yaml`, a typical local setup is:
+
+- `MYSQL_HOST=127.0.0.1`
+- `MYSQL_USER=root`
+- `MYSQL_PASSWORD=mysecretpassword`
+- `MYSQL_DATABASE=main`
+
+`drizzle-kit` uses `DATABASE_URL` (example: `mysql://root:mysecretpassword@127.0.0.1:3307/main`).
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
 ```sh
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

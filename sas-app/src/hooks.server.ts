@@ -1,17 +1,17 @@
 import type { Handle } from '@sveltejs/kit';
-import { building } from '$app/environment';
-import { auth } from '$lib/server/auth';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { verifyUserToken } from '$lib/server/auth';
 
-const handleBetterAuth: Handle = async ({ event, resolve }) => {
-	const session = await auth.api.getSession({ headers: event.request.headers });
+export const handle: Handle = async ({ event, resolve }) => {
+	const token = event.cookies.get('token');
 
-	if (session) {
-		event.locals.session = session.session;
-		event.locals.user = session.user;
+	if (token) {
+		const user = verifyUserToken(token);
+		if (user) {
+			event.locals.user = user;
+		} else {
+			event.cookies.delete('token', { path: '/' });
+		}
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	return resolve(event);
 };
-
-export const handle: Handle = handleBetterAuth;
