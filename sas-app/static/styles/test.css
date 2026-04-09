@@ -1,0 +1,87 @@
+header{align-items: center;}
+h2{font-size: 25px;font-weight: 500;}
+
+textarea{
+    border: none;
+    resize: none;
+    width: 100%;
+    height: 100%;
+}
+.response{
+    width:100;
+    overflow: hidden;
+}
+.submit{
+    display: flex;
+    align-items: center;
+    height:20px;
+    border: 2px solid var(--secondary);
+    border-radius: 8px;
+    margin: 2rem;
+    padding: 1rem;
+    cursor: pointer;
+}
+.ready-popup{
+    position:absolute;
+    z-index: 5;
+    background-color: #00000083;
+    padding: 20%;
+    width:100%;
+    height: 100%;
+    text-align: justify;
+}
+.ready-popup > div{
+    border: 2px solid var(--secondary);
+    background-color: var(--primary);
+    border-radius: 8px;
+    padding: 20px;
+}
+.text-response{
+    width: 70%;
+    min-height: 200px;
+    padding: 10px;
+    font-family: main-font;
+    font-size: 1.4rem;
+    border: 2px solid var(--secondary);
+    border-radius: 8px;
+    resize: vertical;
+    background-color: transparent;
+    color: var(--secondary);
+}
+.loader{
+    position: fixed;
+    top:36%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    align-items: center;
+    gap: .6rem;
+    padding: .75rem 1rem;
+    z-index: 9999;
+}
+.spinner{
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--secondary);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+@keyframes spin{to{transform: rotate(360deg);}}
+@media (max-width:570px){
+    #launch-test{width: 100%;}
+    .ready-popup { padding: 1rem;}
+    .ready-popup > div{
+        width: 100%!important;
+    }
+    h1{ font-size: 1.2rem ;}
+    .text-response{
+        width: 90%;
+    }
+    #question {
+        text-align: center;
+        font-size: 1.3rem;
+        width: 90%;
+    }
+}
