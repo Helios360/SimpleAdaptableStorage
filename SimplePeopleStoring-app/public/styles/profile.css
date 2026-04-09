@@ -194,6 +194,11 @@ li{
     width: 1.5rem;
     height:1.5rem;
 }
+#deleteBtn{
+    border: none;
+    width: 200px;
+    height:30px;
+}
 @media (max-width:1179px){
     .contain{
         flex-direction: column;
