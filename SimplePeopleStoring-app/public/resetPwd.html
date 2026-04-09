@@ -7,12 +7,11 @@
     <meta name="keywords" content="Cloud privé, collaboration, gestion des documents, productivité, entreprise, ETAI">
     <meta name="author" content="Treguier Elias">
     <meta name="robots" content="noindex, nofollow">
-
     <title>Cloud-testing</title>
     <script src="/scripts/theme-init.js"></script>
-    <link rel="stylesheet" href="/styles/main.css">
+    
+    <link rel="stylesheet" href="styles/main.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
-
     <meta property="og:title" content="Cloud-testing">
     <meta property="og:description" content="Détails du projet cloud-testing : Cloud privé, collaboration, et gestion efficace des ressources.">
     <meta property="og:image" content="assets/preview.png">
@@ -21,32 +20,18 @@
 <body>
     <!--header-->
     <main>
-        <h1>Choisissez l'organisme qui vous convient.</h1>
-        <div class="orga-select">
-            <div id="cc">
-                <img src="sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-                <h1>Cloud Campus</h1>
+        <h3>Réinitialisez votre mot de passe en entrant votre adresse email ci-dessous afin de recevoir un mail (n'oubliez pas de regarder vos spams)</h3>
+
+        <form class="form" id="sub">
+            <div class="forgot normal">
+                <label for="email"></label>
+                <input class="inputs" type="email" id="email" name="email" placeholder="Email . . ." required>
+                <button type="submit">Envoyer</button>
             </div>
-            <div id="skalys">
-                <img src="sources/LogoCBS_icone_FondBlanc.webp" alt="Skalys">
-                <h1>Skalys</h1>
-            </div>
-        </div>
+        </form>
     </main>
     <!--footer-->
 </body>
-<script src="/scripts/Main.js"></script>
-<script>
-    const skalys = document.getElementById('skalys');
-    const cc = document.getElementById('cc');
-
-    function selectOrga(logoPath) {
-        // Store an absolute path so it works from any route (/signin, /profile, ...)
-        localStorage.setItem('logo', logoPath);
-        window.location.href = '/signin';
-    }
-
-    cc.addEventListener('click', () => selectOrga('/sources/LogoBleuOmbre-edited.png'));
-    skalys.addEventListener('click', () => selectOrga('/sources/LogoCBS_icone_FondBlanc.webp'));
-</script>
+<script src="/scripts/Main.js" defer></script>
+<script src="/scripts/pwdReset.js" defer></script>
 </html>

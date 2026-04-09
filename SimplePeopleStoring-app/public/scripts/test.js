@@ -3,16 +3,20 @@ const submit = document.getElementById('submit')
 const start = document.getElementById('launch-test');
 const popup = document.getElementById('popup');
 const loader = document.getElementById('loader');
+const mainContent = document.getElementById('main');  
 async function redirectAfterDelay(data) {
-  notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous vous êtes arrété... Redirection ...');
+  popup?.remove();
+  notifAlert(data.message + "... Redirection ..." || 'Alerte... crash, il est toujours possible de reprendre le test la ou vous en êtes arrété... Redirection ...');
   await wait(3000);
   window.location.href = '/profile';
 }
 function setLoading(isLoading){
+  popup?.remove();
   loader.style.display = isLoading ? 'flex' : 'none';
   submit.style.pointerEvents = isLoading ? 'none' : 'auto';
   start.style.pointerEvents = isLoading ? 'none' : 'auto';
   document.body.style.cursor = isLoading ? 'wait' : 'default';
+  mainContent.style.opacity = isLoading ? '0.5' : '1';
 }
 // === Step 1: Launch test (only fetch)
 start.addEventListener('click', async () => {
@@ -20,7 +24,6 @@ start.addEventListener('click', async () => {
   try {
     const res = await fetch('/api/test/next', {
       method: 'GET',
-      credentials: 'include',
       headers:{'Content-Type':'application/json'},
     })
     const data = await res.json();
@@ -28,12 +31,11 @@ start.addEventListener('click', async () => {
       const test = data.test;
       localStorage.setItem('current_test_id', test.id);
       localStorage.setItem('current_test_type', test.type);
-      console.log("New test fetched:", test);
       document.getElementById('test_count').innerText = data.count;
-      document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
       popup?.remove();
     } else {
+      popup?.remove();
       await redirectAfterDelay(data);
     }
   } catch(e){
@@ -45,7 +47,6 @@ start.addEventListener('click', async () => {
 // === Step 2: Submit test
 submit.addEventListener("click", async event => {
   event.preventDefault();
-
   const answerText = answer.value;
   const testId = localStorage.getItem('current_test_id');
   const type = localStorage.getItem('current_test_type');
@@ -59,7 +60,6 @@ submit.addEventListener("click", async event => {
     // Send answer
     const res = await fetch('/api/test/response', {
       method: "POST",
-      credentials: 'include',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ testId, type, answer: answerText })
     });
@@ -73,7 +73,7 @@ submit.addEventListener("click", async event => {
     localStorage.removeItem("current_test_type");
 
     // fetch next test
-    const nextRes = await fetch('/api/test/next', {method: 'GET', credentials: 'include'});
+    const nextRes = await fetch('/api/test/next', {method: 'GET'});
     const nextData = await nextRes.json();
 
     if (nextData.success) {
@@ -82,7 +82,6 @@ submit.addEventListener("click", async event => {
       localStorage.setItem('current_test_type', test.type);
       console.log("New test fetched:", test);
       document.getElementById('test_count').innerText = nextData.count;
-      document.getElementById('exemple').innerText = test.exemple;
       document.getElementById('question').innerText = test.question;
       answer.value='';
     } else {

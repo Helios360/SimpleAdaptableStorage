@@ -1,7 +1,7 @@
 :root{
-    --primary:#F1F4F4;
+    --primary:#dff6f6;
     --secondary:#141414;
-    --tertiary:#1c1c68;
+    --tertiary:#16166c;
     transition: all 0.5s ease;
 }
 @font-face {
@@ -22,7 +22,18 @@ input[type=number] {
     box-sizing: border-box;    
     scrollbar-width: none;
 }
-body{margin: 0; padding: 0;}
+a:link {color: var(--secondary);}
+a:visited{color: var(--secondary);}
+a:hover {color: var(--tertiary);}
+a:active {color: #1c7567;}
+
+body{
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height:100vh;
+}
 html{
     padding:0;
     margin:0;
@@ -32,12 +43,104 @@ html{
     font-family: main-font;
 }
 header{
-    height:110px;
     position:relative;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     width: 100%;
-    padding: 20px 20px;
+    padding: 0.3rem 1rem;
+}
+nav > a{
+    cursor: pointer;
+    padding:1rem;
+}
+.settings{
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+.setting{
+    position: absolute;
+    opacity: 1;
+    height:100%;
+    display: flex;
+    align-items: center;
+    left:0;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#cog{
+    position: relative;
+    z-index: 5000;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#cog.open{
+    transform: rotate(135deg);
+}
+.settings a {
+    transform: translateX(0%);
+    opacity: 0;
+}
+.settings a.open {
+    transform: translateX(-100%);
+    opacity: 1;
+}
+footer{
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+    margin-top: 2rem;
+}
+main img {
+    height: 200px;
+    margin-bottom: 50px;
+}
+main{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex:1;
+}
+select{
+    border: 2px var(--secondary) solid;
+    color:var(--secondary);
+    border-radius: 8px;
+    padding:7px;
+    cursor:pointer;
+    background-color: transparent;
+    font-size: 20px;
+    width: 100%;
+    font-family: main-font;
+}
+button{
+    color:var(--secondary);
+    width: 330px;
+    height:50px;
+    font-size: 20px;
+    border-radius: 8px;
+    border: 2px solid var(--secondary);
+    background-color: transparent;
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+}
+button:hover{
+    background-color: var(--tertiary);
+    color:var(--primary);
+    border: none;
+}
+button:active{
+    background-color: var(--secondary);
+    color: var(--primary);
+    border: none;
+}
+h3{padding:3rem;}
+.file-upload{
+    position:relative;
+    max-height: 40px;
+    transition: max-height 0.3s ease-in;
+    overflow: hidden!important;
 }
 .file-upload input[type="file"] {
   display: none;
@@ -48,22 +151,13 @@ header{
     font-size: 20px;
     border-radius: 8px;
     border: 2px solid var(--secondary);
-    width:315px;
+    max-width: 100%;
     height:40px;
     background-color: transparent;
     cursor: pointer;
     display: flex;
     justify-content: center;
-}
-main img {
-    height: 200px;
-    margin-bottom: 50px;
-}
-main{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    
 }
 .normal{
     text-align: center;
@@ -71,12 +165,17 @@ main{
 .form{
     color:var(--secondary);
     display:flex;
-    gap:53px;
+    justify-content: space-between;
+    gap:3rem;
+    max-width: 70%;
 }
 .form div{
     display: flex;
     flex-direction: column;
     gap:20px;
+    width:100%;
+    max-width:400px;
+    overflow: hidden;
 }
 .form div div {gap:5px;}
 .form input{
@@ -85,7 +184,7 @@ main{
     font-size: 20px;
     border-radius: 8px;
     border: 2px solid var(--secondary);
-    width:315px;
+    width:100%;
     height:40px;
     background-color: transparent;
 }
@@ -93,6 +192,7 @@ main{
     font-size: 15px;
     padding-left: 8px;
     overflow: scroll;
+    width:100%
 }
 .form2{
     display: flex;
@@ -112,47 +212,28 @@ main{
     flex-direction: column;
 }
 .checkbox{
-    width: 330px;
+    width: 100%;
+    text-align: justify;
     flex-direction: row!important;
     justify-content: center;
     align-items: center;
 }
 .checkbox input{
-    width: 40px;
+    width: 35px;
 }
-button{
-    color:var(--secondary);
-    width: 330px;
-    height:50px;
-    font-size: 20px;
-    border-radius: 8px;
-    border: 2px solid var(--secondary);
-    background-color: transparent;
-    transition: all 0.2s ease-out;
-}
-button:hover{
-    background-color: var(--tertiary);
-    color:var(--primary);
-    border: none;
-}
-button:active{
-    background-color: var(--secondary);
-    color: var(--primary);
-    border: none;
+.checkbox label{
+    margin-right: 1rem;
 }
 .signin{
     gap: 20px !important;
-}
-.signin input{
-    margin: 0;
 }
 .signin button{
     margin-top: 60px;
     margin-bottom: 0;
 }
-footer{
-    position : absolute;
-    bottom: 0;
+.signin span { display: flex; justify-content: space-between; }
+.forgot{
+    display: flex;
 }
 .docin{
     padding: 15px 0px 0px 5px !important;
@@ -183,16 +264,124 @@ footer{
     z-index: 500;
     background-color: #00000083;
     padding: 20%;
-    width:100%;
+    width: 100%;
     height: 100%;
     text-align: justify;
     top:0;
 }
+.notif-alert > div > span {
+    width:100%;
+    display:flex;
+    flex-direction:row;
+    justify-content:space-between;
+    gap:1rem;
+}
+.notif-alert > div > span > button {
+    width:100%;
+}
 .notif-alert > div{
+    font-weight: bold;
     border: 2px solid var(--secondary);
     background-color: var(--primary);
     border-radius: 8px;
-    padding: 20px;
+    padding: 1rem;
+}
+.checks{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+.checks input{
+    width:1rem;
+    height:1rem;
+    background-color: var(--tertiary);
+}
+#send{width: 100%;}
+.showdown{
+    max-height:20px;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in;
+    cursor: pointer;
+}
+.eye-contain{
+    position: relative;
+}
+.eye-contain .inputs{
+    width:100%;
+}
+.eye{
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: auto;
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+}
+.eye path:first-child {
+    display: none;
+}
+.supprFile{
+    position: absolute;
+    top:50%;
+    right:1rem;
+    transform: translateX(-50%);
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: none;
+}
+#retour{
+    cursor:pointer;
+    transition: all 0.3s ease-in-out;
+}
+#retour:hover{
+    opacity: 0.5;
+}
+.container{
+    width:100%;
+    border-radius: 14px;
+    padding:1rem;
+    border: var(--secondary) 2px solid;
+}
+.CGS{
+    padding: 0 1rem;
+}
+.box{
+    border: 2px var(--secondary) solid;
+    border-radius: 8px;
+    padding:0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+}
+.box div{
+    border: 2px var(--secondary) solid;
+    border-radius: 6px;
+    padding:0.5rem;
+    margin:0.4rem;
+    width: fit-content;
+    cursor:pointer;
+}
+.orga-select{
+    display: flex;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    gap:5rem;
+    flex-wrap: wrap;
+}
+.orga-select > div {
+    min-width: 350px;
+    max-width: 500px;
+    border-radius: 14px;
+    padding:1rem;
+    color:var(--primary);
+    background-color: var(--secondary);
+    cursor: pointer;
+}
+.orga-select :hover{
+    color:var(--tertiary);
 }
 @keyframes slideIn{
     from { transform: translateY(-50px); opacity: 0;}
@@ -201,8 +390,9 @@ footer{
 @media (max-width:800px){
     .form{
         flex-direction: column;
+        max-width:95%;
     }
-    hr{
-        width: 100%;
-    }
+    hr{width: 100%;}
+    .notif-alert {padding:1rem;}
+    .notif-alert > div > button {width: 100%;}
 }

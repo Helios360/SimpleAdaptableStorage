@@ -4,53 +4,44 @@ const pimg = document.getElementById('PImg');
 const pimgverso = document.getElementById('PImgVerso');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
-const cv_frame = document.getElementById('cv_frame');
 const urlParams = new URLSearchParams(window.location.search);
-const targetEmail = urlParams.get('email'); // email from ?email=...
-const cvFrame = document.getElementById('cv-frame');
-
+const urlTargetId = urlParams.get('id');
+const frame = document.getElementById('cv-frame');
+const logoutBtn = document.getElementById('logoutBtn');
+const accountDelete = document.getElementById('deleteBtn');
+const tagInput = document.getElementById('add_tags');
+const skillInput = document.getElementById('add_skills');
 document.getElementById('pis').style.display = "none";
 
 let currentTags = [];
 let currentSkills = [];
-const test = document.getElementById('test');
-const accountDelete = document.getElementById('deleteBtn');
-test.addEventListener('click',()=>{ window.location.href= "/test";})
-
-const fetchUrl = targetEmail ? `/api/admin/student/${encodeURIComponent(targetEmail)}` : '/api/profile';
-if (fetchUrl!= '/api/profile') {test.style.display="none"; };
 let targetId = null;
-const adminView = !!targetEmail;
-const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(targetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
-async function deleteSelf(){
-    const res = await fetch('/api/delete', { method: 'DELETE', credentials: 'include'});
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
-}
-async function deleteAsAdmin(userId){
-    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE', credentials : 'include' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Echec suppression');
-}
-async function api(url, opts = {}){ // Better, will update to this soon
-    const res = await fetch(url, {credentials: 'include', ...opts});
-    if (res.status === 401 || res.status === 403){
-        notif('Session expirée, Veuillez vous reconnecter...');
-        window.location.href = '/signin';
-        throw new Error('Unauthorized');
-    } return res;
-}
-if(!adminView)document.getElementById('status-parent').style.display = "none";
-fetch(fetchUrl, { method: 'POST',  credentials: 'include'})
+const adminView = !!urlTargetId;
+const fetchUrl = adminView ? `/api/user-profile/${encodeURIComponent(urlTargetId)}` : '/api/profile';
+
+const fileUrl = kind => adminView ? `/api/admin/user/${encodeURIComponent(urlTargetId)}/files/${encodeURIComponent(kind)}` : `/api/me/files/${encodeURIComponent(kind)}`;
+
+async function deleteSelf(){ await api('/api/delete', {method: 'DELETE'});}
+async function deleteAsAdmin(userId){await api(`/api/admin/users/${encodeURIComponent(userId)}`,{ method: 'DELETE'});}
+if (adminView) {
+        logoutBtn.style.display="none"
+        document.addEventListener('click', (e) => {
+            const retour = e.target.closest('#retour');
+            if (retour) window.location.href = "/admin-panel";
+        });
+};
+
+fetch(fetchUrl, { method: 'POST'})
 .then(res => res.json())
 .then(data => {
 if (data.success) {
     const user = data.user || data.student;
     targetId = user.id;
-    if (targetEmail) { // Admin deletes an account
+    if(user.formation_id) populateDatalist(document.getElementById('skillList'), getSkillsFromFormationId(user.formation_id));
+    if (adminView) { // Admin deletes an account
         accountDelete.textContent="Supprimer utilisateur";
         accountDelete.addEventListener('click', async ()=>{
-            const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
+            const choice = await alertChoice(`Supprimer définitivement ${user.email} ? Cette action est irréverssible.`);
             if (choice) {
                 accountDelete.disabled = true;
                 try{
@@ -61,19 +52,48 @@ if (data.success) {
                 } finally { accountDelete.disabled = false;} 
             }
         })
-    } else { // User delete his account
+    } else { // User deletes his account
+        //confirmEmail(user.email);
         accountDelete.addEventListener('click', async() => {
             const choice = await alertChoice(`Supprimer définitivement ${user.name} ? Cette action est irréverssible.`);
             if (choice) {
                 accountDelete.disabled = true;
                 try{
                     await deleteSelf();
-                    notif(`Compte supprimé. À bientôt chez Cloud Campus`);
+                    notif(`Compte supprimé. À bientôt ...`);
                     window.location.href = '/signin';
                 } catch (e) { notif("Suppression impossible") ; console.error(e);
                 } finally { accountDelete.disabled = false;} 
             }
         });
+        if(user.consent == 0) {
+            const popup = document.createElement('div');
+            popup.className = 'notif-alert';
+            popup.id = 'alertnotif';
+            popup.innerHTML=`
+            <div style="height:60vh;overflow:scroll;position:relative">
+            <h2>Avant de continuer veuillez accepter les conditions générales d'utilisation</h2>
+            <hr>
+            <pre id=cgu></pre>
+            <hr>
+            <p><u>En cliquant sur "J'accepte", vous confirmez avoir lu et accepté les CGU</u></p>
+            <span style="margin-top:1rem;">
+                <a style="cursor:pointer" id="deny"><u>Je refuse</u></a>
+                <a style="cursor:pointer" id="consent"><u>J'accepte</u></a>
+            </span>
+            </div>
+            `
+            loadComponents('cgu', "cgu.html");
+            document.body.appendChild(popup);
+            document.getElementById('consent').addEventListener('click', async ()=>{
+                const resp = await api("/api/user/consent",{method:"POST"});
+                if (resp.success) popup.remove();
+                else notifAlert("Erreur server . . .");
+            });
+            document.getElementById('deny').addEventListener('click', async ()=>{
+                notifAlert("Vous ne pourrez pas utiliser le service tant que vous n'aurez pas accepter les CGU");
+            });
+        }
     }
     // Remplir les infos
     document.getElementById('name').value = user.name.toUpperCase();
@@ -92,6 +112,9 @@ if (data.success) {
     document.getElementById('city').value = user.city;
     document.getElementById('postal').value = user.postal;
     document.getElementById('addr').value = user.addr;
+    document.getElementById('permis').checked = user.permis;
+    document.getElementById('vehicule').checked = user.vehicule;
+    document.getElementById('mobile').checked = user.mobile;
 
     document.getElementById('tel').addEventListener('input', function() {
         this.value = this.value.replace(/[^0-9]/g, '');
@@ -106,15 +129,25 @@ if (data.success) {
             email: document.getElementById('email').value,
             tel: document.getElementById('tel').value,
             birth: document.getElementById('birth').value,
-            addr: document.getElementById('addr').value,
             city: document.getElementById('city').value,
             postal: document.getElementById('postal').value,
+            addr: document.getElementById('addr').value,
+            permis: document.getElementById('permis').checked,
+            vehicule: document.getElementById('vehicule').checked,
+            mobile: document.getElementById('mobile').checked,
             skills: currentSkills,
         };
-        if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
-        const endpoint = targetEmail ? '/api/admin/update-student' : '/api/update-tags';
-        fetch(endpoint, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
+        const requiredFields = ['name', 'fname', 'tel', 'birth', 'city'];
+        for (const field of requiredFields){
+            if(!data[field]) {
+                notif(`Des champs sont manquants ...`);
+                return;
+            }
+        }
+        const endpoint = adminView ? '/api/admin/update-student' : '/api/update-tags';
+        fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(res => res.json())
         .then(result => {
             if (!result.success) throw new Error(result.message);
@@ -125,8 +158,8 @@ if (data.success) {
     });
     const pis = document.getElementById('pis');
     const cvAction = document.getElementById('cv-action');
-    cvFrame.style.display = "block";
-    cvFrame.src = fileUrl('cv');
+    frame.style.display = "block";
+    frame.src = fileUrl('cv');
     CV.style.backgroundColor = "var(--secondary)";
     CV.style.color = "var(--primary)";
     PI.style.backgroundColor = "var(--primary)";
@@ -135,15 +168,15 @@ if (data.success) {
     CV.addEventListener('click', function (){ // charger le cv
         pis.style.display = "none";
         cvAction.style.display = "flex";
-        cvFrame.style.display = "block";
-        cvFrame.src = fileUrl('cv');
+        frame.style.display = "block";
+        frame.src = fileUrl('cv');
         CV.style.backgroundColor = "var(--secondary)";
         CV.style.color = "var(--primary)";
         PI.style.backgroundColor = "var(--primary)";
         PI.style.color = "var(--secondary)";
     });
     PI.addEventListener('click', function (){ // charger la pi
-        cvFrame.style.display = "none";
+        frame.style.display = "none";
         pis.style.display = "block";
         cvAction.style.display = "none";
         pimg.style.backgroundImage = "url('"+fileUrl('id_doc')+"')";
@@ -159,15 +192,15 @@ if (data.success) {
     if (user.tags !== undefined) {
         currentTags = Array.isArray(user.tags) ? user.tags : JSON.parse(user.tags || '[]');
         document.getElementById('tagsWrapper').style.display = 'flex';
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            api(`/api/admin/reset/${user.id}`, { method: "DELETE"});
+        })
     } else {
         currentTags = [];
         document.getElementById('tagsWrapper').style.display = 'none';
         document.getElementById('resetBtn').style.display = 'none';
     }
     renderTagsAndSkills();
-    
-    const tagInput = document.getElementById('add_tags');
-    const skillInput = document.getElementById('add_skills');
 
     // When tag input loses focus or user presses Enter
     tagInput.addEventListener('change', () => {
@@ -178,7 +211,6 @@ if (data.success) {
         }
         tagInput.value = '';
     });
-
     // When skill input loses focus or user presses Enter
     skillInput.addEventListener('change', () => {
         const skill = skillInput.value.trim();
@@ -198,57 +230,57 @@ function renderTagsAndSkills() {
     tagList.innerHTML = '';
     skillList.innerHTML = '';
     currentTags.forEach(t => {
-        const span = document.createElement('span');
-        span.textContent = t;
+        const div = document.createElement('div');
+        div.textContent = t;
         let confirming = false;
-        span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
-        span.onmouseleave = () => {
-            span.style.textDecoration = 'none';
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
             if (confirming) {
-                span.textContent = t;
-                span.style.color = 'var(--secondary)';
+                div.textContent = t;
+                div.style.color = 'var(--secondary)';
                 confirming = false;
             }
         };
-        span.onclick = () => {
+        div.onclick = () => {
             if (!confirming) {
-                span.textContent += ' ?';
-                span.style.color = 'red';
+                div.textContent += ' ?';
+                div.style.color = 'red';
                 confirming = true;
             } else {
                 currentTags = currentTags.filter(tag => tag !== t);
                 renderTagsAndSkills();
             }
         };
-        tagList.appendChild(span);
+        tagList.appendChild(div);
     });
     currentSkills.forEach(s => {
-        const span = document.createElement('span');
-        const type = skillTypes[s] || 'unknown';
+        const div = document.createElement('div');
+        const type = formationCatalog[s] || 'unknown';
         const bgColor = typeColors[type];
-        span.textContent = s;
-        span.style.backgroundColor = bgColor;
+        div.textContent = s;
+        div.style.backgroundColor = bgColor;
         let confirming = false;
-        span.onmouseenter = () => { if (!confirming) span.style.textDecoration = 'line-through'; };
-        span.onmouseleave = () => {
-            span.style.textDecoration = 'none';
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
             if (confirming) {
-                span.textContent = s;
-                span.style.color = 'var(--secondary)';
+                div.textContent = s;
+                div.style.color = 'var(--secondary)';
                 confirming = false;
             }
         };
-        span.onclick = () => {
+        div.onclick = () => {
             if (!confirming) {
-                span.textContent += ' ?';
-                span.style.color = 'red';
+                div.textContent += ' ?';
+                div.style.color = 'red';
                 confirming = true;
             } else {
                 currentSkills = currentSkills.filter(tag => tag !== s);
                 renderTagsAndSkills();
             }
         };
-        skillList.appendChild(span);
+        skillList.appendChild(div);
     });
 }
 
@@ -282,14 +314,16 @@ const del = document.getElementById('delete');
 const delV = document.getElementById('delete-v');
 const delCV = document.getElementById('delete-cv');
 
-del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage=''});
-delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage=''});
-delCV.addEventListener('click', () => {action('delCV'); cvFrame.src=''});
+del.addEventListener('click', () => {action('del'); pimg.style.backgroundImage='';});
+delV.addEventListener('click', () => {action('delV'); pimgverso.style.backgroundImage='';});
+delCV.addEventListener('click', () => {action('delCV'); frame.src='';});
 
 function action(name) {
-    fetch('/api/files',{
+    const endpoint = adminView
+        ? `/api/files/${encodeURIComponent(urlTargetId)}`
+        : `/api/files`; 
+    fetch(endpoint,{
         method: 'POST',
-        credentials: 'include',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action: name })
     })
@@ -300,7 +334,7 @@ function action(name) {
 
 const fileUpload = document.getElementById('file-change'); 
 const fileUploadV = document.getElementById('file-change-v'); 
-const fileUploadCV = document.getElementById('file-change-cv'); 
+const fileUploadCV = document.getElementById('file-change-cv');
 
 change.addEventListener('click', (e) => {
     e.preventDefault();
@@ -314,11 +348,13 @@ changeCV.addEventListener('click', (e) => {
     e.preventDefault();
     fileUploadCV.click();
 });
-
 async function uploadKind(kind, file){
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(`/api/upload/${encodeURIComponent(kind)}`,{ method : 'POST', credentials: 'include', body: fd });
+    const endpoint = adminView
+        ? `/api/admin/upload/${encodeURIComponent(urlTargetId)}/${encodeURIComponent(kind)}`
+        : `/api/upload/${encodeURIComponent(kind)}`;
+    const res = await fetch(endpoint,{ method : 'POST', body: fd });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
     return data;
@@ -346,9 +382,7 @@ fileUpload.addEventListener('change', async (e) => {
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 fileUploadV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
@@ -361,133 +395,77 @@ fileUploadV.addEventListener('change', async (e) => {
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 fileUploadCV.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
     try{
         await uploadKind('cv', file);
-        cvFrame.src = `${fileUrl('cv')}`;
+        frame.src = `${fileUrl('cv')}`;
         notif("CV mis à jour ...");
     } catch (e) {
         console.error(e);
         notif("Erreur pendant l'upload");
-    } finally {
-        e.target.value ='';
-    }
+    } finally { e.target.value =''; }
 })
 
-const skillTypes = {
-  // Languages
-  'C': 'language',
-  'C++': 'language',
-  'Java': 'language',
-  'JavaScript': 'language',
-  'TypeScript': 'language',
-  'Python': 'language',
-  'Ruby': 'language',
-  'Go': 'language',
-  'Rust': 'language',
-  'PHP': 'language',
-  'Swift': 'language',
-  'Kotlin': 'language',
-  'Scala': 'language',
-  'Dart': 'language',
-  'R': 'language',
-  'Bash': 'language',
-  'Perl': 'language',
+let isDirty = false;
+let pendingHref = false;
+const infoList = document.querySelector('.info-list');
+if (infoList) {
+    infoList.addEventListener('input', onDirty, true);
+    infoList.addEventListener('change', onDirty, true);
+}
+function onDirty(e) {
+    const t = e.target;
+    if(t.matches('input:not([readonly]), select, textarea')) isDirty = true;
+}
+document.getElementById('saveBtn')?.addEventListener('click', ()=>{ isDirty = false;});
+window.addEventListener('beforeunload', (event) => {
+    if(isDirty){
+        event.preventDefault();
+        event.returnValue ='';
+    }
+});
+if(!adminView){
+    document.getElementById('status-parent').style.display = "none"
+    logoutBtn.addEventListener('click', ()=>{
+        fetch('/logout', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(r => r.json())
+        .then(() => {
+            window.location.href='/signin';
+        })
+    })
+}
 
-  // Frontend
-  'HTML': 'frontend',
-  'CSS': 'frontend',
-  'React': 'frontend',
-  'Vue.js': 'frontend',
-  'Angular': 'frontend',
-  'Svelte': 'frontend',
-  'Next.js': 'frontend',
-  'Gatsby': 'frontend',
-  'Tailwind CSS': 'frontend',
-  'Bootstrap': 'frontend',
-  'jQuery': 'frontend',
-
-  // Backend
-  'Node.js': 'backend',
-  'Express.js': 'backend',
-  'Django': 'backend',
-  'Flask': 'backend',
-  'Ruby on Rails': 'backend',
-  'Spring Boot': 'backend',
-  'Laravel': 'backend',
-  'ASP.NET': 'backend',
-  'Koa.js': 'backend',
-  'FastAPI': 'backend',
-  'NestJS': 'backend',
-
-  // Databases
-  'PostgreSQL': 'database',
-  'MySQL': 'database',
-  'SQLite': 'database',
-  'MongoDB': 'database',
-  'Redis': 'database',
-  'Firebase': 'database',
-  'Cassandra': 'database',
-  'MariaDB': 'database',
-  'OracleDB': 'database',
-  'DynamoDB': 'database',
-
-  // DevOps / Tools
-  'Docker': 'devops',
-  'Kubernetes': 'devops',
-  'Git': 'devops',
-  'GitHub Actions': 'devops',
-  'Jenkins': 'devops',
-  'Terraform': 'devops',
-  'Ansible': 'devops',
-  'Nginx': 'devops',
-  'Apache': 'devops',
-  'AWS': 'devops',
-  'Azure': 'devops',
-  'GCP': 'devops',
-  'Linux': 'devops',
-  'CI/CD': 'devops',
-
-  // Testing
-  'Jest': 'testing',
-  'Mocha': 'testing',
-  'Chai': 'testing',
-  'JUnit': 'testing',
-  'Cypress': 'testing',
-  'Selenium': 'testing',
-  'PyTest': 'testing',
-  'RSpec': 'testing',
-
-  // Mobile
-  'React Native': 'mobile',
-  'Flutter': 'mobile',
-  'SwiftUI': 'mobile',
-  'Xamarin': 'mobile',
-
-  // Other
-  'GraphQL': 'other',
-  'REST API': 'other',
-  'Webpack': 'other',
-  'Vite': 'other',
-  'ESLint': 'other',
-  'Prettier': 'other',
-  'Storybook': 'other'
-};
-
-const typeColors = {
-  language: '#43a4b1ff',
-  frontend: '#66bd6dff',
-  backend: '#f07ee8ff',
-  database: '#ee6060ff',
-  devops: '#f3b63aff',
-  testing: '#9d8dfcff',
-  mobile: '#50c5b7ff',
-  other: '#b0bec5ff',
-  unknown: 'transparent'
-};
+async function confirmEmail(userMail){
+    try{
+        await api('/api/user/valid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:JSON.stringify({email: userMail}),
+        });
+        return;
+    } catch (err) {
+        const code = err?.body?.code || err?.code || err?.message;
+        if(code === "NOT_VERIFIED"){
+            const confirmDir = await alertChoice("Veuillez confirmer votre mail pour modifier vos infos");
+            if (confirmDir === true) {
+                notif("Rendez vous sur votre boite mail pour valider votre email");
+                await api('/api/user/sendVerif', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:JSON.stringify({email: userMail}),
+                })
+            } else {
+                notif("Vous pouvez toujours relancer la demande de 2FA en rafraichissant la page");
+            }
+            return;
+        }
+        throw err;
+    }
+}

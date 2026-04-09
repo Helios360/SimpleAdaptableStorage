@@ -21,44 +21,73 @@
     <meta property="og:type" content="website">
 </head>
 <body>
-    <header>
-        <img src="/sources/LogoBleuOmbre-edited.png" height="80px">
-        <a id="toggle-theme">
-            <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13.589 21.659c-3.873 1.038-8.517-.545-10.98-3.632a1 1 0 0 1 .751-1.623c3.984-.118 6.662-1.485 8.17-4.098 1.51-2.613 1.354-5.616-.535-9.125a1 1 0 0 1 1.03-1.463c3.904.59 7.597 3.82 8.635 7.694 1.43 5.334-1.737 10.818-7.071 12.247" fill="var(--secondary)"/>
-            </svg>
-        </a>
-    </header>
+    <!--header-->
+    <span class="gugugaga">
+        <a id="addStud" class="action-btn">Ajouter un étudiant</a>
+    </span>
     <main>
         <div class="inputInfo">
             <form id="search-form">
             <input placeholder="Nom Prénom" id="nomPrenom" name="name" type="text">
-            <select class="status-select" id="searchStatus">
+            <select id="searchStatus">
                 <option value="" selected>Status</option>
-                <option value="0">Archive</option>
-                <option value="1">En recherche</option>
-                <option value="2">Recherche active</option>
+                <option value="archive">Archive</option>
+                <option value="recherche">En recherche</option>
+                <option value="active">Recherche active</option>
+                <option value="entreprise">En entreprise</option>
             </select>
             <span class="place">
                 <input placeholder="Lieu . . ." id="place">
-                <input placeholder="Distance.." id="dist">
+                <input placeholder="Radius" id="radius">
+                <input placeholder="Postal" id="postal">
             </span>
-            <span class="place">
+                <span class="place1">
                 <input placeholder="Age" type="number" id="age">
                 <select name="tranche-age" id="trancheAge">
                     <option value="" selected>Tranche</option>
-                    <option value="1821">18 - 21</option>
-                    <option value="2126">21 - 26</option>
+                    <option value="0-17">-18</option>
+                    <option value="18-20">18 - 20</option>
+                    <option value="21-25">21 - 25</option>
+                    <option value="26-29">26 - 29</option>
+                    <option value="30-100">30+</option>
                 </select>
             </span>
-            <input placeholder="Tag +" name="Skills" type="text" id="skills">
-            <span class="ai">
-                <textarea name="AI_search" placeholder="J'ai de la chance :3" id="aiSearch"></textarea>
-                <a id="sendPrompt"><u>Envoyer</u></a>
+            <div class="wrapper" id="tagsWrapper">
+            <p>Tags</p>
+            <input class="taging" id="add_tags" list="tagList" placeholder=". . .">
+              <datalist id="tagList">
+                <option value="Eloquence">
+                <option value="Optimiste">
+                <option value="Curieux">
+                <option value="Détérminé">
+              </datalist>
+            <div class="box" id="tags">
+            </div>
+          </div>
+          <div class="wrapper">
+            <p>Compétences</p>
+            <input class="taging" id="add_skills" list="skillList" placeholder=". . .">
+            <datalist id="skillList"></datalist>
+            <div class="box" id="skills"></div>
+          </div>
+            <span class="checks">
+                <a class="action-btn" id="reset">Reset</a>
+                <span>
+                    <input type="checkbox" id="permis" name="permis">
+                    <label for="permis-b">Permis</label>
+                </span>
+                <span>
+                    <input type="checkbox" id="vehicule" name="vehicule">
+                    <label for="nomade">Véhiculé</label>
+                </span>
+                <span>    
+                    <input type="checkbox" id="mobile" name="mobile">
+                    <label for="nomade">Mobile</label>
+                </span>
             </span>
         </form>
-        </div>
-        <div class="list" >
+    </div>
+        <div class="list">
             <div class="header">
                 <span id="name-fname">
                     <p>Etudiant</p>
@@ -92,9 +121,14 @@
                 </span>
             </div>
             <div id="list"></div>
+            <div class="pages">
+                <a id="previous-page"><</a>
+                <p id="actual-page">1</p>
+                <a id="next-page">></a>
+            </div>
         </div>
-        
     </main>
+    <!--footer-->
 <script src="/scripts/Main.js" defer></script>
 <script src="/scripts/admin.js" defer></script>
 </body>

@@ -1,0 +1,89 @@
+SET NAMES utf8mb4;
+
+INSERT INTO Formations ( code, name ) VALUES
+('bts_ndrc', 'BTS NDRC'),
+('tp_ntc', 'TP NTC'),
+('dev_web_fs', 'Dev Web Fullstack'),
+('si_cybersec_expert', 'Expert en systèmes information et sécurité'),
+('bts_gpme', 'BTS GPME'),
+('cap_aepe', 'CAP AEPE'),
+('bts_optique', 'BTS Opticien Lunettier');
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Que signifie HTML ?', 'HyperText Markup Language', 1, 1),
+('Quelle balise HTML crée un paragraphe ?', '<p>', 1, 1),
+('Quelle propriété CSS change la couleur du texte ?', 'color', 1, 1),
+('À quoi sert le CSS ?', 'À styliser les pages web', 1, 1),
+('Quel langage est utilisé pour le web interactif ?', 'JavaScript', 1, 1);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Qu’est-ce que le DOM ?', 'La structure arborescente d’une page web', 1, 2),
+('À quoi sert Flexbox ?', 'À créer des mises en page flexibles', 1, 2),
+('Quelle est la différence entre class et id ?', 'id est unique, class ne l’est pas', 1, 2),
+('Que fait querySelector ?', 'Sélectionne un élément HTML', 1, 2),
+('À quoi sert une media query ?', 'Adapter le style selon l’écran', 1, 2);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Différence entre == et === ?', '=== compare valeur et type', 1, 3),
+('Qu’est-ce que le Virtual DOM ?', 'Une copie optimisée du DOM réel', 1, 3),
+('Explique le concept de SPA', 'Application web sur une seule page', 1, 3),
+('Qu’est-ce qu’un hook en React ?', 'Une fonction pour gérer l’état et le cycle de vie', 1, 3),
+('À quoi sert le lazy loading ?', 'Charger les ressources à la demande', 1, 3);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Qu’est-ce qu’un serveur ?', 'Une machine qui fournit des services', 2, 1),
+('Que signifie SQL ?', 'Structured Query Language', 2, 1),
+('Qu’est-ce qu’une base de données ?', 'Un système de stockage de données', 2, 1),
+('Que signifie CRUD ?', 'Create Read Update Delete', 2, 1),
+('Quel langage est souvent utilisé côté serveur ?', 'PHP ou NodeJS', 2, 1);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Qu’est-ce qu’une API ?', 'Interface de communication entre applications', 2, 2),
+('Qu’est-ce que REST ?', 'Une architecture basée sur HTTP', 2, 2),
+('À quoi sert une clé primaire ?', 'Identifier une ligne de façon unique', 2, 2),
+('Qu’est-ce qu’un middleware ?', 'Un intermédiaire entre requête et answer', 2, 2),
+('Qu’est-ce qu’une requête HTTP GET ?', 'Une requête pour récupérer des données', 2, 2);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('À quoi sert un index en base de données ?', 'Accélérer les recherches', 2, 3),
+('Différence entre authentification et autorisation ?', 'Identité vs permissions', 2, 3),
+('Qu’est-ce qu’un ORM ?', 'Outil de mapping objet-relationnel', 2, 3),
+('Explique l’architecture MVC', 'Séparation modèle vue contrôleur', 2, 3),
+('Qu’est-ce qu’un webhook ?', 'Un appel automatique via HTTP', 2, 3);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Suite logique : 1, 2, 3, 4 ?', '5', 3, 1),
+('Combien font 5 + 3 ?', '8', 3, 1),
+('Quel est le contraire de grand ?', 'Petit', 3, 1),
+('Si tous les chiens sont des animaux, le chien est-il un animal ?', 'Oui', 3, 1),
+('Quelle forme a une roue ?', 'Ronde', 3, 1);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Quel est l’intrus : Chat, Chien, Pomme, Cheval ?', 'Pomme', 3, 2),
+('Suite logique : 2, 4, 8, 16 ?', '32', 3, 2),
+('Paul est plus grand que Marc, Marc plus grand que Luc. Qui est le plus petit ?', 'Luc', 3, 2),
+('Combien de côtés a un hexagone ?', '6', 3, 2),
+('Si hier était lundi, quel jour est demain ?', 'Mercredi', 3, 2);
+
+INSERT INTO Tests (question, answer, type, difficulty) VALUES
+('Un père a 4 fils, chaque fils a une sœur. Combien d’enfants ?', '5', 3, 3),
+('Angle entre les aiguilles à 3h15 ?', '7,5 degrés', 3, 3),
+('Suite logique : 1, 1, 2, 3, 5 ?', '8', 3, 3),
+('Si 5 machines font 5 objets en 5 minutes, combien pour 100 objets ?', '5 minutes', 3, 3),
+('Complète : A C E G ?', 'I', 3, 3);
+
+INSERT INTO Users (
+    name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, permis, vehicule, mobile, consent, terms_version, tags, skills, status, formation_id, is_admin
+) VALUES
+('Smith', 'John', 'john.smith@example.com', '+1234567890', '123 Main St', 'New York', '10001', '1985-05-15', 'john_smith_cv.pdf', 'john_smith_id_front.jpg', 'john_smith_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["driving", "cooking"]', 1, 1, 0),
+('Doe', 'Jane', 'jane.doe@example.com', '+1987654321', '456 Oak Ave', 'Los Angeles', '90001', '1990-08-22', 'jane_doe_cv.pdf', 'jane_doe_id_front.jpg', 'jane_doe_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["writing", "photography"]', 1, 2, 0),
+('Johnson', 'Michael', 'michael.j@example.com', '+1456789012', '789 Pine Rd', 'Chicago', '60601', '1982-11-30', NULL, 'michael_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 0, 1, 1, 1, NULL, '["sales", "marketing"]', 1, 3, 0),
+('Williams', 'Emily', 'emily.w@example.com', '+1789012345', '321 Elm Blvd', 'Houston', '77001', '1995-03-10', 'emily_w_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["teaching", "music"]', 1, 3, 0),
+('Brown', 'David', 'david.b@example.com', '+1321654987', '654 Cedar Ln', 'Phoenix', '85001', '1988-07-19', 'david_b_cv.pdf', 'david_b_id_front.jpg', 'david_b_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["standard"]', '["programming", "design"]', 1, 1, 0),
+('Jones', 'Sarah', 'sarah.j@example.com', '+1654987321', '987 Maple Dr', 'Philadelphia', '19101', '1993-09-05', NULL, 'sarah_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, NULL, '["nursing", "first aid"]', 1, 2, 0),
+('Garcia', 'Carlos', 'carlos.g@example.com', '+1987321654', '135 Birch St', 'San Antonio', '78201', '1980-12-25', 'carlos_g_cv.pdf', 'carlos_g_id_front.jpg', 'carlos_g_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["construction", "plumbing"]', 1, 1, 0),
+('Miller', 'Lisa', 'lisa.m@example.com', '+1321987654', '246 Spruce Ave', 'San Diego', '92101', '1991-04-17', 'lisa_m_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["accounting", "finance"]', 1, 2, 0),
+('Davis', 'Robert', 'robert.d@example.com', '+1654321987', '369 Willow Rd', 'Dallas', '75201', '1987-06-30', NULL, 'robert_d_id_front.jpg', 'robert_d_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, NULL, '["logistics", "management"]', 1, 2, 0),
+('Rodriguez', 'Maria', 'maria.r@example.com', '+1789654321', '482 Redwood Ln', 'San Jose', '95101', '1994-02-14', 'maria_r_cv.pdf', 'maria_r_id_front.jpg', 'maria_r_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["education", "coaching"]', 1, 3, 0);
+
+SELECT id, name, status, is_admin, formation_id FROM Users; 

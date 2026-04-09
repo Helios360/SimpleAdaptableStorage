@@ -1,47 +1,19 @@
 const express = require('express');
-const cors = require('cors');
-const { formidable } = require('formidable');
-const authMiddleware = require('./controllers/authControl');
-const adminOnly = require('./controllers/adminOnly');
+const { authMiddleware, adminOnly } = require('./controllers/authControl');
 const app = express();
 const path = require('path');
-const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const fs = require('fs');
-const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const cookieParser = require('cookie-parser');
-const helmet = require('helmet');
-const crypto = require('crypto');
-// Helpers
-const ALLOWED = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim()).filter(Boolean);
-const ALLOWED_MIME = new Set(['application/pdf','image/jpeg','image/png']);
-const ALLOWED_EXT = new Set(['.pdf','.jpg','.jpeg','.png']);
-const BASE_DIR = path.resolve(process.env.APP_BASE_DIR || __dirname);
-const UPLOADS_ROOT = path.resolve(process.env.APP_UPLOADS_DIR || path.join(BASE_DIR, 'uploads'));
-const userDir = (uid) => path.join(UPLOADS_ROOT, `u_${uid}`);
-const relFromAbs = (abs) => path.relative(UPLOADS_ROOT, abs).replace(/\\/g, '/');
-const toAbsFromStored = (stored) => {
-  if (!stored) return null;
-  const rel = stored.replace(/^[\\/]+/,'');
-  const abs = path.normalize(path.join(UPLOADS_ROOT,rel));
-  if(!abs.startsWith(UPLOADS_ROOT + path.sep)){
-    throw new Error('Path escapes uploads root');
-  }
-  return abs;
-}
-function guessContentType(p){
-  const ext = (path.extname(p)||'').toLowerCase();
-  if(ext==='.pdf') return 'application/pdf';
-  if(ext==='.png') return 'image/png';
-  if(ext==='.jpg' || ext==='.jpeg') return 'image/jpeg';
-  return 'application/octet-stream';
-}
-
-// === Security headers setup ===
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site'} }));
+const crudRouter = require('./crud.routes');
+const testRouter = require('./test.routes');
+const { BASE_DIR, q, validUser, makeToken, getCityCoords } = require('./helpers');
+const { sendTo } = require('./mailer');
+const { totalmem } = require('os');
+const fs = require('fs').promises;
+app.disable('x-powered-by');
 app.use(cookieParser());
 
 // === Setting up important consts ===
@@ -52,136 +24,288 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 // === Security boot features ===
 app.set('trust proxy', 1);
-app.use(helmet.hsts({maxAge: 15552000, includeSubDomains: true, preload: true}));
 if (!SECRET) {console.error('Missing JWT_SECRET'); process.exit(1);}
 // === Middleware ===
-app.use(cors({origin: ALLOWED, credentials: true}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// === Static Files ===
-app.use(express.static(path.join(BASE_DIR, 'public')));
-// === MySQL ===
-const db = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  dateStrings: true,
-  waitForConnections: true,
-  connectionLimit: 20,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
-});
 
-function q(sql, params=[]) {
-  return new Promise((resolve, reject) => {
-    db.query(sql, params, (err, results) => (err ? reject(err) : resolve(results)));
-  });
-}
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100 // max 100 requests per 15 minutes
+  max: 200 // max 100 requests per 15 minutes
 }));
-const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false});
+const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
+let header = "";
+let footer = "";
+// === HTML Comp Routes (Prod) ===
+async function bootstrap(){
+  [header, footer] = await Promise.all([
+    fs.readFile(path.join(BASE_DIR, 'public/components/header.html'), "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/footer.html'), "utf-8"),
+  ]);
+  app.get('/', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, "public/index.html"), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/register', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public/register.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/signin', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public/signin.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/profile', authMiddleware, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'profile.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/admin-panel', authMiddleware, adminOnly, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'admin.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/test', authMiddleware, async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'views', 'test.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/legal', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'legal.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/reset-password', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'reset-password.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
+  app.get('/resetPwd', async (_, res) => {
+    const page = await fs.readFile(path.join(BASE_DIR, 'public', 'resetPwd.html'), "utf-8");
+    res.type("html").send(page.replace("<!--header-->", header).replace("<!--footer-->", footer));
+  });
 
-// === HTML Routes ===
-app.get('/', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/index.html')));
-app.get('/register', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/register.html')));
-app.get('/signin', (_, res) => res.sendFile(path.join(BASE_DIR, 'public/signin.html')));
-app.get('/profile', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR, 'views', 'profile.html'));});
-app.get('/admin-panel', authMiddleware, adminOnly, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'admin.html'));});
-app.get('/test', authMiddleware, (req, res) => {res.sendFile(path.join(BASE_DIR,'views', 'test.html'));});
-
+  // === Statics ===
+  app.use(express.static(path.join(BASE_DIR, 'public')));
+  app.use(crudRouter);
+  app.use(testRouter);
+  // === Global error handler ===
+  app.use((err, req, res, next) => {
+    console.error('Global error handler:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  });
+  // === Fallback route ===
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+  });
+  app.listen(PORT, HOST, () => console.log(`:D Server running at http://${HOST}:${PORT}`));
+}
+bootstrap().catch((err) => {
+  console.error("Startup failed :", err);
+  process.exit(1);
+});
+/*
+// === HTML Comp Routes (dev only) ===
+async function injectLayout(pagePath) {
+  const [page, header, footer] = await Promise.all([
+    fs.readFile(pagePath, "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/header.html'), "utf-8"),
+    fs.readFile(path.join(BASE_DIR, 'public/components/footer.html'), "utf-8"),
+  ]);
+  return page.replace("<!--header-->", header).replace("<!--footer-->", footer);
+}
+async function bootstrap(){
+  app.get('/', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/index.html"));
+    res.type("html").send(page);
+  });
+  app.get('/register', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/register.html"));
+    res.type("html").send(page);
+  });
+  app.get('/signin', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/signin.html"));
+    res.type("html").send(page);
+  });
+  app.get('/profile', authMiddleware, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/profile.html"));
+    res.type("html").send(page);
+  });
+  app.get('/admin-panel', authMiddleware, adminOnly, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/admin.html"));
+    res.type("html").send(page);
+  });
+  app.get('/test', authMiddleware, async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "view/index.html"));
+    res.type("html").send(page);
+  });
+  app.get('/legal', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/legal.html"));
+    res.type("html").send(page);
+  });
+  app.get('/reset-password', async (_, res) => {
+    const page = await injectLayout(path.join(BASE_DIR, "public/reset-password.html"));
+    res.type("html").send(page);
+  });
+  app.use(crudRouter);
+  app.use(testRouter);
+  // === Global error handler ===
+  app.use((err, req, res, next) => {
+    console.error('Global error handler:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  });
+  // === Fallback route ===
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+  });
+  app.listen(PORT, HOST, () => console.log(`:D Server running at http://${HOST}:${PORT}`));
+}
+bootstrap().catch((err) => {
+  console.error("Startup failed :", err);
+  process.exit(1);
+});*/
 // === /login Route ===
 app.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
+    let redirectTo = '/profile';
     const results = await q(`SELECT * FROM Users WHERE email = ?`, [email]);
     if (results.length === 0) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
     const user = results[0];
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ success: false, message: 'Identifiants non valides' });
-    
-    const token = jwt.sign({id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, SECRET, { expiresIn: '2h' });
+
+    let staff_formations = null;
+    if(user.is_admin){
+      const rows = await q(`SELECT formation_id FROM StaffSettings WHERE staff_user_id = ?`, [user.id]);
+      staff_formations = rows.map(r=>Number(r.formation_id));
+    }
+
+    const userTypeRows = await q('SELECT F.id FROM Formations F JOIN Users U ON U.formation_id = F.id WHERE U.id = ?', [user.id]);
+    const userType = userTypeRows[0]?.id || null;
+    const stillTest = await q('SELECT COUNT(*) as testNum FROM TestAttempts as TA INNER JOIN Users as U ON U.id=TA.user_id WHERE U.email=?', [email]);
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      user_type: userType,
+      is_admin: user.is_admin,
+      staff_formations
+    };
+    const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    res.json({ success: true, user: { email: user.email, name: user.name, sec: user.is_admin} });
+    if (!user.is_admin && ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3))){
+      redirectTo = '/test';
+    } else if (user.is_admin){
+      redirectTo = '/admin-panel';
+    } else {
+      redirectTo = '/profile';
+    }
+    return res.json({ success: true, redirectTo, user: { email: user.email, name: user.name, sec: user.is_admin} });
   } catch (e) {
     console.error('Login error: ', e);
     res.status(500).json({succes: false, message: 'Server Error . . .'})
   }
 });
-// === /api/profile (Me profile user) ===
-app.post('/api/profile', authMiddleware, async (req, res) => {
-  try{
-    const userId = req.user.email;
-    const results = await q ('SELECT name,fname,email,tel,addr,city,postal,birth,cv,id_doc,id_doc_verso,skills FROM Users WHERE email = ? LIMIT 1', [userId]);
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
-    const user = results[0];
-    res.json({ success: true, user });
-  } catch (e) {
-    console.error('Profile Error: ', e);
-    return res.status(500).json({ success: false, message: 'DB Error . . .' });
-  }
-});
-// === Document display
-async function kindCheck(kind, userId){
-  if(!['cv', 'id_doc', 'id_doc_verso'].includes(kind)) return {ok: false, reason: 'bad-kind'};
-  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
-  if (results.length === 0) return {ok: false, reason: 'User not found . . .'};
-  return {ok: true, path: results[0][kind] || null};
-}
-app.get('/api/me/files/:kind', authMiddleware, async (req, res) => {
-  try {
-    const { kind } = req.params;
-    const result = await kindCheck(kind, req.user.id);
-    if(!result.ok) return res.sendStatus(400);
-    if(!result.path) return res.sendStatus(404);
-    const abs = toAbsFromStored(result.path);
-    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
-    res.setHeader('Content-type', guessContentType(abs));
-    res.setHeader('Content-Disposition', 'inline');
-    res.sendFile(abs);
-  } catch (e) {console.warn(e);}
-});
-app.get('/api/admin/user/:id/files/:kind', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const { id, kind } = req.params;
-    const result = await kindCheck(kind, id);
-    if(!result.ok) return res.sendStatus(400);
-    if(!result.path) return res.sendStatus(404);
-    const abs = toAbsFromStored(result.path);
-    await fs.promises.access(abs, fs.constants.R_OK).catch(()=>{ throw 0; });
-    res.setHeader('Content-type', guessContentType(abs));
-    res.setHeader('Content-Disposition', 'inline');
-    res.sendFile(abs);
-  } catch (e) {console.warn(e);}
+app.post('/logout', (req,res) => {
+  res.clearCookie('token', {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', path: '/'});
+  res.json({success: true});
 });
 // === Admin full sql api ===
 app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   try{
-    const results = await q(`
-    SELECT 
-        name, fname, email, city, postal, date_inscription, birth, status,
-        ROUND(AVG(TestAttempts.score)) AS gen_score
-      FROM Users
-      LEFT JOIN TestAttempts ON Users.id = TestAttempts.user_id
-      GROUP BY Users.id
-    ;`);
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'No users found . . .'});
-    res.json({ success: true, users: results});
+    const b = req.body ?? {};
+    // Pagination
+    const page = Math.max(parseInt(b.page ?? "1", 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(b.pageSize ?? "10", 10), 1), 100);
+    const offset = (page - 1) * pageSize;
+    // Sorting
+    const qStr = (b.q ?? "").toString().trim();
+    const status = (b.status ?? "").toString().trim();
+    let city = (b.city ?? "").toString().trim();
+    const postal = (b.postal ?? "").toString().trim();
+    const radiusRaw = b.radius ?? null;
+    const radius = Number.isFinite(Number(radiusRaw)) ? Number(radiusRaw) : null;
+    const like = `%${qStr}%`;
+    let cityLike = `%${city}%`;
+    const postalLike = `%${postal}%`;
+    const permis = b.permis === true ? 1 : 0;
+    const vehicule = b.vehicule === true ? 1 : 0;
+    const mobile = b.mobile === true ? 1 : 0;
+    const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean).map(String) : [];
+    const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
+    const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
+    const orderKey = (b.order ?? "created_at").toString().trim();
+    let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
+    if (city && radius !== null) {
+      const coords = await getCityCoords(city);
+      if (coords) [cityLon, cityLat] = coords;
+    }
+    if(cityLon !== null && cityLat !== null) {
+      geoSql = `AND ST_Distance_Sphere(POINT(u.lon,u.lat), POINT(?, ?)) <= ? * 1000`;
+      geoParams.push(cityLon, cityLat, radius);
+      city = "";
+      cityLike = "";
+    }
+    const ORDER_COLS = {
+      name: "u.name",
+      fname: "u.fname",
+      city: "u.city",
+      status: "u.status",
+      created_at: "u.created_at",
+      gen_score: "ta.gen_score",
+    };
+    const orderCol = ORDER_COLS[orderKey] || "ta.gen_score";
+    const orderDir = dirRaw === "ASC" ? "ASC" : "DESC";
+    const extraWhere = [];
+    const extraParams = [];
+    for (const t of tags) { // All Tags
+      extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
+      extraParams.push(t);
+    }
+    for (const s of skills) { // All Skills
+      extraWhere.push(`JSON_CONTAINS(u.skills, JSON_QUOTE(?))`);
+      extraParams.push(s);
+    }
+    const baseParams = [
+      req.user.id,
+      qStr, like, like, like, like,
+      city, cityLike,
+      postal, postalLike,
+      status, status,
+      permis, vehicule, mobile,
+      ...geoParams,
+      ...extraParams
+    ];
+    const extraSql = extraWhere.length ? ` AND ${extraWhere.join(" AND ")}`: "";
+    const whereSql = `
+    WHERE EXISTS (SELECT 1 FROM StaffSettings ss WHERE ss.staff_user_id = ? AND ss.formation_id = u.formation_id )
+    AND (? = '' OR ( u.name LIKE ? OR u.fname LIKE ? OR CONCAT(u.name,' ',u.fname) LIKE ? OR CONCAT(u.fname,' ',u.name) LIKE ? ))
+    AND (? = '' OR u.city LIKE ?) AND (? = '' OR u.postal LIKE ?) AND (? = '' OR u.status = ?)
+    AND (? = 0 OR u.permis = 1) AND (? = 0 OR u.vehicule = 1) AND (? = 0 OR u.mobile = 1)
+    ${geoSql} 
+    ${extraSql}`;
+    const countRows = await q(`SELECT COUNT(*) AS total FROM Users u ${whereSql}`, baseParams);
+    const total = Number(countRows?.[0]?.total ?? 0);
+    const query = `
+      SELECT 
+        u.id, u.name, u.fname, u.email, u.city, u.permis, u.mobile, u.vehicule, u.postal, u.lon, u.lat,
+        u.created_at, u.birth, u.status, u.tags, u.skills, f.code as formation_code, f.name as formation_name,
+        ta.gen_score
+      FROM Users u
+      JOIN Formations f ON f.id = u.formation_id
+      LEFT JOIN ( SELECT user_id, ROUND(AVG(score)) AS gen_score FROM TestAttempts GROUP BY user_id ) ta ON ta.user_id = u.id
+      ${whereSql}
+      ORDER BY ${orderCol} ${orderDir}
+      LIMIT ${offset}, ${pageSize};
+    `;
+    const results = await q(query, baseParams);
+    res.json({ success: true, users: results, pagination: {page, pageSize, total, totalPages: Math.ceil(total/pageSize)}, });
   } catch (e) {
     console.error('Admin-panel Error: ', e);
     res.status(500).json({success: false, message: "DB Error . . ."});
   }
 });
 // === Single user profile access (admin) ===
-app.get('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT * FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {
@@ -204,9 +328,9 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res
 // === Update students (admin) ===
 app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res) => {
   try{
-    const {email, name, fname, tel, birth, addr, city, postal, tags, skills, status} = req.body;
-    await q( 'UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
-    [name, fname, tel, birth, addr, city, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
+    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status} = req.body;
+    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
     res.json({ success: true });
   } catch (e) {
     console.error('Database Update Error: ', e);
@@ -224,348 +348,89 @@ app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res)
     res.status(500).json({success: false, message: 'DB Error . . .'});
   }
 });
-
-// === Register route ===
-app.post('/submit-form', (req, res) => {
-  const form = formidable({
-    keepExtensions: true,
-    maxFileSize: 10 * 1024 * 1024, // 10 Mo
-    maxTotalFileSize: 30 * 1024 * 1024,
-    multiples: true,
-    filter: ({mimetype, originalFilename})=>{
-      const ext=path.extname(originalFilename || '').toLowerCase();
-      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
-    }
-  });
-  const copyInto = async (file, destDir) => {
-    if (!file) return null;
-    const ext = path.extname(file.originalFilename || '').toLowerCase();
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    await fs.promises.mkdir(destDir, {recursive: true});
-    const destAbs = path.join(destDir, safeName);
-    await fs.promises.copyFile(file.filepath, destAbs);
-    return destAbs;
-  };
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error('Formidable error: ', err);
-      return res.status(400).send('Form parsing error');
-    }
-    try {
-      const {
-        name, fname, email, tel, addr, city,
-        postal, birth, password, agree,
-      } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
-      if (!email || !password || !name || !tel || !addr || !city || !postal || !birth || !agree) return res.status(400).send('Missing required fields');
-      const tmpDir = path.join(UPLOADS_ROOT, `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      await fs.promises.mkdir(tmpDir, {recursive: true});
-      const f_cv = files.cv?.[0] || null;
-      const f_idr = files.id_doc?.[0] || null;
-      const f_idv = files.id_doc_verso?.[0] || null;
-
-      const [cvTmpAbs, idrTmpAbs, idvTmpAbs] = await Promise.all([
-        copyInto(f_cv, tmpDir),
-        copyInto(f_idr, tmpDir),
-        copyInto(f_idv, tmpDir)
-      ]);
-
-      const insertSql = `
-        INSERT INTO Users
-          (name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, agree)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      const hashedPassword = await bcrypt.hash(password, 12);
-      const insertValues = [name, fname, email, tel, addr, city, postal, birth, null, null, null, hashedPassword, agree ? 1 : 0];
-      try{
-        const results = await q(insertSql, insertValues);
-        const newId = results.insertId;
-        const finalDir = userDir(newId);
-        await fs.promises.mkdir(finalDir, {recursive: true});
-        const moveToFinal = async (absPath) => {
-          if(!absPath) return null;
-          const base = path.basename(absPath);
-          const dest = path.join(finalDir, base);
-          await fs.promises.rename(absPath, dest);
-          return relFromAbs(dest);
-        };
-        const [cvFinalRel, idrFinalRel, idvFinalRel] = await Promise.all([
-          moveToFinal(cvTmpAbs),
-          moveToFinal(idrTmpAbs),
-          moveToFinal(idvTmpAbs)
-        ])
-        try{
-          await q('UPDATE Users SET cv=?,id_doc=?,id_doc_verso=? WHERE id=?', [cvFinalRel, idrFinalRel, idvFinalRel, newId]);
-          fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-          return res.redirect('/signin');
-        } catch (e) {
-          console.error('DB Update Error after first Insert : ', e);
-          res.status(500).send('Database Error after Insert');
-        }
-      } catch (e) {
-        console.error('DB Insert Error: ', e);
-        fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
-        res.status(500).send('Database Error or invalid parameters');
-      }
-    } catch (e) {
-      console.error('Registration handler fault : ', e);
-      return res.status(500).send('Server Error');
-    }
-  });
+// === Check if user's mail is confirmed (user) ===
+app.post('/api/user/valid', authMiddleware, async (req, res) => {
+  const result = await validUser(req.body.email);
+  if(!result.success) return res.status(404).json({success:false, code:result.code});
+  else if(result.code === "NOT_VERIFIED") res.status(403).json({success: false, code:result.code});
+  else return res.status(200).json({success:true, code:result.code});
 });
-
-// === GET a random test (READ-ONLY) ===
-app.get('/api/test/next', authMiddleware, async (req, res) => {
+// === send verif email to user (user) ===
+app.post('/api/user/sendVerif', authMiddleware, async (req, res) => {
+  const result = await validUser(req.body.email);
+  if (result.code === "NOT_VERIFIED") {
+    const {token, tokenHash} = makeToken();
+    const expiresAt = new Date(Date.now()+1000*60*60*24);
+    await q(`UPDATE Users SET email_verify_token=?, email_verify_expires=? WHERE email=?`, [tokenHash, expiresAt, req.body.email]);
+    const verifURL = `${process.env.APP_URL}api/auth/verifMail?token=${token}&email=${encodeURIComponent(req.body.email)}`;
+    const content =`
+    <h1> Bienvenue sur votre nouvel espace étudiant </h1>
+    <p> Pour verifier votre compte</p>
+    <a href="${verifURL}">Cliquez-ici</a>
+    `
+    await sendTo(req.body.email, "Validez votre compte", content);
+    return res.status(200).json({success:true});
+  }
+  return res.status(200).json({success:true});
+});
+// === verif email when user clicks the mail button (user) ===
+app.get("/api/auth/verifMail", async (req, res) => {
+  const {token, email} = req.query;
+  if (!token || !email) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const rows = await q(`SELECT email_verify_token, email_verify_expires FROM Users WHERE email=?`,[email]); 
+  if (!rows || rows.length === 0) return res.redirect(`${process.env.APP_URL}profile`);
+  if (tokenHash === rows[0].email_verify_token && new Date(rows[0].email_verify_expires) > new Date()) {
+    await q(`UPDATE Users SET email_verified=1, email_verified_at=NOW(), email_verify_token=NULL, email_verify_expires=NULL WHERE email=?`, [email]);
+  } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
+  return res.redirect(`${process.env.APP_URL}profile`);
+});
+// === reset password for students (user) ===
+app.post('/reset/request', async (req, res) => {
   try{
-    const userId = req.user.id;
-    const historyResults = await q('SELECT COUNT(*) AS cnt FROM TestAttempts WHERE user_id = ?', [userId]);
-    // type = (1 : frontend; 2 : backend; 3 : psychotechnical)
-    // difficulty = (1 : easy; 2 : medium; 3 : hard)
-    const cnt = Number(historyResults?.[0]?.cnt ?? 0) || 0;
-    const type = cnt === 0 ? 1 : cnt;
-    
-    if(Number(type) >= 28) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
-    const cycleIndex = type % 27;
-    const bucket = Math.floor(cycleIndex / 3);
-    const servType = (bucket % 3) + 1;
-    // Completed test is not used yet, but it should be for when we'll choose to not send the same exercice twice
-    const testResults = await q(`SELECT id,question,type,exemple,hint FROM Tests WHERE type = ? ORDER BY RAND() LIMIT 1`,[servType]);
-    if (testResults.length === 0) return res.status(404).json({ success: false, message: 'No available test found' });
-    return res.status(200).json({ success: true, test: testResults[0], count: type });
+    const email = (req.body.email || "").trim().toLowerCase();
+    const rows = await q(`SELECT id, email FROM Users WHERE email=? LIMIT 1`, [email]);
+    if (!rows || rows.length === 0) return res.status(200).json({success: true});
+    const {token, tokenHash} = makeToken();
+    const expiresAt = new Date(Date.now()+1000*60*60);
+    await q(`UPDATE Users SET reset_pwd_token=?, reset_pwd_expires=? WHERE email=?`, [tokenHash, expiresAt, email]);
+    const resetPwdURL = `${process.env.APP_URL}reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const content = `
+    <h1> Pour réinitialiser votre mot de passe </h1>
+    <p> Cliquez sur le lien ci-dessous (valable 1 heure) :</p>
+    <a href="${resetPwdURL}">Cliquez-ici</a>
+    `
+    await sendTo(email, 'Réinitialisation de mot de passe', content);
+    return res.status(200).json({success: true});
   } catch (e) {
-    console.error('DB error on random test fetch: ', e);
-    return res.status(500).json({ success: false, message: 'Database error' });
+    console.error('Mail serving Error: ', e);
+    return res.status(200).json({success: true});
   }
 });
-
-app.post('/api/test/response', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { testId, answer } = req.body;
-    if (!testId || !answer) return res.status(400).json({ success: false, message: 'Missing test data' });
-    const results = await q(`SELECT question,answer FROM Tests WHERE id = ?`, [testId]);
-    if (!results.length) return res.status(404).json({ success: false, message: 'Test not found' });
-
-    const { question, answer: official_answer } = results[0];
-
-    const response = await openai.responses.create({
-      model: "gpt-4o-mini",
-      input: [
-        { role: "system", content: `System:
-        You are a strict, detail-oriented grader. Score student answers using the rubric. 
-        Never add commentary. Do not justify.`},
-        { role:"user", content: `User:
-        Grade the student’s answer and return only a numeric score from 0 to 100 (integers only).
-        Use this rubric strictly:
-        - 100 = fully correct and complete per rubric
-        - 70–99 = mostly correct; minor omissions or errors
-        - 40–69 = partially correct; significant gaps
-        - 1–39 = mostly incorrect; minimal correct elements
-        - 0 = blank, off-topic, or copied question
-
-        Important rules:
-        - If the rubric lists point weights, respect them and scale to 0–100.
-        - If multiple parts exist, weight each part as specified; if unspecified, weight equally.
-        - Penalize fabricated facts or contradictions with the provided references.
-        - If the answer is not in the requested language or format, deduct up to 10 points.
-        - Clamp final result to 0–100 and round to nearest integer.
-
-        Question:
-        ${question}
-
-        Rubric / Correct answer or key points (use this, not your own knowledge):
-        ${official_answer}
-
-        Student answer:
-        ${answer}
-
-        Return only the final integer score.
-        `},
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "score_only",
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              score: {
-                type: "integer",
-                minimum: 0,
-                maximum: 100
-              }
-            },
-            required: ["score"]
-          },
-          strict: true
-        }
-      }
-    });
-    const raw = response.output[0].content[0].text;
-    let score;
-    
-    try { ({ score } = JSON.parse(raw)); }
-    catch { score = Math.max(0, Math.min(100, parseInt(String(raw).trim(), 10))); }
-    
-    await q('INSERT INTO TestAttempts (user_id, test_id, response, score) VALUES (?, ?, ?, ?)', [userId, testId, answer, score]);
-    res.json({ success: true, score });
-  } catch (e) {
-    console.error('Test/Response Error: ', e);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-// === CRUD ===
-async function deleteUser(userId) {
-  const userFolder = path.resolve(BASE_DIR, `uploads/u_${userId}`);
-  try { await fs.promises.rm(userFolder, { recursive: true, force: true});} 
-  catch (e) { if (e.code !== 'ENOENT') console.warn('File RM Error: ', userFolder, e.message); }
-  const confirm = await q('DELETE FROM Users WHERE id = ?',[userId]);
-  if ((confirm?.affectedRows || 0) === 0) {
-    const err = new Error('User not found while trying to Delete user:');
-    err.status = 404;
-    throw err;
-  }
-}
-// === From profile to db users ===
-app.post('/api/update-tags', authMiddleware, async (req, res) => {
-  const userEmail = req.user.email;
-  const {name, fname, tel, birth, addr, city, postal, skills} = req.body;
-  let tags = [];
-  if (req.user.is_admin) {tags = Array.isArray(req.body.tags) ? req.body.tags : [];}
-  const tagsJSON = JSON.stringify(tags);
-  const skillsJSON = JSON.stringify(skills);
-  try {
-    await q(
-    `UPDATE Users 
-     SET name = ?, fname = ?, tel = ?, birth = ?, addr = ?, city = ?, postal = ?, tags = ?, skills = ?
-     WHERE email = ?`,
-    [name, fname, tel, birth, addr, city, postal, tagsJSON, skillsJSON, userEmail]);
-    res.json({ success: true, message: 'Profile updated successfully' });
-  } catch (e) {
-    console.error('DB Profile Update Error: ', e);
-    res.status(500).json({ success: false, message: 'Database error . . .' });
-  }
-});
-// === CRUD delete route ===
-app.delete('/api/delete', authMiddleware, async (req, res) => {
-  try { await deleteUser(req.user.id); res.json({success: true});}
-  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
-});
-// === CRUD delete route (admin) ===
-app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
-  try { await deleteUser(req.params.id); res.json({success: true});}
-  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't delete user"});}
-});
-// === CRUD change(upload)/delete files only route ===
-async function deleteFile(userId, action) {
-  const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?', [userId]);
-  if (!results || !results[0]) throw Object.assign(new Error('User not found'), {status : 404});
-  const user = results[0];
-  let filename = null;
-  let nullTheColumn = null;
-  if(action === 'del' && user.id_doc){
-    filename = toAbsFromStored(user.id_doc);
-    nullTheColumn = 'id_doc';
-  } else if(action === 'delV' && user.id_doc_verso){
-    filename = toAbsFromStored(user.id_doc_verso);
-    nullTheColumn = 'id_doc_verso';
-  } else if(action === 'delCV' && user.cv) {
-    filename = toAbsFromStored(user.cv);
-    nullTheColumn = 'cv';
-  } else { return {success: false} }
+// === reset password for students (user) ===
+app.post('/reset/confirm', async (req, res) => {
   try{
-    await fs.promises.unlink(filename);
+    const email = (req.body.email || "").trim().toLowerCase();
+    const token = (req.body.token || "").trim();
+    const newPassword = req.body.password || "";
+    if (!token || !email || !newPassword) return res.status(400).json({success: false, code: "MISSING_PARAMS"});
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const rows = await q(`SELECT id, reset_pwd_token, reset_pwd_expires FROM Users WHERE email=? LIMIT 1`,[email]); 
+    if (!rows || rows.length === 0) return res.status(403).json({success: false, message: "Lien invalide ou éxpiré"});
+    if (tokenHash === rows[0].reset_pwd_token && new Date(rows[0].reset_pwd_expires) > new Date()) {
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL WHERE email=?`, [passwordHash, email]);
+    } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
+    return res.status(200).json({success:true});
   } catch (e){
-    if (e.code !== 'ENOENT'){
-      console.warn('Unlink error:', e);
-      const err = new Error("File can't be deleted"); err.status=500; throw err;
-    } else {console.log('File already deleted');}
+    console.error("Reset confirm error: ", e);
+    return res.status(500).json({success:false});
   }
-  await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
-  return {success: true};
-}
-app.post('/api/files',authMiddleware, async (req,res)=>{
-  try{
-    const result = await deleteFile(req.user.id, req.body.action);
-    return res.json(result);
-  } catch (e) {
-    console.error('Delete Route Error: ', e);
-    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server File Delete Error . . .'});
-  }
-})
-app.post('/api/files/:id', authMiddleware, adminOnly, async (req,res)=>{
-  try{
-    const result = await deleteFile(req.params.id, req.body.action);
-    return res.json(result);
-  } catch (e) {
-    console.error('Delete Route Error: ', e);
-    return res.status(e.status || 500).json({success: false, message: e.message ||  'Server File Delete Error . . .'});
-  }
-})
-app.post('/api/upload/:kind', authMiddleware, async (req,res)=>{
-  const kind = String(req.params.kind || '').trim();
-  if(!['id_doc', 'id_doc_verso', 'cv'].includes(kind)) return res.status(400).json({success: false, message: 'Invalid kind'});
-  const userFolder = userDir(req.user.id);
-  await fs.promises.mkdir(userFolder, {recursive : true});
-  try {
-    const results = await q('SELECT cv, id_doc, id_doc_verso FROM Users WHERE id=?',[req.user.id]);
-    const current = results[0]?.[kind];
-    if (current){
-      const oldAbs = toAbsFromStored(current);
-      try { await fs.promises.unlink(oldAbs);} 
-      catch (e) {if (e.code !== 'ENOENT') console.warn('Old file delete error: ', e);}
-    }
-  } catch (e) {
-    console.error('Pre check error: ', e);
-    return res.status(500).json({success: false, message: 'Server Upload Error'});
-  }
-  const form = formidable({
-    uploadDir: userFolder,
-    keepExtensions: true,
-    multiples: false,
-    maxFileSize: 10 * 1024 * 1024,
-    filter: ({mimetype, originalFilename}) => {
-      const ext = path.extname(originalFilename || '').toLowerCase();
-      return ALLOWED_MIME.has(mimetype) && ALLOWED_EXT.has(ext);
-    },
-    filename: (name, ext, part, form) => {
-      const lowerExt = (ext || path.extname(name || '')).toLowerCase();
-      return `u_${req.user.id}_${kind}_${crypto.randomUUID()}${lowerExt}`;
-    }
-  });
-
-  form.parse(req, async (err, fields, files) => {
-    if(err){
-      console.error('Formidable error: ', err);
-      return res.status(400).json({success: false, message: "Bad upload"});
-    }
-    const f = Array.isArray(files.file) ? files.file[0] : files.file;
-    if (!f) return res.status(400).json({success: false, message: 'No file'});
-    const ext = path.extname(f.originalFilename || '').toLowerCase();
-    if (!ALLOWED_MIME.has(f.mimetype) || !ALLOWED_EXT.has(ext)) {
-      return res.status(415).json({success: false, message: 'Unsupported file type'});
-    }
-    try{
-      const storedPath = relFromAbs(f.filepath);
-      await q(`UPDATE Users SET ${kind}=? WHERE id=?`, [storedPath, req.user.id]);
-      return res.json({success: true, path : storedPath});
-    } catch (e) {
-      console.error('Path Upload DIR Error: ', e);
-      return res.status(500).json({success: false, message: 'Server Path Upload Error'});
-    }
-  });
-})
-
-// === Global error handler ===
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
 });
-// === Fallback route ===
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
-});
-// === Start Server ===
-app.listen(PORT, HOST, () => {
-  console.log(`:D Server running at http://${HOST}:${PORT}`);
-});
+/*
+When a commercial creates an account, the user gets a token and 
+the flow is the same as the password reset
+so the user is created with
+email verified = 0 and status invited or something
+i can definitely reuse the reset code, just have to change the texts here and there
+*/

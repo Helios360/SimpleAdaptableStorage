@@ -1,3 +1,3 @@
-const isDark = localStorage.getItem('dark') === 'true';
-document.documentElement.style.setProperty('--primary', isDark ? '#141414' : '#F1F4F4');
-document.documentElement.style.setProperty('--secondary', isDark ? '#F1F4F4' : '#141414');
+const isDark = localStorage.getItem('dark') === 'true' || false;
+document.documentElement.style.setProperty('--primary', isDark ? '#141414' : '#dff6f6');
+document.documentElement.style.setProperty('--secondary', isDark ? '#dff6f6' : '#141414');

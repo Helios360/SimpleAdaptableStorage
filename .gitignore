@@ -1,4 +1,7 @@
-SimplePeopleStoring-app/uploads/*
+uploads/
+SimplePeopleStoring-app/package-lock.json
+dev/
+docker-compose.override.yml
 
 # Logs
 SimplePeopleStoring-app/logs

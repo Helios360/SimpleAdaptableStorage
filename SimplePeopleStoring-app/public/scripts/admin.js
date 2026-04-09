@@ -1,298 +1,170 @@
-const token = localStorage.getItem('token');
-if (token) {
-  fetch('/admin-panel', { headers: { Authorization: `Bearer ${token}` }})
-  .then(res => res.text())
-  .catch(err => console.error('Erreur admin fetch:', err));
+const nextPage = document.getElementById('next-page');
+const previousPage = document.getElementById('previous-page');
+const actualPage = document.getElementById('actual-page');
+const tag = document.getElementById('add_tags');
+const skills = document.getElementById('add_skills');
+
+let currentTags = [];
+let currentSkills = [];
+
+function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
+    return {
+        q: document.getElementById('nomPrenom').value.trim(),
+        status: document.getElementById('searchStatus').value || "",
+        city: document.getElementById('place').value.trim(),
+        radius: document.getElementById('radius').value.trim(),
+        postal: document.getElementById('postal').value.trim(),
+        age: document.getElementById('age').value
+            ? Number(document.getElementById('age').value) : null,
+        trancheAge: document.getElementById('trancheAge').value || "",
+        permis: document.getElementById('permis').checked,
+        vehicule: document.getElementById('vehicule').checked,
+        mobile: document.getElementById('mobile').checked,
+        tags: currentTags,
+        skills: currentSkills,
+        page: pageIndex,
+        pageSize: 10,
+        orderBy: orderBy,
+        order: order,
+    };
 }
 
 const allUsers = [];
-function renderUser (users) {
-  const list = document.getElementById('list');
-  list.innerHTML='';
-  users.forEach(user => {
-    const rawScore = user.gen_score;
-    const displayScore = rawScore == null ? "N/A" : rawScore;
-    if (rawScore == null) scoreColor = "var(--secondary)";
-    else if (rawScore < 20) scoreColor="#E02424";
-    else if (rawScore < 40) scoreColor="#F54927";
-    else if (rawScore < 60) scoreColor="#D5DB1F";
-    else scoreColor="#32DB1F";
-    list.innerHTML+=`
-    <div class="user" data-user-id="${user.id}">
-    <span><a href="/profile?email=${encodeURIComponent(user.email)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
-    <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
-    <span style="line-break:loose">${user.city}, ${user.postal}</span>
-    <span>
-        <select class="status-select" data-user-id="${user.id}">
-            <option value="0" ${user.status == 0 ? 'selected' : ''}>Archive</option>
-            <option value="1" ${user.status == 1 ? 'selected' : ''}>En recherche</option>
-            <option value="2" ${user.status == 2 ? 'selected' : ''}>Recherche active</option>
-        </select>
-    </span>
-    <span><p class="creationDate">${user.date_inscription.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
-    </div>
-    `;
-  });
-  document.querySelectorAll('.status-select').forEach(select => {
-    select.addEventListener('change', event => {
-      const newStatus = event.target.value;
-      const userId = event.target.getAttribute('data-user-id');
+async function renderPage(pageIndex){
+    try{
+        const payload = buildPayload(pageIndex);
+        const data = await api('/api/admin-panel',{
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if(!data.success) return;
+        actualPage.innerText = data.pagination?.page ?? pageIndex;
+        const users = Array.isArray(data.users) ? data.users : [];
+        allUsers.length=0;
+        allUsers.push(...users);
+        renderUser(users);
+    } catch (e) { console.error(e); }
+}
+renderPage(1);
+nextPage.addEventListener('click', async () => {
+    renderPage(parseInt(actualPage.innerText) + 1);
+})
+previousPage.addEventListener('click', async () => {
+    const p = Math.max(1, parseInt(actualPage.innerText, 10) -1)
+    if (p >= 1) renderPage(p);
+})
 
-      fetch('/api/admin/update-status', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('token'),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: userId,
-          status: newStatus
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          console.log(`Status updated for user ${userId}`);
-
-          const userToUpdate = allUsers.find(user => user.id == userId);
-          if (userToUpdate) {
-            userToUpdate.status = parseInt(newStatus, 10);
-          }
-        } else {
-          throw new Error(data.message);
-        }
-      })
-      .catch(err => {
-        console.error(`Failed to update status for user ${userId}:`, err);
-        notif("Erreur lors de la mise à jour du statut.");
-      });
+async function renderUser (users) {
+    const list = document.getElementById('list');
+    list.innerHTML='';
+    let scoreColor;
+    users.forEach(user => {
+        const rawScore = user.gen_score;
+        const displayScore = rawScore == null ? "N/A" : rawScore;
+        if (rawScore == null) scoreColor = "var(--secondary)";
+        else if (rawScore < 20) scoreColor="#E02424";
+        else if (rawScore < 40) scoreColor="#F54927";
+        else if (rawScore < 60) scoreColor="#D5DB1F";
+        else scoreColor="#32DB1F";
+        list.innerHTML+=`
+        <div class="user" data-user-id="${user.id}">
+        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+        <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
+        <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
+        <span>
+            <select class="status-select" data-user-id="${user.id}">
+                <option value="active" ${user.status === 'active' ? 'selected' : ''}>Recherche active</option>
+                <option value="recherche" ${user.status === 'recherche' ? 'selected' : ''}>En recherche</option>
+                <option value="entreprise" ${user.status === 'entreprise' ? 'selected' : ''}>En Entreprise</option>
+                <option value="archive" ${user.status === 'archive' ? 'selected' : ''}>Archive</option>
+            </select>
+        </span>
+        <span class="resped"><p class="creationDate">${user.created_at.match(/^\d{4}-\d{2}-\d{2}/)}</p></span>
+        </div>
+        `;
     });
-  });
-}
-function sortUsers(by, ascending = true) {
-  const sorted = [...allUsers];
-  sorted.sort((a, b) => {
-    let valA = a[by];
-    let valB = b[by];
-
-    // Normalize for string or date
-    if (by === 'date_inscription') {
-      valA = new Date(valA);
-      valB = new Date(valB);
-    }
-    if (by === "gen_score") {
-      valA = Number(valA);
-      valB = Number(valB);
-      if (isNaN(valA)) valA = -Infinity;
-      if (isNaN(valB)) valB = -Infinity;
-    }
-    if (typeof valA === 'string') {
-      valA = valA.toLowerCase();
-      valB = valB.toLowerCase();
-    }
-
-    if (valA < valB) return ascending ? -1 : 1;
-    if (valA > valB) return ascending ? 1 : -1;
-    return 0;
-  });
-
-  renderUser(sorted);
-}
-
-fetch('/api/admin-panel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }})
-.then(res => res.json())
-.then(data => {
-  if (data.success) {
-    const users = data.users;
-    allUsers.push(...users);
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', async event => {
+            const newStatus = event.target.value;
+            const userId = event.target.getAttribute('data-user-id');
+            try {
+                const data = await api('/api/admin/update-status', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                        id: userId,
+                        status: newStatus
+                    })
+                });
+                if (!data.success) return;
+                console.log(`Status updated for user ${userId}`);
+                const userToUpdate = allUsers.find(user => user.id == userId);
+                if (userToUpdate) userToUpdate.status = newStatus;
+            } catch (e) { console.error(e); }
+        });
+    });
+};
+// Sort users based on the arrows on the first line (only desc and asc) and dynamic
+function sortArrow(){
+    const users = allUsers || [];
     renderUser(users);
     attachFormListeners();
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#name-fname');
-      if (wrapper) {
-      const clickedSvg = wrapper.querySelector('svg');
-      document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-        .forEach(svg => {
-          if (svg !== clickedSvg) {
-            svg.classList.remove('rotated');
-            svg.classList.add('unrotate');
-          }
+
+    const SORT_HEADERS = [
+      {wrapper: '#name-fname', key:'name'},
+      {wrapper: '#score', key:'gen_score'},
+      {wrapper: '#localisation', key:'city'},
+      {wrapper: '#status', key:'status'},
+      {wrapper: '#creation-date', key:'created_at'},
+    ];
+    const ALL_SVG_SELECTOR = SORT_HEADERS.map(h=>`${h.wrapper} svg`).join(', ');
+
+    function resetOtherArrows(clickedSvg){
+        document.querySelectorAll(ALL_SVG_SELECTOR).forEach(svg => {
+            if(svg !== clickedSvg) {
+                svg.classList.remove('rotated');
+                svg.classList.add('unrotate');
+            }
         });
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("name",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("name",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#score');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("gen_score",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("gen_score",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#localisation');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("localisation",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("localisation",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#status');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("status",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("status",false);
-          }
-        }
-      }
-    });
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('#creation-date');
-      if (wrapper) {
-        const clickedSvg = wrapper.querySelector('svg');
-        document.querySelectorAll('#name-fname svg, #localisation svg, #status svg, #creation-date svg')
-          .forEach(svg => {
-            if (svg !== clickedSvg) {
-              svg.classList.remove('rotated');
-              svg.classList.add('unrotate');
-            }
-          });
-
-        if (clickedSvg) {
-          const isRotated = clickedSvg.classList.contains('rotated');
-          if(isRotated == false) {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("date_inscription",true);
-          } else {
-            clickedSvg.classList.toggle('rotated', !isRotated);
-            clickedSvg.classList.toggle('unrotate', isRotated);
-            sortUsers("date_inscription",false);
-          }
-        }
-      }
-    });
-  }
-})
-.catch(err => { console.error('Error fetching users:', err); });
-
-function filterUsers() {
-  const nameValue = document.getElementById('nomPrenom').value.toLowerCase();
-  const statusValue = document.getElementById('searchStatus').value;
-  const placeValue = document.getElementById('place').value.toLowerCase();
-  const ageValue = document.getElementById('age').value;
-  const trancheValue = document.getElementById('trancheAge').value;
-  const skillsValue = document.getElementById('skills').value.toLowerCase();
-  const aiSearchValue = document.getElementById('aiSearch').value.toLowerCase();
-  
-  const filtered = allUsers.filter(user => {
-    // Calculate age
-    const birthDate = new Date(user.birth);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
     }
-    const fullName = `${user.name} ${user.fname}`.toLowerCase();
-    const matchName = nameValue === '' || fullName.includes(nameValue);
-    const matchStatus = statusValue === '' || user.status.toString() === statusValue;
-    const matchPlace = placeValue === '' || user.city?.toLowerCase().includes(placeValue);
-    const matchAge = ageValue === '' || age === parseInt(ageValue);
-    const matchTranche = trancheValue === '' || (
-      age >= parseInt(trancheValue.slice(0,2)) &&
-      age <= parseInt(trancheValue.slice(2))
-    );
-    const matchskills = skillsValue === '' || (user.skills || []).some(tag => tag.toLowerCase().includes(skillsValue));
-    const matchAI = aiSearchValue === '' || JSON.stringify(user).toLowerCase().includes(aiSearchValue); // simple AI full-text
-
-    return matchName && matchStatus && matchPlace && matchAge && matchTranche && matchskills && matchAI;
-  });
-  renderUser(filtered);
+    function setArrowState(svg, asc){
+        svg.classList.toggle('rotated', asc);
+        svg.classList.toggle('unrotate', !asc);
+    }
+    async function handleSortClick(wrapperSelector, sortKey, e){
+        const wrapper = e.target.closest(wrapperSelector);
+        if (!wrapper) return false;
+        const svg = wrapper.querySelector('svg');
+        if (!svg) return true;
+        resetOtherArrows(svg);
+        const nextAsc = !svg.classList.contains('rotated');
+        setArrowState(svg, nextAsc);
+        try{
+            const dir = nextAsc ? "asc" : "desc";
+            const payload = buildPayload(1, dir, sortKey);
+            const results = await api('/api/admin-panel', {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload),
+            });
+            if(!results?.success) return;
+            renderUser(results.users);
+            if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+        } catch (err) {
+            console.error(err || "error");
+        }
+    }
+    document.addEventListener('click', async (e) => {
+        for (const {wrapper, key} of SORT_HEADERS) {
+            const handled = await handleSortClick(wrapper, key, e);
+            if (handled) break; 
+        }
+    });
 }
-
-function attachFormListeners() {
+sortArrow();
+async function attachFormListeners() {
   const form = document.getElementById('search-form');
-  form.querySelectorAll('input, select, textarea').forEach(field => {
-    field.addEventListener('input', filterUsers);
-    field.addEventListener('change', filterUsers);
-  });
-}
-function refreshUserList() {
-  fetch('/api/admin-panel', { method: 'GET', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token')}})
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      allUsers.length = 0; // Vider l'ancien tableau
-      allUsers.push(...data.users); // Remplir avec les vraies données
-      renderUser(data.users);
-    }
-  })
-  .catch(err => {console.error('Erreur lors du refresh:', err);});
 }
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
@@ -300,3 +172,423 @@ window.addEventListener('pageshow', (event) => {
     window.location.reload();
   }
 });
+
+document.getElementById('addStud').addEventListener('click', ()=>{
+  const popup = document.createElement('div');
+  popup.className = 'notif-alert';
+  popup.id = 'alertnotif';
+  popup.innerHTML=`
+  <div class="admin-register">
+  <button id="exit-popup">Retour</button><br><br>
+  <form action="/submit-form-admin" data-ajax method="POST" enctype="multipart/form-data" class="form-admin" novalidate>
+            <div class="register">
+                <div>
+                    <label for="formation_id">Formation *</label>
+                    <select id="formation_id" name="formation_id" required>
+                        <option value="1">BTS NDRC</option>
+                        <option value="2">TP NTC</option>
+                        <option value="3">Developpeur Web Full Stack</option>
+                        <option value="4">Expert en systeme d'information</option>
+                        <option value="5">BTS GPME</option>
+                        <option value="6">CAP AEPE</option>
+                        <option value="7">BTS opticien lunettier</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="name">Nom *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div>
+                    <label for="first-name">Prénom *</label>
+                    <input type="text" id="fname" name="fname" required>
+                </div>
+                <div>
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div>
+                    <label for="tel">Téléphone *</label>
+                    <input type="tel" id="tel" name="tel" required>
+                </div>
+                <div>
+                    <label for="adresse">Adresse</label>
+                    <input type="text" id="addr" name="addr">
+                </div>
+                <div>
+                    <label for="postal">Code Postal</label>
+                    <input type="text" id="postal" name="postal" pattern="[A-Za-z0-9\s\-]{3,10}">
+                </div>
+                <div>
+                    <label for="city">Ville/Village *</label>
+                    <input type="text" id="city" name="city" required>
+                </div>
+                <div>
+                    <label for="birth">Date de naissance *</label>
+                    <input type="date" id="birth" name="birth" required>
+                </div>
+            </div>
+            <hr style="width:100%">
+            <div class="register">
+                <ul class="form2 inputs" >
+                    <p>Documents :</p>
+                    <li class="file-upload inputs">
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
+                    </li>
+                    <span class="checks">
+                        <input type="checkbox" id="sejour" name="sejour">
+                        <label for="sejour">L'étudiant a un titre de séjour plutot qu'une pièce d'identité</label>
+                    </span>
+                    <div id="titre-valide">
+                        <label for="titre">Date d'invalidité du titre de séjour *</label>
+                        <input type="date" id="titre-sejour" name="titre">
+                    </div>
+                    <li class="file-upload">
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf" required>
+                    </li>
+                    <li class="file-upload">
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf" required>
+                    </li>
+                </ul>
+                <div>
+                    <span class="checks admin-checks">
+                        <input type="checkbox" id="permis" name="permis">
+                        <label for="permis">Permis B</label>
+                    </span>
+                    <span class="checks admin-checks">
+                        <input type="checkbox" id="vehicule" name="vehicule">
+                        <label for="vehicule">Véhiculé</label>
+                    </span>
+                    <span class="checks admin-checks">    
+                        <input type="checkbox" id="mobile" name="mobile">
+                        <label for="mobile">Mobile geographiquement</label>
+                    </span>
+                </div>
+                <span id="password-message"></span>
+                <button type="submit" id="send">Envoyer</button>
+            </div>
+        </form><br>
+    </div>
+    `
+    document.body.appendChild(popup);
+    const form = popup.querySelector("form");
+    const telInput = document.getElementById('tel');
+    const titreInput = document.getElementById('titre-sejour');
+
+    const cvCross = document.getElementById('cvCross');
+    const pirCross = document.getElementById('pirCross');
+    const pivCross = document.getElementById('pivCross');
+    const cvUpload = document.getElementById('cv');
+    const pirUpload = document.getElementById('id_doc');
+    const pivUpload = document.getElementById('id_doc_verso');
+    const labelCV = document.getElementById('cvFileName');
+    const labelPir = document.getElementById('piRectoFilename');
+    const labelPiv = document.getElementById('piVersoFilename');
+
+    telInput.addEventListener('input', () => {
+        telInput.value = telInput.value.replace(/\s+/g, "");
+    })
+
+    const sejour = document.getElementById('sejour');
+    document.getElementById('titre-valide').style.height='0px';
+    document.getElementById('titre-valide').style.overflow='hidden';
+
+    sejour.addEventListener('change', () => {
+        if (!sejour.checked){
+            document.getElementById('titre-valide').style.height='0px';
+            toggle = 1;
+            labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
+            titreInput.ariaDisabled;
+        } else {
+            document.getElementById('titre-valide').style.height='65px';
+            toggle = 0;
+            labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
+            labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
+            titreInput.ariaRequired;
+        }
+    });
+
+    // Vérification email
+    function validateEmail(email) {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    }
+    // Vérification téléphone (10 chiffres minimum)
+    function validatePhone(phone) {
+        if (typeof phone !== 'string') return false;
+        const normalize = phone.replace(/[\s\-()]/g, "");
+        const regex = /^0[1-9][0-9]{8}$/;
+        return regex.test(normalize);
+    }
+    /*
+    function validatePostal(postal) {
+        if (typeof postal !== 'string') return false;
+        const normalize = postal.replace(/\s+/g, "");
+        const regex = /^(0[1-9]|[1-8][0-9]|9[0-8])[0-9]{3}$/;
+        return regex.test(normalize);
+    }
+    */
+    // Vérification nom/prénom (lettres uniquement)
+    function validateName(name) {
+        const regex = /^[A-Za-zÀ-ÖØ-öø-ÿ\s\-]+$/;
+        return regex.test(name);
+    }
+
+    // Vérification date de naissance (18 ans minimum)
+    function validateBirth(dateString) {
+        const birthDate = new Date(dateString);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        return age > 18 || (age === 18 && m >= 0);
+    }
+
+    // Vérification fichiers
+    function validateFile(input, allowedExtensions, maxSizeMB) {
+      if (!input.files.length) return false;
+      const file = input.files[0];
+
+      // Vérification extension
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!allowedExtensions.includes(ext)) return false;
+
+      // Vérification taille
+      const maxSizeBytes = maxSizeMB * 1024 * 1024; 
+      if (file.size > maxSizeBytes || file.size == 0) {
+          return false;
+      }
+      return true;
+    }
+
+    // Validation globale avant envoi
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        let valid = true;
+        let errors = [];
+        // Nom et prénom
+        if (!validateName(document.getElementById("name").value)) {
+            valid = false;
+            errors.push("Nom invalide (lettres uniquement).");
+        }
+        if (!validateName(document.getElementById("fname").value)) {
+            valid = false;
+            errors.push("Prénom invalide (lettres uniquement).");
+        }
+        // Email
+        if (!validateEmail(document.getElementById("email").value)) {
+            valid = false;
+            errors.push("Email invalide.");
+        }
+        // Téléphone
+        if (!validatePhone(document.getElementById("tel").value)) {
+            valid = false;
+            errors.push("Téléphone invalide (10 chiffres).");
+        }
+        // Date de naissance
+        if (!validateBirth(document.getElementById("birth").value)) {
+            valid = false;
+            errors.push("Vous devez avoir au moins 18 ans.");
+        }
+        // Titre de Séjour
+        if (sejour.checked && !titreInput.value){
+            valid = false;
+            errors.push("Date d'invalidité du titre de séjour obligatoire.");
+        }
+        // Fichiers
+        if (!validateFile(cvUpload, ["pdf"], 2)) {
+            valid = false;
+            errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
+        }
+        if (!validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
+            valid = false;
+            errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
+        }
+        if (!validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
+            valid = false;
+            errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
+        }
+        // Si erreur -> bloquer envoi
+        if (!valid) {
+            notifAlert("Infos manquantes :<br>- " + errors.join("<br>- "));
+            return;
+        }
+        const fd = new FormData(form);
+        const email = (fd.get('email') || '').toString().trim().toLowerCase();
+        fd.set('email', email);
+        try{
+            await api(form.action, { method: 'POST', body: fd});
+            notif("Le compte a bien été créé.");
+        } catch (e) {
+            if(e && e.status === 409){
+                const emailInput = form.querySelector('#email');
+                if (emailInput) {
+                    emailInput.classList.add('is-invalid');
+                    emailInput.focus();
+                }
+            } else notifAlert('Erreur serveur, réessayez.');
+        }
+    });
+
+    cvUpload.addEventListener('change', () => { if (cvUpload.files.length > 0) labelCV.innerText = cvUpload.files[0].name; cvCross.style.display = 'block';})
+    pirUpload.addEventListener('change', () => { if (pirUpload.files.length > 0) labelPir.innerText = pirUpload.files[0].name; pirCross.style.display = 'block';})
+    pivUpload.addEventListener('change', () => { if (pivUpload.files.length > 0) labelPiv.innerText = pivUpload.files[0].name; pivCross.style.display = 'block';})
+    cvCross.addEventListener('click', ()=>{
+        labelCV.innerText = 'CV (.pdf)';
+        cvUpload.value = '';
+        cvCross.style.display = 'none';
+    })
+    pirCross.addEventListener('click', ()=>{
+        labelPir.innerText = "Pièce d'identité (recto) (.png/.jpg/.pdf)";
+        pirUpload.value = '';
+        pirCross.style.display = 'none';
+    })
+    pivCross.addEventListener('click', ()=>{
+        labelPiv.innerText = "Pièce d'identité (verso) (.png/.jpg/.pdf)";
+        pivUpload.value = '';
+        pivCross.style.display = 'none';
+    })
+    popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
+})
+
+function buildAllSkillsList(){
+  const out = new Set();
+  Object.values(formationCatalog || {}).forEach(cfg => {
+    if (!cfg) return;
+    Object.keys(cfg).forEach(skill => out.add(skill));
+  });
+  return [...out].sort();
+}
+
+function getTypeForSkill(skill){
+  const catalog = formationCatalog || {};
+  for (const fid of Object.keys(catalog)) {
+    const t = catalog[fid]?.[skill];
+    if (t) return t;
+  }
+  return 'unknown';
+}
+
+// Remplit la datalist "Compétences" sans appel API (liste condensée/dédupliquée)
+populateDatalist(document.getElementById('skillList'), buildAllSkillsList());
+
+function renderTagsAndSkills() {
+    const tagList = document.getElementById('tags');
+    const skillList = document.getElementById('skills');
+    tagList.innerHTML = '';
+    skillList.innerHTML = '';
+    currentTags.forEach(t => {
+        const div = document.createElement('div');
+        div.textContent = t;
+        let confirming = false;
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
+            if (confirming) {
+                div.textContent = t;
+                div.style.color = 'var(--secondary)';
+                confirming = false;
+            }
+        };
+        div.onclick = () => {
+            if (!confirming) {
+                div.textContent += ' ?';
+                div.style.color = 'red';
+                confirming = true;
+            } else {
+                currentTags = currentTags.filter(tag => tag !== t);
+                renderTagsAndSkills();
+                renderPage(1);
+            }
+        };
+        tagList.appendChild(div);
+    });
+    currentSkills.forEach(s => {
+        const div = document.createElement('div');
+        const type = getTypeForSkill(s);
+        const bgColor = typeColors[type];
+        div.textContent = s;
+        div.style.backgroundColor = bgColor;
+        let confirming = false;
+        div.onmouseenter = () => { if (!confirming) div.style.textDecoration = 'line-through'; };
+        div.onmouseleave = () => {
+            div.style.textDecoration = 'none';
+            if (confirming) {
+                div.textContent = s;
+                div.style.color = 'var(--secondary)';
+                confirming = false;
+            }
+        };
+        div.onclick = () => {
+            if (!confirming) {
+                div.textContent += ' ?';
+                div.style.color = 'red';
+                confirming = true;
+            } else {
+                currentSkills = currentSkills.filter(tag => tag !== s);
+                renderTagsAndSkills();
+                renderPage(1);
+            }
+        };
+        skillList.appendChild(div);
+    });
+}
+// When tag input loses focus or user presses Enter
+tag.addEventListener('change', () => {
+    const tagged = tag.value.trim();
+    if (tagged && !currentTags.includes(tagged)) {
+        currentTags.push(tagged);
+        renderTagsAndSkills();
+    }
+    tag.value = '';
+});
+// When skill input loses focus or user presses Enter
+skills.addEventListener('change', () => {
+    const skill = skills.value.trim();
+    if (skill && !currentSkills.includes(skill)) {
+        currentSkills.push(skill);
+        renderTagsAndSkills();
+    }
+    skills.value = '';
+});
+document.getElementById('reset').addEventListener('click', ()=>{
+  document.getElementById('search-form').reset();
+  currentTags = [];
+  currentSkills = [];
+  renderTagsAndSkills();
+  renderPage(1);
+});
+let lastSearchedPayload = null;
+let controller = null;
+function debounce(fn, delay = 400){
+    let t;
+    return function (...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+const debouncedSearch = debounce( async () => {
+    try{
+        const payload = buildPayload(1);
+        const results = await api('/api/admin-panel', {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        if(!results?.success) return;
+        renderUser(results.users);
+        if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+    } catch (err) {
+        console.error(err);
+    }
+}, 400);
+
+const searchForm = document.getElementById('search-form');
+// "input" couvre les champs texte/number, mais certains navigateurs ne déclenchent pas
+// toujours correctement l'événement sur les checkbox lors d'un déclicage.
+// "change" garantit le rafraîchissement du filtre pour checkbox/select/datalist.
+searchForm.addEventListener('input', debouncedSearch);
+searchForm.addEventListener('change', debouncedSearch);

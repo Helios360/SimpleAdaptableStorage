@@ -34,11 +34,15 @@ II/ Stockage et base de donnée
 Ne jamais reconstruire avec le -v flag !!
 
 Pour acceder a la bdd il faut etre dans le dir du projet puis
-    mysql -h 127.0.0.1 -P 3307 -u root -p Main
+    mysql -h 127.0.0.1 -P 3307 -u root -p main
     Cette commande permet d'acceder a la console mysql du docker, elle est pérsitente a travers les reboot (normalement)
     Tu peux faire ce que tu veux dessus comme des backups lolilol
 
-
+POUR TOUT RESET :
+sudo rm -rf dev
+sudo docker compose down -v --remove-orphans
+sudo docker compose up --build -d
+(en dev) sudo docker compose -f docker-compose.override.yml up --build -d
 Pour créer des tests:
 CREATE TABLE IF NOT EXISTS Tests (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,140 +63,127 @@ In 3 difficulties
 2 = medium
 3 = hard
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the purpose of the "alt" attribute in HTML?',
 'The "alt" attribute provides alternative text for an image if it cannot be displayed, and is also used by screen readers for accessibility.',
 1,
-'<img src="image.jpg" alt="A red apple">',
-'Think about accessibility and what happens if the image fails to load.',
 1);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('How do you center a div horizontally and vertically using CSS?',
 'Use `display: flex; justify-content: center; align-items: center;` on the parent element.',
 1,
-'.parent { display: flex; justify-content: center; align-items: center; }',
-'Flexbox is a powerful tool for alignment.',
 2);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the difference between "==" and "===" in JavaScript?',
 '"==" checks for equality after type conversion, while "===" checks for strict equality without type conversion.',
 1,
-'5 == "5" // true\n5 === "5" // false',
-'Think about type coercion.',
 3);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the Virtual DOM in React?',
 'The Virtual DOM is a lightweight copy of the real DOM, used by React to improve performance by minimizing direct DOM updates.',
 1,
-'React updates the Virtual DOM first, then only changes the real DOM where necessary.',
-'It helps optimize rendering.',
 1);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the purpose of the "useEffect" hook in React?',
 'The "useEffect" hook allows you to perform side effects in functional components, such as data fetching, subscriptions, or manually changing the DOM.',
 1,
-'useEffect(() => { fetchData(); }, []);',
-'It runs after render and can be controlled with dependencies.',
 2);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the difference between GET and POST HTTP methods?',
 'GET is used to request data from a specified resource, while POST is used to send data to a server to create or update a resource.',
 2,
-'GET /users\nPOST /users { "name": "John" }',
-'GET is idempotent, POST is not.',
 1);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is middleware in Express.js?',
 'Middleware are functions that have access to the request and response objects, and the next middleware function in the application’s request-response cycle.',
 2,
-'app.use((req, res, next) => { console.log("Middleware"); next(); });',
-'They can modify requests and responses.',
 2);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is SQL injection and how can it be prevented?',
 'SQL injection is a code injection technique that might destroy your database. It can be prevented by using prepared statements and parameterized queries.',
 2,
-'// Bad: "SELECT * FROM users WHERE id = " + userId\n// Good: "SELECT * FROM users WHERE id = ?"',
-'Never trust user input.',
 3);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the purpose of JWT in authentication?',
 'JWT (JSON Web Token) is used to securely transmit information between parties as a JSON object, often used for authentication and authorization.',
 2,
-'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
-'It is stateless and can be used for single sign-on.',
 2);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the difference between REST and GraphQL?',
 'REST is an architectural style for designing networked applications, while GraphQL is a query language for APIs and a runtime for fulfilling those queries with existing data.',
 2,
-'REST: /users, /users/1\nGraphQL: { user(id: 1) { name } }',
-'GraphQL allows clients to request exactly what they need.',
 3);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('If you rearrange the letters "CIFAIPC" you would have the name of a:',
 'Ocean (Pacific)',
 3,
-'CIFAIPC → PACIFIC',
-'Think of large bodies of water.',
 1);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What number should come next in this pattern? 1, 1, 2, 3, 5, 8, 13, ...',
 '21 (Fibonacci sequence)',
 3,
-'Each number is the sum of the two preceding ones.',
-'Look for a mathematical relationship between numbers.',
 2);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('Which one of the following does not belong: Apple, Orange, Banana, Carrot?',
 'Carrot (it is a vegetable, not a fruit)',
 3,
-'Apple, Orange, Banana, Carrot',
-'Think about categories of food.',
 1);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('If all Bloops are Razzies and all Razzies are Lazzies, then all Bloops are definitely Lazzies. True or False?',
 'True',
 3,
-'Bloop → Razzie → Lazzies',
-'This is a logical syllogism.',
 3);
 
-INSERT INTO Tests (question, answer, type, exemple, hint, difficulty)
+INSERT INTO Tests (question, answer, type, difficulty)
 VALUES
 ('What is the missing number in the sequence: 2, 6, 12, 20, 30, ...?',
 '42 (n² + n)',
 3,
-'2, 6, 12, 20, 30, 42',
-'Look for a polynomial pattern.',
 3);
+
+pour des users -----------------------------------------
+
+INSERT INTO Users (
+    name, fname, email, tel, addr, city, postal, birth, cv, id_doc, id_doc_verso, password, permis, vehicule, mobile, consent, terms_version, tags, skills, status, is_admin
+) VALUES
+('Smith', 'John', 'john.smith@example.com', '+1234567890', '123 Main St', 'New York', '10001', '1985-05-15', 'john_smith_cv.pdf', 'john_smith_id_front.jpg', 'john_smith_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["driving", "cooking"]', 1, 0),
+('Doe', 'Jane', 'jane.doe@example.com', '+1987654321', '456 Oak Ave', 'Los Angeles', '90001', '1990-08-22', 'jane_doe_cv.pdf', 'jane_doe_id_front.jpg', 'jane_doe_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["writing", "photography"]', 1, 0),
+('Johnson', 'Michael', 'michael.j@example.com', '+1456789012', '789 Pine Rd', 'Chicago', '60601', '1982-11-30', NULL, 'michael_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 0, 1, 1, 1, NULL, '["sales", "marketing"]', 1, 0),
+('Williams', 'Emily', 'emily.w@example.com', '+1789012345', '321 Elm Blvd', 'Houston', '77001', '1995-03-10', 'emily_w_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["teaching", "music"]', 1, 0),
+('Brown', 'David', 'david.b@example.com', '+1321654987', '654 Cedar Ln', 'Phoenix', '85001', '1988-07-19', 'david_b_cv.pdf', 'david_b_id_front.jpg', 'david_b_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["standard"]', '["programming", "design"]', 1, 0),
+('Jones', 'Sarah', 'sarah.j@example.com', '+1654987321', '987 Maple Dr', 'Philadelphia', '19101', '1993-09-05', NULL, 'sarah_j_id_front.jpg', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, NULL, '["nursing", "first aid"]', 1, 0),
+('Garcia', 'Carlos', 'carlos.g@example.com', '+1987321654', '135 Birch St', 'San Antonio', '78201', '1980-12-25', 'carlos_g_cv.pdf', 'carlos_g_id_front.jpg', 'carlos_g_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, '["premium"]', '["construction", "plumbing"]', 1, 0),
+('Miller', 'Lisa', 'lisa.m@example.com', '+1321987654', '246 Spruce Ave', 'San Diego', '92101', '1991-04-17', 'lisa_m_cv.pdf', NULL, NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 0, 1, 1, 1, '["standard"]', '["accounting", "finance"]', 1, 0),
+('Davis', 'Robert', 'robert.d@example.com', '+1654321987', '369 Willow Rd', 'Dallas', '75201', '1987-06-30', NULL, 'robert_d_id_front.jpg', 'robert_d_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1, 1, 1, 1, NULL, '["logistics", "management"]', 1, 0),
+('Rodriguez', 'Maria', 'maria.r@example.com', '+1789654321', '482 Redwood Ln', 'San Jose', '95101', '1994-02-14', 'maria_r_cv.pdf', 'maria_r_id_front.jpg', 'maria_r_id_back.jpg', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 0, 1, 0, 1, 1, '["premium"]', '["education", "coaching"]', 1, 0);
+
 
 
 III/ Regen de CA

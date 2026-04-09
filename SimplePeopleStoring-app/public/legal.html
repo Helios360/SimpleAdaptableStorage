@@ -10,7 +10,9 @@
 
     <title>Cloud-testing</title>
     <script src="/scripts/theme-init.js"></script>
+
     <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/admin.css">
     <link rel="icon" type="image/png" href="/sources/favicon.ico">
 
     <meta property="og:title" content="Cloud-testing">
@@ -20,33 +22,31 @@
 </head>
 <body>
     <!--header-->
-    <main>
-        <h1>Choisissez l'organisme qui vous convient.</h1>
-        <div class="orga-select">
-            <div id="cc">
-                <img src="sources/LogoBleuOmbre-edited.png" alt="Cloud-Campus">
-                <h1>Cloud Campus</h1>
-            </div>
-            <div id="skalys">
-                <img src="sources/LogoCBS_icone_FondBlanc.webp" alt="Skalys">
-                <h1>Skalys</h1>
-            </div>
-        </div>
+    <main class="CGS">
+        <section class="container">
+            <h2>CGU (Conditions Générales d'Utilisation )</h2>
+            <hr>
+            <p>
+                HELLo
+                HELLo
+                HELLo
+                HELLo
+                HELLo
+            </p>
+        </section>
+        <section class="container">
+            <h2>Politique de confidentialité</h2>
+            <hr>
+            <p>
+                HELLo
+                HELLo
+                HELLo
+                HELLo
+                HELLo
+            </p>
+        </section>
     </main>
     <!--footer-->
 </body>
-<script src="/scripts/Main.js"></script>
-<script>
-    const skalys = document.getElementById('skalys');
-    const cc = document.getElementById('cc');
-
-    function selectOrga(logoPath) {
-        // Store an absolute path so it works from any route (/signin, /profile, ...)
-        localStorage.setItem('logo', logoPath);
-        window.location.href = '/signin';
-    }
-
-    cc.addEventListener('click', () => selectOrga('/sources/LogoBleuOmbre-edited.png'));
-    skalys.addEventListener('click', () => selectOrga('/sources/LogoCBS_icone_FondBlanc.webp'));
-</script>
+<script src="/scripts/Main.js" defer></script>
 </html>

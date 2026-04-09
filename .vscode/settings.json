@@ -1,0 +1,13 @@
+{
+  "editor.minimap.enabled": false,
+  "editor.stickyScroll.enabled": false,
+  "git.enableSmartCommit": true,
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.colorTheme": "Default High Contrast",
+  "workbench.editor.showTabs": "none",
+  "window.customTitleBarVisibility": "windowed",
+  "workbench.activityBar.location": "top",
+  "workbench.statusBar.visible": false,
+  "git.confirmSync": false
+}

@@ -6,20 +6,14 @@ document.getElementById('sub').addEventListener('submit', async (e) => {
 
   const response = await fetch('/login', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ email, password })
   });
 
   const data = await response.json();
   
   if (data.success) {
-    if (data.user.sec == 1){
-      window.location.href = '/admin-panel';
-    } else {
-      window.location.href = '/profile';
-    } 
+    window.location.href=data.redirectTo;
   } else {
     notif(data.message || 'Login failed');
   }
