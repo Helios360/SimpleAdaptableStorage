@@ -9,11 +9,12 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q, validUser, makeToken, getCityCoords } = require('./helpers');
+const { BASE_DIR, q, validUser, makeToken, getCityCoords, securityRouter } = require('./helpers');
 const { sendTo } = require('./mailer');
 const { totalmem } = require('os');
 const fs = require('fs').promises;
 app.disable('x-powered-by');
+app.use(securityRouter);
 app.use(cookieParser());
 
 // === Setting up important consts ===
@@ -32,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 // === Rate limit, anti ddos ===
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200 // max 100 requests per 15 minutes
+  max: 200 // max 200 requests per 15 minutes
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
 let header = "";
@@ -189,7 +190,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     };
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    if (!user.is_admin && ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3))){
+    if (!user.is_admin && ((stillTest[0].testNum<=26 && (userType==3 || userType==4)) || (stillTest[0].testNum<=14 && userType!=3 && userType!=4))){
       redirectTo = '/test';
     } else if (user.is_admin){
       redirectTo = '/admin-panel';
@@ -199,7 +200,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     return res.json({ success: true, redirectTo, user: { email: user.email, name: user.name, sec: user.is_admin} });
   } catch (e) {
     console.error('Login error: ', e);
-    res.status(500).json({succes: false, message: 'Server Error . . .'})
+    res.status(500).json({success: false, message: 'Server Error . . .'})
   }
 });
 app.post('/logout', (req,res) => {

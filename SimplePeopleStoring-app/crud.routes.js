@@ -59,7 +59,8 @@ router.post('/submit-form', (req, res) => {
       ]);
       let lon = null;
       let lat = null;
-      [lon, lat] = await getCityCoords(city);
+      const coords = await getCityCoords(city);
+      if (coords) [lon, lat] = coords;
       const insertSql = `
         INSERT INTO Users
           (name, fname, email, tel, addr, city, lon, lat, permis, vehicule, mobile, postal, birth, cv, id_doc, id_doc_verso, password, consent, terms_version, formation_id)
@@ -266,8 +267,10 @@ router.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res
 
 // ------------------------- RESET > USER === ADMINS ------------------------- //
 router.delete('/api/admin/reset/:id', authMiddleware, adminOnly, async (req, res) => {
-  try{ await q(`DELETE FROM TestAttempts WHERE user_id = ?`, [req.params.id]);}
-  catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't reset user's test"});}
+  try{
+    await q(`DELETE FROM TestAttempts WHERE user_id = ?`, [req.params.id]);
+    res.json({success: true});
+  } catch (e) { res.status(e.status || 500).json({success: false, message: e.message || "Couldn't reset user's test"});}
 });
 // ------------------------- READ > PROFILE === USERS ------------------------- //
 router.post('/api/profile', authMiddleware, async (req, res) => {

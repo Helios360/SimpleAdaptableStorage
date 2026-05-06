@@ -158,8 +158,7 @@ async function deleteFile(userId, action) {
       const err = new Error("File can't be deleted"); err.status=500; throw err;
     }
   }
-  if (action === 'delAT'){ await q(`UPDATE Users SET ${nullTheColumn} = 'empty' WHERE id=?`, [userId]); } 
-  else { await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]); }
+  await q(`UPDATE Users SET ${nullTheColumn} = NULL WHERE id=?`, [userId]);
   return {success: true};
 }
 
@@ -204,4 +203,6 @@ module.exports = {
     // === db + ops ===
     q, db,
     deleteUser, kindCheck, deleteFile, allowIframeSelf, validUser,
+    // === security middleware router (helmet) ===
+    securityRouter: router,
 };

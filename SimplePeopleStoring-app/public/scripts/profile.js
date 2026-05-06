@@ -256,7 +256,7 @@ function renderTagsAndSkills() {
     });
     currentSkills.forEach(s => {
         const div = document.createElement('div');
-        const type = formationCatalog[s] || 'unknown';
+        const type = getTypeForSkill(s);
         const bgColor = typeColors[type];
         div.textContent = s;
         div.style.backgroundColor = bgColor;

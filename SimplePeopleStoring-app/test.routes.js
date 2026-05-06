@@ -18,7 +18,7 @@ router.get('/api/test/next', authMiddleware, async (req, res) => {
     const type = cnt + 1;
     let testResults = [];
     // Different test itterators depending on the formation
-    if (userType == "dev_web_fs" || userType == "si_cybersec_expert") {
+    if (userType == 3 || userType == 4) {
       if(Number(type) > 27) return res.status(409).json({ success: false, message: "L'examen est terminé, vous allez être redirigé" });
       const cycleIndex = type % 27;
       const bucket = Math.floor(cycleIndex / 3);
@@ -43,8 +43,6 @@ router.get('/api/test/next', authMiddleware, async (req, res) => {
 router.post('/api/test/response', authMiddleware, async (req, res) => {
   try {
     const { testId, answer } = req.body;
-    if (typeof testId === 'string') testId.trim();
-    if (typeof answer === 'string') answer.trim();
     if (!testId || !answer) return res.status(400).json({ success: false, message: 'La réponse est vide ou le test est invalide' });
 
     const testIdNum = Number(testId);
