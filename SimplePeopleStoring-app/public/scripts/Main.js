@@ -457,3 +457,5 @@ const savedLogo = localStorage.getItem('logo');
 for (let i = 0; i < logos.length; i++) {
     logos[i].src = savedLogo;
 }
+
+document.getElementById('retour')?.addEventListener('click', () => history.back());

@@ -36,17 +36,5 @@
     <!--footer-->
 </body>
 <script src="/scripts/Main.js"></script>
-<script>
-    const skalys = document.getElementById('skalys');
-    const cc = document.getElementById('cc');
-
-    function selectOrga(logoPath) {
-        // Store an absolute path so it works from any route (/signin, /profile, ...)
-        localStorage.setItem('logo', logoPath);
-        window.location.href = '/signin';
-    }
-
-    cc.addEventListener('click', () => selectOrga('/sources/LogoBleuOmbre-edited.png'));
-    skalys.addEventListener('click', () => selectOrga('/sources/LogoCBS_icone_FondBlanc.webp'));
-</script>
+<script src="/scripts/orgaSelect.js"></script>
 </html>

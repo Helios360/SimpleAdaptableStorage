@@ -36,6 +36,7 @@ app.use(rateLimit({
   max: 200 // max 200 requests per 15 minutes
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
+const resetLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false});
 let header = "";
 let footer = "";
 // === HTML Comp Routes (Prod) ===
@@ -387,7 +388,7 @@ app.get("/api/auth/verifMail", async (req, res) => {
   return res.redirect(`${process.env.APP_URL}profile`);
 });
 // === reset password for students (user) ===
-app.post('/reset/request', async (req, res) => {
+app.post('/reset/request', resetLimiter, async (req, res) => {
   try{
     const email = (req.body.email || "").trim().toLowerCase();
     const rows = await q(`SELECT id, email FROM Users WHERE email=? LIMIT 1`, [email]);
