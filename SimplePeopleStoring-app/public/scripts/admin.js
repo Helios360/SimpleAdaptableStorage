@@ -109,7 +109,6 @@ async function renderUser (users) {
 function sortArrow(){
     const users = allUsers || [];
     renderUser(users);
-    attachFormListeners();
 
     const SORT_HEADERS = [
       {wrapper: '#name-fname', key:'name'},
@@ -163,9 +162,6 @@ function sortArrow(){
     });
 }
 sortArrow();
-async function attachFormListeners() {
-  const form = document.getElementById('search-form');
-}
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
     console.log("Retour depuis le cache détecté, rechargement forcé.");
@@ -232,8 +228,8 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                 <ul class="form2 inputs" >
                     <p>Documents :</p>
                     <li class="file-upload inputs">
-                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label><span id="cvCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf">
                     </li>
                     <span class="checks">
                         <input type="checkbox" id="sejour" name="sejour">
@@ -244,12 +240,12 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                         <input type="date" id="titre-sejour" name="titre">
                     </div>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf" required>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf</label><span id="pirCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf">
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf" required>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf</label><span id="pivCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf">
                     </li>
                 </ul>
                 <div>
@@ -295,19 +291,20 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     document.getElementById('titre-valide').style.height='0px';
     document.getElementById('titre-valide').style.overflow='hidden';
 
+    let toggle;
     sejour.addEventListener('change', () => {
         if (!sejour.checked){
             document.getElementById('titre-valide').style.height='0px';
             toggle = 1;
             labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
-            titreInput.ariaDisabled;
+            titreInput.setAttribute('aria-disabled', 'true');
         } else {
             document.getElementById('titre-valide').style.height='65px';
             toggle = 0;
             labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
-            titreInput.ariaRequired;
+            titreInput.setAttribute('aria-required', 'true');
         }
     });
 
@@ -397,18 +394,18 @@ document.getElementById('addStud').addEventListener('click', ()=>{
             valid = false;
             errors.push("Date d'invalidité du titre de séjour obligatoire.");
         }
-        // Fichiers
-        if (!validateFile(cvUpload, ["pdf"], 2)) {
+        // Fichiers (optionnels, mais validés si fournis)
+        if (cvUpload.files.length && !validateFile(cvUpload, ["pdf"], 2)) {
             valid = false;
-            errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
+            errors.push("CV invalide (PDF uniquement, max 2 Mo).");
         }
-        if (!validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
+        if (pirUpload.files.length && !validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité recto invalide (JPG/PNG/PDF, max 3 Mo).");
         }
-        if (!validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
+        if (pivUpload.files.length && !validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité verso invalide (JPG/PNG/PDF, max 3 Mo).");
         }
         // Si erreur -> bloquer envoi
         if (!valid) {
