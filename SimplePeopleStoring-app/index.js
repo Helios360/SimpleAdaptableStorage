@@ -31,9 +31,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // === Rate limit, anti ddos ===
+const adminLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false});
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200 // max 200 requests per 15 minutes
+  max: 200, // max 200 requests per 15 minutes
+  skip: (req) => req.path.startsWith('/api/admin') || req.path.startsWith('/api/user-profile') || req.path === '/submit-form-admin'
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
 const resetLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false});
@@ -209,7 +211,7 @@ app.post('/logout', (req,res) => {
   res.json({success: true});
 });
 // === Admin full sql api ===
-app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const b = req.body ?? {};
     // Pagination
@@ -231,6 +233,8 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const mobile = b.mobile === true ? 1 : 0;
     const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean).map(String) : [];
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
+    const ageExact = b.age !== null && b.age !== undefined && b.age !== "" ? Number(b.age) : null;
+    const trancheAge = (b.trancheAge ?? "").toString().trim();
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
     let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
@@ -256,6 +260,16 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const orderDir = dirRaw === "ASC" ? "ASC" : "DESC";
     const extraWhere = [];
     const extraParams = [];
+    if (Number.isFinite(ageExact)) {
+      extraWhere.push(`TIMESTAMPDIFF(YEAR, u.birth, CURDATE()) = ?`);
+      extraParams.push(ageExact);
+    } else if (trancheAge) {
+      const [minAge, maxAge] = trancheAge.split('-').map(Number);
+      if (Number.isFinite(minAge) && Number.isFinite(maxAge)) {
+        extraWhere.push(`TIMESTAMPDIFF(YEAR, u.birth, CURDATE()) BETWEEN ? AND ?`);
+        extraParams.push(minAge, maxAge);
+      }
+    }
     for (const t of tags) { // All Tags
       extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
       extraParams.push(t);
@@ -304,7 +318,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 // === Single user profile access (admin) ===
-app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/user-profile/:id', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
     const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr FROM Users WHERE id = ?', [userId]);
@@ -316,7 +330,7 @@ app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) =>
   }
 });
 // === Only accessible by authenticated admins ===
-app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/student/:email', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const email = decodeURIComponent(req.params.email);
     const results = await q('SELECT * FROM Users WHERE email = ?', [email]);
@@ -328,7 +342,7 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res
   }
 });
 // === Update students (admin) ===
-app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/update-student', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status} = req.body;
     await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
@@ -340,7 +354,7 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res
   }
 });
 // === Update status from list (admin) ===
-app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/update-status', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try {
     const { id, status } = req.body;
     await q('UPDATE Users SET status = ? WHERE id = ?', [status, id]);
@@ -421,7 +435,7 @@ app.post('/reset/confirm', async (req, res) => {
     if (!rows || rows.length === 0) return res.status(403).json({success: false, message: "Lien invalide ou éxpiré"});
     if (tokenHash === rows[0].reset_pwd_token && new Date(rows[0].reset_pwd_expires) > new Date()) {
       const passwordHash = await bcrypt.hash(newPassword, 12);
-      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL WHERE email=?`, [passwordHash, email]);
+      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL, email_verified=1 WHERE email=?`, [passwordHash, email]);
     } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
     return res.status(200).json({success:true});
   } catch (e){
@@ -434,5 +448,5 @@ When a commercial creates an account, the user gets a token and
 the flow is the same as the password reset
 so the user is created with
 email verified = 0 and status invited or something
-i can definitely reuse the reset code, just have to change the texts here and there
+i can definitely reuse the reset code for user first login, just have to change the ui texts here and there
 */

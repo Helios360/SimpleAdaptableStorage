@@ -115,7 +115,7 @@ router.post('/submit-form', (req, res) => {
 });
 
 // ------------------------- CREATE > PROFILE === ADMINS ------------------------- //
-router.post('/submit-form-admin', (req, res) => {
+router.post('/submit-form-admin', authMiddleware, adminOnly, (req, res) => {
   const form = formidable({
     keepExtensions: true,
     maxFileSize: 10 * 1024 * 1024, // 10 Mo
@@ -201,12 +201,17 @@ router.post('/submit-form-admin', (req, res) => {
           fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});
         } catch (e) {
           console.error('DB Update Error after first Insert : ', e);
-          res.status(500).send('Database Error after Insert');
+          return res.status(500).send('Database Error after Insert');
         }
-        await sendTo(email, "Activation de votre compte",`
-        <h1>Votre compte a bien été créé. Définissez votre mot de passe (lien valable 48h) :</h1>
-        <a href="${url}">Définir mon mot de passe</a>
-          `);
+        try {
+          await sendTo(email, "Activation de votre compte",`
+          <h1>Votre compte a bien été créé. Définissez votre mot de passe (lien valable 48h) :</h1>
+          <a href="${url}">Définir mon mot de passe</a>
+            `);
+        } catch (mailErr) {
+          console.error('Email sending failed (account still created):', mailErr);
+        }
+        return res.json({ success: true });
       } catch (e) {
         console.error('DB Insert Error: ', e);
         fs.rm(tmpDir, {recursive: true, force: true}, ()=>{});

@@ -1,6 +1,7 @@
 const nextPage = document.getElementById('next-page');
 const previousPage = document.getElementById('previous-page');
 const actualPage = document.getElementById('actual-page');
+const totalPagesEl = document.getElementById('total-pages');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
 
@@ -30,6 +31,12 @@ function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
 }
 
 const allUsers = [];
+
+function updatePaginationControls(page, totalPages) {
+    previousPage.classList.toggle('disabled', page <= 1);
+    nextPage.classList.toggle('disabled', page >= totalPages);
+}
+
 async function renderPage(pageIndex){
     try{
         const payload = buildPayload(pageIndex);
@@ -39,7 +46,11 @@ async function renderPage(pageIndex){
             body: JSON.stringify(payload),
         });
         if(!data.success) return;
-        actualPage.innerText = data.pagination?.page ?? pageIndex;
+        const page = data.pagination?.page ?? pageIndex;
+        const totalPages = data.pagination?.totalPages ?? 1;
+        actualPage.innerText = page;
+        if (totalPagesEl) totalPagesEl.innerText = totalPages;
+        updatePaginationControls(page, totalPages);
         const users = Array.isArray(data.users) ? data.users : [];
         allUsers.length=0;
         allUsers.push(...users);
@@ -149,7 +160,13 @@ function sortArrow(){
             });
             if(!results?.success) return;
             renderUser(results.users);
-            if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+            if (results.pagination?.page != null) {
+                const page = results.pagination.page;
+                const totalPages = results.pagination.totalPages ?? 1;
+                actualPage.innerText = page;
+                if (totalPagesEl) totalPagesEl.innerText = totalPages;
+                updatePaginationControls(page, totalPages);
+            }
         } catch (err) {
             console.error(err || "error");
         }
@@ -577,7 +594,13 @@ const debouncedSearch = debounce( async () => {
         });
         if(!results?.success) return;
         renderUser(results.users);
-        if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+        if (results.pagination?.page != null) {
+            const page = results.pagination.page;
+            const totalPages = results.pagination.totalPages ?? 1;
+            actualPage.innerText = page;
+            if (totalPagesEl) totalPagesEl.innerText = totalPages;
+            updatePaginationControls(page, totalPages);
+        }
     } catch (err) {
         console.error(err);
     }
