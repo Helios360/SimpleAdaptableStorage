@@ -164,6 +164,31 @@ p{padding: 0; margin:0;}
     text-align: center;
     padding-bottom:2rem;
 }
+.staff-formations{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    margin: 0 auto 1rem;
+    width: 100%;
+    border: 2px solid var(--secondary);
+    border-radius: 8px;
+    color: var(--secondary);
+}
+.staff-formations-label{ font-weight: 600;}
+.staff-formations-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.staff-formations-list > span{
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    background-color: var(--tertiary);
+    color: var(--primary);
+    font-size: 0.9rem;
+}
 .admin-register{
     overflow: scroll;
     height:90vh;

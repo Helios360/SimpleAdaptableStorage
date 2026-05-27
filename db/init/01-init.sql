@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS Users (
     terms_version INT NOT NULL DEFAULT 1,
     status ENUM('active', 'recherche', 'entreprise', 'archive') NOT NULL DEFAULT 'recherche',
     formation_id INT NOT NULL,
+    year INT NULL,
     email_verified TINYINT(1) NOT NULL DEFAULT 0,
     email_verify_token VARCHAR(254) NULL,
     email_verify_expires DATETIME NULL,

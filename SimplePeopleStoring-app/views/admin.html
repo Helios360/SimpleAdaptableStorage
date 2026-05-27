@@ -27,7 +27,11 @@
     </span>
     <main>
         <div class="inputInfo">
-            <form id="search-form">
+            <div class="staff-formations" id="staffFormations" hidden>
+            <span class="staff-formations-label">Vos formations :</span>
+            <span class="staff-formations-list" id="staffFormationsList"></span>
+        </div>
+        <form id="search-form">
             <input placeholder="Nom Prénom" id="nomPrenom" name="name" type="text">
             <select id="searchStatus">
                 <option value="" selected>Status</option>
@@ -35,6 +39,13 @@
                 <option value="recherche">En recherche</option>
                 <option value="active">Recherche active</option>
                 <option value="entreprise">En entreprise</option>
+            </select>
+            <select id="searchYear">
+                <option value="" selected>Année</option>
+                <option value="1">Bac+1</option>
+                <option value="2">Bac+2</option>
+                <option value="3">Bac+3</option>
+                <option value="4">Bac+4</option>
             </select>
             <span class="place">
                 <input placeholder="Lieu . . ." id="place">

@@ -31,10 +31,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // === Rate limit, anti ddos ===
-const adminLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false});
+const adminLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 5000, standardHeaders: true, legacyHeaders: false});
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200, // max 200 requests per 15 minutes
+  max: 1000, // max 1000 requests per 15 minutes
   skip: (req) => req.path.startsWith('/api/admin') || req.path.startsWith('/api/user-profile') || req.path === '/submit-form-admin'
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
@@ -235,6 +235,8 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
     const ageExact = b.age !== null && b.age !== undefined && b.age !== "" ? Number(b.age) : null;
     const trancheAge = (b.trancheAge ?? "").toString().trim();
+    const yearRaw = (b.year ?? "").toString().trim();
+    const yearFilter = yearRaw === "" ? null : Number(yearRaw);
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
     let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
@@ -269,6 +271,10 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
         extraWhere.push(`TIMESTAMPDIFF(YEAR, u.birth, CURDATE()) BETWEEN ? AND ?`);
         extraParams.push(minAge, maxAge);
       }
+    }
+    if (Number.isFinite(yearFilter)) {
+      extraWhere.push(`u.year = ?`);
+      extraParams.push(yearFilter);
     }
     for (const t of tags) { // All Tags
       extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
@@ -321,7 +327,7 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
 app.post('/api/user-profile/:id', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr, formation_id, year FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {
@@ -344,9 +350,10 @@ app.post('/api/admin/student/:email', adminLimiter, authMiddleware, adminOnly, a
 // === Update students (admin) ===
 app.post('/api/admin/update-student', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
-    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status} = req.body;
-    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
-    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
+    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status, year} = req.body;
+    const yearVal = year === '' || year === undefined || year === null ? null : Number(year);
+    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=?, year=? WHERE email=?',
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, Number.isFinite(yearVal) ? yearVal : null, email]);
     res.json({ success: true });
   } catch (e) {
     console.error('Database Update Error: ', e);

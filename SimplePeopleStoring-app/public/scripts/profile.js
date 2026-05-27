@@ -101,6 +101,8 @@ if (data.success) {
     document.getElementById('email').value = user.email;
     document.getElementById('tel').value = user.tel;
     if (adminView)document.getElementById('status').value = user.status;
+    if (adminView)document.getElementById('year').value = user.year ?? '';
+    document.getElementById('formation').value = FORMATION_NAMES[user.formation_id] || '';
     //const dateOnly = user.birth.split("T")[0].replace(/-/g, "/");
     const birthDate = new Date(user.birth);
     const today = new Date();
@@ -137,7 +139,12 @@ if (data.success) {
             mobile: document.getElementById('mobile').checked,
             skills: currentSkills,
         };
-        if (adminView){data.tags = currentTags; data.status=document.getElementById('status').value; }
+        if (adminView){
+            data.tags = currentTags;
+            data.status = document.getElementById('status').value;
+            const yearVal = document.getElementById('year').value;
+            data.year = yearVal === '' ? null : Number(yearVal);
+        }
         if (!data.email || !data.email.includes('@')) notif('Email invalide. Sauvegarde annulé.');
         const requiredFields = ['name', 'fname', 'tel', 'birth', 'city'];
         for (const field of requiredFields){
@@ -430,6 +437,7 @@ window.addEventListener('beforeunload', (event) => {
 });
 if(!adminView){
     document.getElementById('status-parent').style.display = "none"
+    document.getElementById('year-parent').style.display = "none"
     logoutBtn.addEventListener('click', ()=>{
         fetch('/logout', {
             method: 'POST',

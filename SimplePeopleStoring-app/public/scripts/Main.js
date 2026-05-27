@@ -126,6 +126,16 @@ function getSkillsFromFormationId(formationId){
 
 
 
+const FORMATION_NAMES = {
+  1: 'BTS NDRC',
+  2: 'TP NTC',
+  3: 'Developpeur Web Full Stack',
+  4: "Expert en systeme d'information",
+  5: 'BTS GPME',
+  6: 'CAP AEPE',
+  7: 'BTS opticien lunettier',
+};
+
 const formationCatalog = {
   1: {
     // BTS NDRC

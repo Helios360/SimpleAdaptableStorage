@@ -12,6 +12,7 @@ function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
     return {
         q: document.getElementById('nomPrenom').value.trim(),
         status: document.getElementById('searchStatus').value || "",
+        year: document.getElementById('searchYear').value || "",
         city: document.getElementById('place').value.trim(),
         radius: document.getElementById('radius').value.trim(),
         postal: document.getElementById('postal').value.trim(),
@@ -58,6 +59,24 @@ async function renderPage(pageIndex){
     } catch (e) { console.error(e); }
 }
 renderPage(1);
+
+(async () => {
+    try {
+        const data = await api('/api/admin-profile');
+        const ids = Array.isArray(data?.user?.staff_formations) ? data.user.staff_formations : [];
+        if (!ids.length) return;
+        const wrap = document.getElementById('staffFormations');
+        const list = document.getElementById('staffFormationsList');
+        list.innerHTML = '';
+        ids.forEach(id => {
+            const chip = document.createElement('span');
+            chip.textContent = FORMATION_NAMES[id] || `Formation ${id}`;
+            list.appendChild(chip);
+        });
+        wrap.hidden = false;
+    } catch (e) { console.error(e); }
+})();
+
 nextPage.addEventListener('click', async () => {
     renderPage(parseInt(actualPage.innerText) + 1);
 })
