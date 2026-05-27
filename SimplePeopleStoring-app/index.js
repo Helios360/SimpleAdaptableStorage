@@ -237,6 +237,8 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     const trancheAge = (b.trancheAge ?? "").toString().trim();
     const yearRaw = (b.year ?? "").toString().trim();
     const yearFilter = yearRaw === "" ? null : Number(yearRaw);
+    const formationRaw = b.formation_id;
+    const formationFilter = formationRaw === null || formationRaw === undefined || formationRaw === "" ? null : Number(formationRaw);
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
     let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
@@ -275,6 +277,10 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     if (Number.isFinite(yearFilter)) {
       extraWhere.push(`u.year = ?`);
       extraParams.push(yearFilter);
+    }
+    if (Number.isFinite(formationFilter)) {
+      extraWhere.push(`u.formation_id = ?`);
+      extraParams.push(formationFilter);
     }
     for (const t of tags) { // All Tags
       extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);

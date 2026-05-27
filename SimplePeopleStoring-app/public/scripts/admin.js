@@ -7,12 +7,14 @@ const skills = document.getElementById('add_skills');
 
 let currentTags = [];
 let currentSkills = [];
+let selectedFormationId = null;
 
 function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
     return {
         q: document.getElementById('nomPrenom').value.trim(),
         status: document.getElementById('searchStatus').value || "",
         year: document.getElementById('searchYear').value || "",
+        formation_id: selectedFormationId,
         city: document.getElementById('place').value.trim(),
         radius: document.getElementById('radius').value.trim(),
         postal: document.getElementById('postal').value.trim(),
@@ -71,6 +73,18 @@ renderPage(1);
         ids.forEach(id => {
             const chip = document.createElement('span');
             chip.textContent = FORMATION_NAMES[id] || `Formation ${id}`;
+            chip.dataset.formationId = id;
+            chip.addEventListener('click', () => {
+                const wasActive = chip.classList.contains('active');
+                list.querySelectorAll('span.active').forEach(c => c.classList.remove('active'));
+                if (wasActive) {
+                    selectedFormationId = null;
+                } else {
+                    chip.classList.add('active');
+                    selectedFormationId = Number(id);
+                }
+                renderPage(1);
+            });
             list.appendChild(chip);
         });
         wrap.hidden = false;
@@ -99,7 +113,7 @@ async function renderUser (users) {
         else scoreColor="#32DB1F";
         list.innerHTML+=`
         <div class="user" data-user-id="${user.id}">
-        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}${user.formation_code ? ` <span class="formation-tag">(${user.formation_code})</span>` : ''}</p></a></span>
         <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
         <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
         <span>
@@ -590,6 +604,8 @@ document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search-form').reset();
   currentTags = [];
   currentSkills = [];
+  selectedFormationId = null;
+  document.querySelectorAll('#staffFormationsList span.active').forEach(c => c.classList.remove('active'));
   renderTagsAndSkills();
   renderPage(1);
 });
