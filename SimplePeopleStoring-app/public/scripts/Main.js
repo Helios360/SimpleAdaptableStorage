@@ -124,7 +124,35 @@ function getSkillsFromFormationId(formationId){
     return Object.keys(cfg).sort();
 }
 
+function buildAllSkillsList(){
+  const out = new Set();
+  Object.values(formationCatalog || {}).forEach(cfg => {
+    if (!cfg) return;
+    Object.keys(cfg).forEach(skill => out.add(skill));
+  });
+  return [...out].sort();
+}
 
+function getTypeForSkill(skill){
+  const catalog = formationCatalog || {};
+  for (const fid of Object.keys(catalog)) {
+    const t = catalog[fid]?.[skill];
+    if (t) return t;
+  }
+  return 'unknown';
+}
+
+
+
+const FORMATION_NAMES = {
+  1: 'BTS NDRC',
+  2: 'TP NTC',
+  3: 'Developpeur Web Full Stack',
+  4: "Expert en systeme d'information",
+  5: 'BTS GPME',
+  6: 'CAP AEPE',
+  7: 'BTS opticien lunettier',
+};
 
 const formationCatalog = {
   1: {
@@ -457,3 +485,5 @@ const savedLogo = localStorage.getItem('logo');
 for (let i = 0; i < logos.length; i++) {
     logos[i].src = savedLogo;
 }
+
+document.getElementById('retour')?.addEventListener('click', () => history.back());

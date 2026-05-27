@@ -9,11 +9,12 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const crudRouter = require('./crud.routes');
 const testRouter = require('./test.routes');
-const { BASE_DIR, q, validUser, makeToken, getCityCoords } = require('./helpers');
+const { BASE_DIR, q, validUser, makeToken, getCityCoords, securityRouter } = require('./helpers');
 const { sendTo } = require('./mailer');
 const { totalmem } = require('os');
 const fs = require('fs').promises;
 app.disable('x-powered-by');
+app.use(securityRouter);
 app.use(cookieParser());
 
 // === Setting up important consts ===
@@ -30,11 +31,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // === Rate limit, anti ddos ===
+const adminLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 5000, standardHeaders: true, legacyHeaders: false});
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200 // max 100 requests per 15 minutes
+  max: 1000, // max 1000 requests per 15 minutes
+  skip: (req) => req.path.startsWith('/api/admin') || req.path.startsWith('/api/user-profile') || req.path === '/submit-form-admin'
 }));
 const loginLimiter = rateLimit({windowMs: 10 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false});
+const resetLimiter = rateLimit({windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false});
 let header = "";
 let footer = "";
 // === HTML Comp Routes (Prod) ===
@@ -189,7 +193,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     };
     const token = jwt.sign(tokenPayload, SECRET, { expiresIn: '2h' });
     res.cookie('token', token, {httpOnly: true, secure: IS_PROD, sameSite: 'Strict', maxAge: 2 * 60 * 60 * 1000 }); //2h
-    if (!user.is_admin && ((stillTest[0].testNum<=26 && userType==3) || (stillTest[0].testNum<=14 && userType!=3))){
+    if (!user.is_admin && ((stillTest[0].testNum<=26 && (userType==3 || userType==4)) || (stillTest[0].testNum<=14 && userType!=3 && userType!=4))){
       redirectTo = '/test';
     } else if (user.is_admin){
       redirectTo = '/admin-panel';
@@ -199,7 +203,7 @@ app.post('/login', loginLimiter, async (req, res) => {
     return res.json({ success: true, redirectTo, user: { email: user.email, name: user.name, sec: user.is_admin} });
   } catch (e) {
     console.error('Login error: ', e);
-    res.status(500).json({succes: false, message: 'Server Error . . .'})
+    res.status(500).json({success: false, message: 'Server Error . . .'})
   }
 });
 app.post('/logout', (req,res) => {
@@ -207,7 +211,7 @@ app.post('/logout', (req,res) => {
   res.json({success: true});
 });
 // === Admin full sql api ===
-app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const b = req.body ?? {};
     // Pagination
@@ -229,6 +233,12 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const mobile = b.mobile === true ? 1 : 0;
     const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean).map(String) : [];
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
+    const ageExact = b.age !== null && b.age !== undefined && b.age !== "" ? Number(b.age) : null;
+    const trancheAge = (b.trancheAge ?? "").toString().trim();
+    const yearRaw = (b.year ?? "").toString().trim();
+    const yearFilter = yearRaw === "" ? null : Number(yearRaw);
+    const formationRaw = b.formation_id;
+    const formationFilter = formationRaw === null || formationRaw === undefined || formationRaw === "" ? null : Number(formationRaw);
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
     let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
@@ -254,6 +264,24 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
     const orderDir = dirRaw === "ASC" ? "ASC" : "DESC";
     const extraWhere = [];
     const extraParams = [];
+    if (Number.isFinite(ageExact)) {
+      extraWhere.push(`TIMESTAMPDIFF(YEAR, u.birth, CURDATE()) = ?`);
+      extraParams.push(ageExact);
+    } else if (trancheAge) {
+      const [minAge, maxAge] = trancheAge.split('-').map(Number);
+      if (Number.isFinite(minAge) && Number.isFinite(maxAge)) {
+        extraWhere.push(`TIMESTAMPDIFF(YEAR, u.birth, CURDATE()) BETWEEN ? AND ?`);
+        extraParams.push(minAge, maxAge);
+      }
+    }
+    if (Number.isFinite(yearFilter)) {
+      extraWhere.push(`u.year = ?`);
+      extraParams.push(yearFilter);
+    }
+    if (Number.isFinite(formationFilter)) {
+      extraWhere.push(`u.formation_id = ?`);
+      extraParams.push(formationFilter);
+    }
     for (const t of tags) { // All Tags
       extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
       extraParams.push(t);
@@ -291,7 +319,7 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
       JOIN Formations f ON f.id = u.formation_id
       LEFT JOIN ( SELECT user_id, ROUND(AVG(score)) AS gen_score FROM TestAttempts GROUP BY user_id ) ta ON ta.user_id = u.id
       ${whereSql}
-      ORDER BY ${orderCol} ${orderDir}
+      ORDER BY ${orderCol} ${orderDir}, u.id ASC
       LIMIT ${offset}, ${pageSize};
     `;
     const results = await q(query, baseParams);
@@ -302,10 +330,10 @@ app.post('/api/admin-panel', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 // === Single user profile access (admin) ===
-app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/user-profile/:id', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const userId = req.params.id;
-    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr FROM Users WHERE id = ?', [userId]);
+    const results = await q ('SELECT id, email, status, tags, skills, created_at, name, fname, city, tel, birth, permis, vehicule, postal, addr, formation_id, year FROM Users WHERE id = ?', [userId]);
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({ success: true, user: results[0] });
   } catch (e) {
@@ -314,7 +342,7 @@ app.post('/api/user-profile/:id', authMiddleware, adminOnly, async (req, res) =>
   }
 });
 // === Only accessible by authenticated admins ===
-app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/student/:email', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
     const email = decodeURIComponent(req.params.email);
     const results = await q('SELECT * FROM Users WHERE email = ?', [email]);
@@ -326,11 +354,12 @@ app.post('/api/admin/student/:email', authMiddleware, adminOnly, async (req, res
   }
 });
 // === Update students (admin) ===
-app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/update-student', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try{
-    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status} = req.body;
-    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=? WHERE email=?',
-    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, email]);
+    const {email, name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, tags, skills, status, year} = req.body;
+    const yearVal = year === '' || year === undefined || year === null ? null : Number(year);
+    await q('UPDATE Users SET name=?, fname=?, tel=?, birth=?, addr=?, city=?, permis=?, vehicule=?, mobile=?, postal=?, tags=?, skills=?, status=?, year=? WHERE email=?',
+    [name, fname, tel, birth, addr, city, permis, vehicule, mobile, postal, JSON.stringify(tags), JSON.stringify(skills), status, Number.isFinite(yearVal) ? yearVal : null, email]);
     res.json({ success: true });
   } catch (e) {
     console.error('Database Update Error: ', e);
@@ -338,7 +367,7 @@ app.post('/api/admin/update-student', authMiddleware, adminOnly, async (req, res
   }
 });
 // === Update status from list (admin) ===
-app.post('/api/admin/update-status', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/admin/update-status', adminLimiter, authMiddleware, adminOnly, async (req, res) => {
   try {
     const { id, status } = req.body;
     await q('UPDATE Users SET status = ? WHERE id = ?', [status, id]);
@@ -386,7 +415,7 @@ app.get("/api/auth/verifMail", async (req, res) => {
   return res.redirect(`${process.env.APP_URL}profile`);
 });
 // === reset password for students (user) ===
-app.post('/reset/request', async (req, res) => {
+app.post('/reset/request', resetLimiter, async (req, res) => {
   try{
     const email = (req.body.email || "").trim().toLowerCase();
     const rows = await q(`SELECT id, email FROM Users WHERE email=? LIMIT 1`, [email]);
@@ -419,7 +448,7 @@ app.post('/reset/confirm', async (req, res) => {
     if (!rows || rows.length === 0) return res.status(403).json({success: false, message: "Lien invalide ou éxpiré"});
     if (tokenHash === rows[0].reset_pwd_token && new Date(rows[0].reset_pwd_expires) > new Date()) {
       const passwordHash = await bcrypt.hash(newPassword, 12);
-      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL WHERE email=?`, [passwordHash, email]);
+      await q(`UPDATE Users SET password=?, reset_pwd_token=NULL, reset_pwd_expires=NULL, email_verified=1 WHERE email=?`, [passwordHash, email]);
     } else { return res.status(403).json({success:false, message:"L'identifiant de connexion est éxpiré ou invalide"});}
     return res.status(200).json({success:true});
   } catch (e){
@@ -432,5 +461,5 @@ When a commercial creates an account, the user gets a token and
 the flow is the same as the password reset
 so the user is created with
 email verified = 0 and status invited or something
-i can definitely reuse the reset code, just have to change the texts here and there
+i can definitely reuse the reset code for user first login, just have to change the ui texts here and there
 */

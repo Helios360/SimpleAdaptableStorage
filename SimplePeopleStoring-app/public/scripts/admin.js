@@ -1,16 +1,20 @@
 const nextPage = document.getElementById('next-page');
 const previousPage = document.getElementById('previous-page');
 const actualPage = document.getElementById('actual-page');
+const totalPagesEl = document.getElementById('total-pages');
 const tag = document.getElementById('add_tags');
 const skills = document.getElementById('add_skills');
 
 let currentTags = [];
 let currentSkills = [];
+let selectedFormationId = null;
 
 function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
     return {
         q: document.getElementById('nomPrenom').value.trim(),
         status: document.getElementById('searchStatus').value || "",
+        year: document.getElementById('searchYear').value || "",
+        formation_id: selectedFormationId,
         city: document.getElementById('place').value.trim(),
         radius: document.getElementById('radius').value.trim(),
         postal: document.getElementById('postal').value.trim(),
@@ -30,6 +34,12 @@ function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
 }
 
 const allUsers = [];
+
+function updatePaginationControls(page, totalPages) {
+    previousPage.classList.toggle('disabled', page <= 1);
+    nextPage.classList.toggle('disabled', page >= totalPages);
+}
+
 async function renderPage(pageIndex){
     try{
         const payload = buildPayload(pageIndex);
@@ -39,7 +49,11 @@ async function renderPage(pageIndex){
             body: JSON.stringify(payload),
         });
         if(!data.success) return;
-        actualPage.innerText = data.pagination?.page ?? pageIndex;
+        const page = data.pagination?.page ?? pageIndex;
+        const totalPages = data.pagination?.totalPages ?? 1;
+        actualPage.innerText = page;
+        if (totalPagesEl) totalPagesEl.innerText = totalPages;
+        updatePaginationControls(page, totalPages);
         const users = Array.isArray(data.users) ? data.users : [];
         allUsers.length=0;
         allUsers.push(...users);
@@ -47,6 +61,36 @@ async function renderPage(pageIndex){
     } catch (e) { console.error(e); }
 }
 renderPage(1);
+
+(async () => {
+    try {
+        const data = await api('/api/admin-profile');
+        const ids = Array.isArray(data?.user?.staff_formations) ? data.user.staff_formations : [];
+        if (!ids.length) return;
+        const wrap = document.getElementById('staffFormations');
+        const list = document.getElementById('staffFormationsList');
+        list.innerHTML = '';
+        ids.forEach(id => {
+            const chip = document.createElement('span');
+            chip.textContent = FORMATION_NAMES[id] || `Formation ${id}`;
+            chip.dataset.formationId = id;
+            chip.addEventListener('click', () => {
+                const wasActive = chip.classList.contains('active');
+                list.querySelectorAll('span.active').forEach(c => c.classList.remove('active'));
+                if (wasActive) {
+                    selectedFormationId = null;
+                } else {
+                    chip.classList.add('active');
+                    selectedFormationId = Number(id);
+                }
+                renderPage(1);
+            });
+            list.appendChild(chip);
+        });
+        wrap.hidden = false;
+    } catch (e) { console.error(e); }
+})();
+
 nextPage.addEventListener('click', async () => {
     renderPage(parseInt(actualPage.innerText) + 1);
 })
@@ -69,7 +113,7 @@ async function renderUser (users) {
         else scoreColor="#32DB1F";
         list.innerHTML+=`
         <div class="user" data-user-id="${user.id}">
-        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}</p></a></span>
+        <span><a href="/profile?id=${encodeURIComponent(user.id)}"><p>${user.name.toUpperCase()}</p><p>${user.fname}${user.formation_code ? ` <span class="formation-tag">(${user.formation_code})</span>` : ''}</p></a></span>
         <span style="font-size:19px; font-weight:600; color:${scoreColor}">${displayScore}</span>
         <span style="line-break:loose" class="resped">${user.city}, ${user.postal}</span>
         <span>
@@ -109,7 +153,6 @@ async function renderUser (users) {
 function sortArrow(){
     const users = allUsers || [];
     renderUser(users);
-    attachFormListeners();
 
     const SORT_HEADERS = [
       {wrapper: '#name-fname', key:'name'},
@@ -150,7 +193,13 @@ function sortArrow(){
             });
             if(!results?.success) return;
             renderUser(results.users);
-            if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+            if (results.pagination?.page != null) {
+                const page = results.pagination.page;
+                const totalPages = results.pagination.totalPages ?? 1;
+                actualPage.innerText = page;
+                if (totalPagesEl) totalPagesEl.innerText = totalPages;
+                updatePaginationControls(page, totalPages);
+            }
         } catch (err) {
             console.error(err || "error");
         }
@@ -163,9 +212,6 @@ function sortArrow(){
     });
 }
 sortArrow();
-async function attachFormListeners() {
-  const form = document.getElementById('search-form');
-}
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
     console.log("Retour depuis le cache détecté, rechargement forcé.");
@@ -232,8 +278,8 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                 <ul class="form2 inputs" >
                     <p>Documents :</p>
                     <li class="file-upload inputs">
-                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf) *</label><span id="cvCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf" required>
+                        <label class="inputs" for="cv" id="cvFileName">CV (.pdf)</label><span id="cvCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="cv" name="cv" accept=".pdf">
                     </li>
                     <span class="checks">
                         <input type="checkbox" id="sejour" name="sejour">
@@ -244,12 +290,12 @@ document.getElementById('addStud').addEventListener('click', ()=>{
                         <input type="date" id="titre-sejour" name="titre">
                     </div>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf *</label><span id="pirCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf" required>
+                        <label class="inputs" for="id_doc" id="piRectoFilename">Pièce d'identité (recto) .png/.jpg/.pdf</label><span id="pirCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc" name="id_doc" accept=".png, .jpg, .pdf">
                     </li>
                     <li class="file-upload">
-                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf *</label><span id="pivCross" class="supprFile">X</span>
-                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf" required>
+                        <label class="inputs" for="id_doc_verso" id="piVersoFilename">Pièce d'identité (verso) .png/.jpg/.pdf</label><span id="pivCross" class="supprFile">X</span>
+                        <input class="inputs" type="file" id="id_doc_verso" name="id_doc_verso" accept=".png, .jpg, .pdf">
                     </li>
                 </ul>
                 <div>
@@ -295,19 +341,20 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     document.getElementById('titre-valide').style.height='0px';
     document.getElementById('titre-valide').style.overflow='hidden';
 
+    let toggle;
     sejour.addEventListener('change', () => {
         if (!sejour.checked){
             document.getElementById('titre-valide').style.height='0px';
             toggle = 1;
             labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
-            titreInput.ariaDisabled;
+            titreInput.setAttribute('aria-disabled', 'true');
         } else {
             document.getElementById('titre-valide').style.height='65px';
             toggle = 0;
             labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
-            titreInput.ariaRequired;
+            titreInput.setAttribute('aria-required', 'true');
         }
     });
 
@@ -397,18 +444,18 @@ document.getElementById('addStud').addEventListener('click', ()=>{
             valid = false;
             errors.push("Date d'invalidité du titre de séjour obligatoire.");
         }
-        // Fichiers
-        if (!validateFile(cvUpload, ["pdf"], 2)) {
+        // Fichiers (optionnels, mais validés si fournis)
+        if (cvUpload.files.length && !validateFile(cvUpload, ["pdf"], 2)) {
             valid = false;
-            errors.push("CV invalide ou manquant (PDF uniquement, max 2 Mo).");
+            errors.push("CV invalide (PDF uniquement, max 2 Mo).");
         }
-        if (!validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
+        if (pirUpload.files.length && !validateFile(pirUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité recto invalide ou manquante (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité recto invalide (JPG/PNG/PDF, max 3 Mo).");
         }
-        if (!validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
+        if (pivUpload.files.length && !validateFile(pivUpload, ["jpg", "png", "pdf"], 3)) {
             valid = false;
-            errors.push("Pièce d'identité verso invalide ou manquante (JPG/PNG, max 3 Mo).");
+            errors.push("Pièce d'identité verso invalide (JPG/PNG/PDF, max 3 Mo).");
         }
         // Si erreur -> bloquer envoi
         if (!valid) {
@@ -452,24 +499,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     })
     popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
 })
-
-function buildAllSkillsList(){
-  const out = new Set();
-  Object.values(formationCatalog || {}).forEach(cfg => {
-    if (!cfg) return;
-    Object.keys(cfg).forEach(skill => out.add(skill));
-  });
-  return [...out].sort();
-}
-
-function getTypeForSkill(skill){
-  const catalog = formationCatalog || {};
-  for (const fid of Object.keys(catalog)) {
-    const t = catalog[fid]?.[skill];
-    if (t) return t;
-  }
-  return 'unknown';
-}
 
 // Remplit la datalist "Compétences" sans appel API (liste condensée/dédupliquée)
 populateDatalist(document.getElementById('skillList'), buildAllSkillsList());
@@ -557,6 +586,8 @@ document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search-form').reset();
   currentTags = [];
   currentSkills = [];
+  selectedFormationId = null;
+  document.querySelectorAll('#staffFormationsList span.active').forEach(c => c.classList.remove('active'));
   renderTagsAndSkills();
   renderPage(1);
 });
@@ -580,7 +611,13 @@ const debouncedSearch = debounce( async () => {
         });
         if(!results?.success) return;
         renderUser(results.users);
-        if (results.pagination?.page != null) actualPage.innerText = results.pagination.page;
+        if (results.pagination?.page != null) {
+            const page = results.pagination.page;
+            const totalPages = results.pagination.totalPages ?? 1;
+            actualPage.innerText = page;
+            if (totalPagesEl) totalPagesEl.innerText = totalPages;
+            updatePaginationControls(page, totalPages);
+        }
     } catch (err) {
         console.error(err);
     }

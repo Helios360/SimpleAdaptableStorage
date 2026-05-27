@@ -1,4 +1,4 @@
-FROM mirror.gcr.io/library/node:24-bookworm
+FROM mirror.gcr.io/library/node:22-bookworm
 WORKDIR /usr/src/app
 COPY SimplePeopleStoring-app/package*.json ./
 RUN npm ci

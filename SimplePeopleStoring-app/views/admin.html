@@ -27,7 +27,11 @@
     </span>
     <main>
         <div class="inputInfo">
-            <form id="search-form">
+            <div class="staff-formations" id="staffFormations" hidden>
+            <span class="staff-formations-label">Vos formations :</span>
+            <span class="staff-formations-list" id="staffFormationsList"></span>
+        </div>
+        <form id="search-form">
             <input placeholder="Nom Prénom" id="nomPrenom" name="name" type="text">
             <select id="searchStatus">
                 <option value="" selected>Status</option>
@@ -35,6 +39,14 @@
                 <option value="recherche">En recherche</option>
                 <option value="active">Recherche active</option>
                 <option value="entreprise">En entreprise</option>
+            </select>
+            <select id="searchYear">
+                <option value="" selected>Année</option>
+                <option value="1">Bac+1</option>
+                <option value="2">Bac+2</option>
+                <option value="3">Bac+3</option>
+                <option value="4">Bac+4</option>
+                <option value="5">Bac+5</option>
             </select>
             <span class="place">
                 <input placeholder="Lieu . . ." id="place">
@@ -74,15 +86,15 @@
                 <a class="action-btn" id="reset">Reset</a>
                 <span>
                     <input type="checkbox" id="permis" name="permis">
-                    <label for="permis-b">Permis</label>
+                    <label for="permis">Permis</label>
                 </span>
                 <span>
                     <input type="checkbox" id="vehicule" name="vehicule">
-                    <label for="nomade">Véhiculé</label>
+                    <label for="vehicule">Véhiculé</label>
                 </span>
-                <span>    
+                <span>
                     <input type="checkbox" id="mobile" name="mobile">
-                    <label for="nomade">Mobile</label>
+                    <label for="mobile">Mobile</label>
                 </span>
             </span>
         </form>
@@ -124,6 +136,8 @@
             <div class="pages">
                 <a id="previous-page"><</a>
                 <p id="actual-page">1</p>
+                <span>/</span>
+                <p id="total-pages">1</p>
                 <a id="next-page">></a>
             </div>
         </div>

@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector("form");
     const password = document.getElementById("password");
     const confirm = document.getElementById("confirm");
-    const message = document.getElementById("password-message")
+    const message = document.getElementById("password-message");
     const telInput = document.getElementById('tel');
     const titreInput = document.getElementById('titre-sejour');
 
@@ -44,19 +44,20 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     const sejour = document.getElementById('sejour');
     document.getElementById('titre-valide').style.maxHeight='0px';
+    let toggle;
     sejour.addEventListener('change', () => {
         if (!sejour.checked){
             document.getElementById('titre-valide').style.maxHeight='0px';
             toggle = 1;
             labelPir.innerText = "Pièce d'identité (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Pièce d'identité (verso) .png/.jpg/.pdf *";
-            titreInput.ariaDisabled;
+            titreInput.setAttribute('aria-disabled', 'true');
         } else {
             document.getElementById('titre-valide').style.maxHeight='60px';
             toggle = 0;
             labelPir.innerText = "Titre de séjour (recto) .png/.jpg/.pdf *";
             labelPiv.innerText = "Titre de séjour (verso) .png/.jpg/.pdf *";
-            titreInput.ariaRequired;
+            titreInput.setAttribute('aria-required', 'true');
         }
     });
     // Vérification mot de passe et confirmation
