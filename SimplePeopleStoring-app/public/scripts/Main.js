@@ -124,6 +124,24 @@ function getSkillsFromFormationId(formationId){
     return Object.keys(cfg).sort();
 }
 
+function buildAllSkillsList(){
+  const out = new Set();
+  Object.values(formationCatalog || {}).forEach(cfg => {
+    if (!cfg) return;
+    Object.keys(cfg).forEach(skill => out.add(skill));
+  });
+  return [...out].sort();
+}
+
+function getTypeForSkill(skill){
+  const catalog = formationCatalog || {};
+  for (const fid of Object.keys(catalog)) {
+    const t = catalog[fid]?.[skill];
+    if (t) return t;
+  }
+  return 'unknown';
+}
+
 
 
 const FORMATION_NAMES = {

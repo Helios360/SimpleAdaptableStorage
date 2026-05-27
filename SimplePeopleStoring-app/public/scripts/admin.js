@@ -500,24 +500,6 @@ document.getElementById('addStud').addEventListener('click', ()=>{
     popup.querySelector('#exit-popup').addEventListener('click', () => { popup.remove();});
 })
 
-function buildAllSkillsList(){
-  const out = new Set();
-  Object.values(formationCatalog || {}).forEach(cfg => {
-    if (!cfg) return;
-    Object.keys(cfg).forEach(skill => out.add(skill));
-  });
-  return [...out].sort();
-}
-
-function getTypeForSkill(skill){
-  const catalog = formationCatalog || {};
-  for (const fid of Object.keys(catalog)) {
-    const t = catalog[fid]?.[skill];
-    if (t) return t;
-  }
-  return 'unknown';
-}
-
 // Remplit la datalist "Compétences" sans appel API (liste condensée/dédupliquée)
 populateDatalist(document.getElementById('skillList'), buildAllSkillsList());
 
