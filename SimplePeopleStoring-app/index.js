@@ -319,7 +319,7 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
       JOIN Formations f ON f.id = u.formation_id
       LEFT JOIN ( SELECT user_id, ROUND(AVG(score)) AS gen_score FROM TestAttempts GROUP BY user_id ) ta ON ta.user_id = u.id
       ${whereSql}
-      ORDER BY ${orderCol} ${orderDir}
+      ORDER BY ${orderCol} ${orderDir}, u.id ASC
       LIMIT ${offset}, ${pageSize};
     `;
     const results = await q(query, baseParams);
