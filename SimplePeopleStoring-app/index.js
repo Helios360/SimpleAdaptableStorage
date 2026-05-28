@@ -220,7 +220,6 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     const offset = (page - 1) * pageSize;
     // Sorting
     const qStr = (b.q ?? "").toString().trim();
-    const status = (b.status ?? "").toString().trim();
     let city = (b.city ?? "").toString().trim();
     const postal = (b.postal ?? "").toString().trim();
     const radiusRaw = b.radius ?? null;
@@ -235,10 +234,17 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     const skills = Array.isArray(b.skills) ? b.skills.filter(Boolean).map(String) : [];
     const ageExact = b.age !== null && b.age !== undefined && b.age !== "" ? Number(b.age) : null;
     const trancheAge = (b.trancheAge ?? "").toString().trim();
-    const yearRaw = (b.year ?? "").toString().trim();
-    const yearFilter = yearRaw === "" ? null : Number(yearRaw);
-    const formationRaw = b.formation_id;
-    const formationFilter = formationRaw === null || formationRaw === undefined || formationRaw === "" ? null : Number(formationRaw);
+    const toArr = (v) => Array.isArray(v) ? v : (v === null || v === undefined || v === "" ? [] : [v]);
+    const ALLOWED_STATUSES = new Set(['archive', 'recherche', 'active', 'entreprise']);
+    const statusFilters = toArr(b.status)
+      .map(s => (s ?? '').toString().trim())
+      .filter(s => ALLOWED_STATUSES.has(s));
+    const yearFilters = toArr(b.year)
+      .map(Number)
+      .filter(Number.isFinite);
+    const formationFilters = toArr(b.formation_id)
+      .map(Number)
+      .filter(Number.isFinite);
     const dirRaw = (b.orderBy ?? "DESC").toString().trim().toUpperCase();
     const orderKey = (b.order ?? "created_at").toString().trim();
     let cityLon = null, cityLat = null, geoSql = "", geoParams = [];
@@ -274,13 +280,20 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
         extraParams.push(minAge, maxAge);
       }
     }
-    if (Number.isFinite(yearFilter)) {
-      extraWhere.push(`u.year = ?`);
-      extraParams.push(yearFilter);
+    if (statusFilters.length) {
+      const placeholders = statusFilters.map(() => '?').join(',');
+      extraWhere.push(`u.status IN (${placeholders})`);
+      extraParams.push(...statusFilters);
     }
-    if (Number.isFinite(formationFilter)) {
-      extraWhere.push(`u.formation_id = ?`);
-      extraParams.push(formationFilter);
+    if (yearFilters.length) {
+      const placeholders = yearFilters.map(() => '?').join(',');
+      extraWhere.push(`u.year IN (${placeholders})`);
+      extraParams.push(...yearFilters);
+    }
+    if (formationFilters.length) {
+      const placeholders = formationFilters.map(() => '?').join(',');
+      extraWhere.push(`u.formation_id IN (${placeholders})`);
+      extraParams.push(...formationFilters);
     }
     for (const t of tags) { // All Tags
       extraWhere.push(`JSON_CONTAINS(u.tags, JSON_QUOTE(?))`);
@@ -295,7 +308,6 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
       qStr, like, like, like, like,
       city, cityLike,
       postal, postalLike,
-      status, status,
       permis, vehicule, mobile,
       ...geoParams,
       ...extraParams
@@ -304,9 +316,9 @@ app.post('/api/admin-panel', adminLimiter, authMiddleware, adminOnly, async (req
     const whereSql = `
     WHERE EXISTS (SELECT 1 FROM StaffSettings ss WHERE ss.staff_user_id = ? AND ss.formation_id = u.formation_id )
     AND (? = '' OR ( u.name LIKE ? OR u.fname LIKE ? OR CONCAT(u.name,' ',u.fname) LIKE ? OR CONCAT(u.fname,' ',u.name) LIKE ? ))
-    AND (? = '' OR u.city LIKE ?) AND (? = '' OR u.postal LIKE ?) AND (? = '' OR u.status = ?)
+    AND (? = '' OR u.city LIKE ?) AND (? = '' OR u.postal LIKE ?)
     AND (? = 0 OR u.permis = 1) AND (? = 0 OR u.vehicule = 1) AND (? = 0 OR u.mobile = 1)
-    ${geoSql} 
+    ${geoSql}
     ${extraSql}`;
     const countRows = await q(`SELECT COUNT(*) AS total FROM Users u ${whereSql}`, baseParams);
     const total = Number(countRows?.[0]?.total ?? 0);

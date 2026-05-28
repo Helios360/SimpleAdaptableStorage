@@ -7,23 +7,29 @@ const skills = document.getElementById('add_skills');
 
 let currentTags = [];
 let currentSkills = [];
-let selectedFormationId = null;
+let selectedFormationIds = [];
+
+function getActiveChipValues(containerId){
+    return Array.from(document.querySelectorAll(`#${containerId} .chip.active`))
+        .map(c => c.dataset.value);
+}
 
 function buildPayload(pageIndex, orderBy = "desc", order = "gen_score"){
+    const bools = getActiveChipValues('boolChips');
     return {
         q: document.getElementById('nomPrenom').value.trim(),
-        status: document.getElementById('searchStatus').value || "",
-        year: document.getElementById('searchYear').value || "",
-        formation_id: selectedFormationId,
+        status: getActiveChipValues('statusChips'),
+        year: getActiveChipValues('yearChips').map(Number).filter(Number.isFinite),
+        formation_id: selectedFormationIds,
         city: document.getElementById('place').value.trim(),
         radius: document.getElementById('radius').value.trim(),
         postal: document.getElementById('postal').value.trim(),
         age: document.getElementById('age').value
             ? Number(document.getElementById('age').value) : null,
         trancheAge: document.getElementById('trancheAge').value || "",
-        permis: document.getElementById('permis').checked,
-        vehicule: document.getElementById('vehicule').checked,
-        mobile: document.getElementById('mobile').checked,
+        permis: bools.includes('permis'),
+        vehicule: bools.includes('vehicule'),
+        mobile: bools.includes('mobile'),
         tags: currentTags,
         skills: currentSkills,
         page: pageIndex,
@@ -72,17 +78,14 @@ renderPage(1);
         list.innerHTML = '';
         ids.forEach(id => {
             const chip = document.createElement('span');
+            chip.className = 'chip';
             chip.textContent = FORMATION_NAMES[id] || `Formation ${id}`;
             chip.dataset.formationId = id;
             chip.addEventListener('click', () => {
-                const wasActive = chip.classList.contains('active');
-                list.querySelectorAll('span.active').forEach(c => c.classList.remove('active'));
-                if (wasActive) {
-                    selectedFormationId = null;
-                } else {
-                    chip.classList.add('active');
-                    selectedFormationId = Number(id);
-                }
+                chip.classList.toggle('active');
+                selectedFormationIds = Array.from(list.querySelectorAll('.chip.active'))
+                    .map(c => Number(c.dataset.formationId))
+                    .filter(Number.isFinite);
                 renderPage(1);
             });
             list.appendChild(chip);
@@ -586,8 +589,9 @@ document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search-form').reset();
   currentTags = [];
   currentSkills = [];
-  selectedFormationId = null;
-  document.querySelectorAll('#staffFormationsList span.active').forEach(c => c.classList.remove('active'));
+  selectedFormationIds = [];
+  document.querySelectorAll('#staffFormationsList .chip.active, .filter-chips .chip.active')
+    .forEach(c => c.classList.remove('active'));
   renderTagsAndSkills();
   renderPage(1);
 });
@@ -629,3 +633,12 @@ const searchForm = document.getElementById('search-form');
 // "change" garantit le rafraîchissement du filtre pour checkbox/select/datalist.
 searchForm.addEventListener('input', debouncedSearch);
 searchForm.addEventListener('change', debouncedSearch);
+
+document.querySelectorAll('.filter-chips').forEach(group => {
+    group.addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip || !group.contains(chip)) return;
+        chip.classList.toggle('active');
+        debouncedSearch();
+    });
+});

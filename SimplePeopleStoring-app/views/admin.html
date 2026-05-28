@@ -32,22 +32,26 @@
             <span class="staff-formations-list" id="staffFormationsList"></span>
         </div>
         <form id="search-form">
+            <div class="inputInfo" style="width:100%">
+                <p class="staff-formations-label">Statut :</p>
+                <div class="chip-group filter-chips" id="statusChips" data-filter="status">
+                    <span class="chip" data-value="archive">Archive</span>
+                    <span class="chip" data-value="recherche">En recherche</span>
+                    <span class="chip" data-value="active">Recherche active</span>
+                    <span class="chip" data-value="entreprise">En entreprise</span>
+                </div>
+            </div>
+            <div class="inputInfo" style="width:100%">
+                <p class="staff-formations-label">Année post bac :</p>
+                <div class="chip-group filter-chips" id="yearChips" data-filter="year">
+                    <span class="chip" data-value="1">Bac+1</span>
+                    <span class="chip" data-value="2">Bac+2</span>
+                    <span class="chip" data-value="3">Bac+3</span>
+                    <span class="chip" data-value="4">Bac+4</span>
+                    <span class="chip" data-value="5">Bac+5</span>
+                </div>
+            </div>
             <input placeholder="Nom Prénom" id="nomPrenom" name="name" type="text">
-            <select id="searchStatus">
-                <option value="" selected>Status</option>
-                <option value="archive">Archive</option>
-                <option value="recherche">En recherche</option>
-                <option value="active">Recherche active</option>
-                <option value="entreprise">En entreprise</option>
-            </select>
-            <select id="searchYear">
-                <option value="" selected>Année</option>
-                <option value="1">Bac+1</option>
-                <option value="2">Bac+2</option>
-                <option value="3">Bac+3</option>
-                <option value="4">Bac+4</option>
-                <option value="5">Bac+5</option>
-            </select>
             <span class="place">
                 <input placeholder="Lieu . . ." id="place">
                 <input placeholder="Radius" id="radius">
@@ -84,18 +88,11 @@
           </div>
             <span class="checks">
                 <a class="action-btn" id="reset">Reset</a>
-                <span>
-                    <input type="checkbox" id="permis" name="permis">
-                    <label for="permis">Permis</label>
-                </span>
-                <span>
-                    <input type="checkbox" id="vehicule" name="vehicule">
-                    <label for="vehicule">Véhiculé</label>
-                </span>
-                <span>
-                    <input type="checkbox" id="mobile" name="mobile">
-                    <label for="mobile">Mobile</label>
-                </span>
+                <div class="chip-group filter-chips" id="boolChips" data-filter="bool">
+                    <span class="chip" data-value="permis">Permis</span>
+                    <span class="chip" data-value="vehicule">Véhiculé</span>
+                    <span class="chip" data-value="mobile">Mobile</span>
+                </div>
             </span>
         </form>
     </div>
