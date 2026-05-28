@@ -5,13 +5,13 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const {allowIframeSelf, makeToken, getCityCoords} = require('./helpers.js')
-const { sendTo } = require('./mailer');
+const { sendTo } = require('./mailer.js');
 const bcrypt = require('bcrypt');
 const { 
   q, userDir, relFromAbs, toAbsFromStored, kindCheck, guessContentType, deleteFile,
   ALLOWED_EXT, ALLOWED_MIME, UPLOADS_ROOT, TOS_VERSION, addWatermark, deleteUser,
-} = require('./helpers');
-const { authMiddleware, adminOnly} = require('./controllers/authControl');
+} = require('./helpers.js');
+const { authMiddleware, adminOnly} = require('./controllers/authControl.js');
 const router = Router();
 
 // ------------------------- CREATE > PROFILE === USERS ------------------------- //

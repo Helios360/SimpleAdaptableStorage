@@ -1,190 +1,146 @@
-# SimpleAdaptableStorage
+# Simple Adaptable Storage
 
-A self-hosted web application for managing and storing candidate/student profiles. Built for training organizations to track candidates through their formation pipeline — from registration and skills testing to document management and status tracking.
+A lightweight, self-hosted platform for managing candidate / student profiles in a training organization — registration, document storage (CV, ID), filterable search, and AI-graded skill tests.
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js 24 + Express 5 |
-| Database | MySQL 8.4 |
-| Auth | JWT (httpOnly cookies) + bcrypt |
-| File handling | Formidable, Sharp, pdf-lib |
-| AI | OpenAI API (test answer correction) |
-| Infrastructure | Docker Compose |
+| Layer       | Tech                                           |
+| ----------- | ---------------------------------------------- |
+| Runtime     | [Bun](https://bun.com) 1.3                     |
+| Framework   | [SvelteKit](https://svelte.dev) 2 + Svelte 5   |
+| Build       | Vite 6                                         |
+| Styling     | Tailwind CSS 4                                 |
+| Auth        | [Better Auth](https://better-auth.com) (cookies, email verification, password reset) |
+| Database    | PostgreSQL 17 via [Drizzle ORM](https://orm.drizzle.team) |
+| AI grading  | OpenAI Responses API (`gpt-4o-mini`) — optional, falls back to a deterministic heuristic |
 
----
-
-## Quick Start
-
-### 1. Run the install script (Arch Linux)
+## Quick start (Docker)
 
 ```bash
-chmod +x install.sh && ./install.sh
+cp .env.example .env
+# edit .env: set POSTGRES_PASSWORD, BETTER_AUTH_SECRET (>= 32 chars), SMTP_*, OPENAI_API_KEY
+docker compose up -d --build
+docker compose exec app bun run db:seed   # one-time: insert formations + sample tests
 ```
 
-This installs Docker, prompts for credentials, and generates a `.env` file.
+App runs at [http://localhost:3000](http://localhost:3000).
 
-### 2. Or set up manually
-
-Create a `.env` file at the project root:
-
-```env
-PORT=3000
-HOST=0.0.0.0
-NODE_ENV=production
-
-MYSQL_HOST=mysql
-MYSQL_USER=mysql
-MYSQL_DATABASE=your_db_name
-MYSQL_PASSWORD=your_db_password
-MYSQL_ROOT_PASSWORD=your_root_password
-
-MYSQL_DATA_DIR=/mnt/nas/mysql_data       # persistent volume path
-NAS_BACKUPS=/mnt/nas/backups             # automated backup destination
-NAS_UPLOADS=/mnt/nas/uploads             # uploaded files (CV, ID docs)
-
-APP_UPLOADS_DIR=/usr/src/app/uploads
-APP_BASE_DIR=/usr/src/app
-APP_URL=https://your-domain.com/
-
-JWT_SECRET=your_jwt_secret
-OPENAI_API_KEY=sk-...
-```
-
-### 3. Start the stack
+## Local development
 
 ```bash
-sudo docker compose up --build -d
+bun install
+# Start a Postgres locally (any way you like). Example with Docker:
+docker run --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=sas -e POSTGRES_USER=app --name sas-pg postgres:17-alpine
+
+cp .env.example .env
+bun run db:migrate
+bun run db:seed
+bun run dev
 ```
 
-App is served at `http://localhost:3000`.
+## Project layout
 
----
-
-## Development
-
-Use the override compose file, which mounts local paths instead of NAS volumes:
-
-```bash
-sudo docker compose -f docker-compose.override.yml up --build -d
+```
+src/
+├── app.html / app.css / app.d.ts
+├── hooks.server.ts          # session resolution + BetterAuth wiring
+├── lib/
+│   ├── auth-client.ts       # Svelte client for sign-in / sign-up
+│   ├── components/          # Header, Footer, Field, TagInput, ChipGroup, FileSlot, Alert
+│   └── server/
+│       ├── auth.ts          # BetterAuth instance (email/password + verification + reset)
+│       ├── db/              # Drizzle: schema, client, migrations, seed
+│       ├── mailer.ts        # nodemailer (SMTP) with dev fallback to console
+│       ├── uploads.ts       # File validation, storage, safe path resolution
+│       ├── watermark.ts     # PDF watermarking via pdf-lib
+│       ├── geocode.ts       # French city → (lon, lat) via geo.api.gouv.fr
+│       ├── grader.ts        # OpenAI test grader + heuristic fallback
+│       └── guards.ts        # requireUser / requireAdmin
+└── routes/
+    ├── +layout.{svelte,server.ts}
+    ├── +page.svelte                  # landing
+    ├── signin/                       # /signin
+    ├── register/                     # /register (uses /api/register for multipart)
+    ├── reset-password/               # /reset-password (request + confirm)
+    ├── legal/                        # /legal
+    ├── profile/                      # /profile (candidate self-service)
+    ├── admin-panel/
+    │   ├── +page.{svelte,server.ts}  # filterable candidate list
+    │   └── u/[id]/                   # single candidate edit
+    ├── test/                         # skills assessment
+    └── api/
+        ├── auth/[...all]/            # BetterAuth handler
+        ├── register/                 # multipart sign-up + uploads + geocode
+        ├── files/[kind]/             # candidate: upload/delete own files
+        ├── me/files/[kind]/          # candidate: read own files
+        ├── admin/
+        │   ├── search/               # admin candidate search (paginated)
+        │   ├── update-status/
+        │   └── files/[id]/[kind]/    # admin: read/write any candidate's files
+        └── test/{next,response}/     # serve question / score answer
 ```
 
-Data is stored under `./dev/mysql_data` — easy to wipe without touching production volumes.
+## Database schema
 
-**Full dev reset** (nukes local DB and rebuilds):
+| Table             | Purpose                                                            |
+| ----------------- | ------------------------------------------------------------------ |
+| `formations`      | Training programs                                                  |
+| `user_profiles`   | Domain data per user (1-1 with `user`, FK to formation)            |
+| `staff_settings`  | Maps admin user → formation(s) they can see                        |
+| `tests`           | Question bank (type: 1 front, 2 back, 3 psycho × difficulty 1-3)   |
+| `test_attempts`   | Candidate answers + AI score                                       |
+| `user`, `session`, `account`, `verification` | BetterAuth core tables          |
 
-```bash
-./reset.sh
-```
-
----
-
-## Docker Operations
-
-| Task | Command |
-|---|---|
-| Start (fresh build) | `sudo docker compose up --build -d` |
-| Stop | `sudo docker compose down` |
-| Restart app only | `docker compose stop app && docker compose rm -f app && docker compose up -d app` |
-| App logs | `sudo docker logs -f simplepeoplestoring-app-1` |
-| MySQL logs | `sudo docker logs -f simplepeoplestoring-mysql-1` |
-| Delete DB volume | `sudo docker volume rm simplepeoplestoring_db-data` |
-| Full reset | `sudo docker compose down -v --remove-orphans && sudo docker compose up --build -d` |
-
-> **Never** use `docker compose up --build -v` in production — the `-v` flag wipes all volumes including the database.
-
----
-
-## Database Access
-
-```bash
-mysql -h 127.0.0.1 -P 3307 -u root -p your_db_name
-```
-
-MySQL is exposed on port **3307** (not 3306) to avoid conflicts with a local MySQL instance.
-
-### Schema overview
-
-| Table | Purpose |
-|---|---|
-| `Formations` | Training programs / organizations |
-| `Users` | Candidates and staff, linked to a formation |
-| `StaffSettings` | Maps admin users to the formations they manage |
-| `Tests` | Question bank (frontend / backend / psychotechnical) |
-| `TestAttempts` | Candidate answers and AI-scored results |
-
-The schema is auto-applied on first container start via `db/init/01-init.sql` and seeded with `db/init/02_seeder.sql`.
-
----
+Migration files live under `src/lib/server/db/migrations/`. Regenerate with `bun run db:generate` after editing `schema.ts`.
 
 ## Routes
 
-| Path | Access | Description |
-|---|---|---|
-| `/` | Public | Landing page |
-| `/register` | Public | Candidate registration form |
-| `/signin` | Public | Login |
-| `/profile` | Auth | Candidate profile |
-| `/test` | Auth | Skills assessment |
-| `/admin-panel` | Admin only | Candidate search and management |
-| `/legal` | Public | Legal notices |
-| `/reset-password` | Public | Request a password reset |
+| Path                | Access | Description                              |
+| ------------------- | ------ | ---------------------------------------- |
+| `/`                 | Public | Landing                                  |
+| `/register`         | Public | Candidate sign-up (multipart, with CV / ID upload, French geocoding) |
+| `/signin`           | Public | Login                                    |
+| `/reset-password`   | Public | Request and confirm password reset       |
+| `/legal`            | Public | Legal notices                            |
+| `/profile`          | Auth   | Self-service profile edit + documents    |
+| `/test`             | Auth   | Skills assessment, AI-graded             |
+| `/admin-panel`      | Admin  | Filterable candidate list                |
+| `/admin-panel/u/:id`| Admin  | Single candidate page                    |
 
----
+## Promoting an admin
 
-## Auth Flow
+There's no UI yet — flip the flag directly:
 
-- Login issues a JWT signed with `JWT_SECRET`, stored as a **httpOnly, Secure, SameSite=Strict** cookie (2h TTL).
-- Admins are redirected to `/admin-panel`; candidates who haven't completed their tests are redirected to `/test`.
-- Email verification is required after registration. A tokenized link is sent via Nodemailer.
-- Password reset uses the same token mechanism (SHA-256 hash stored in DB, 1h TTL).
-
----
-
-## Automated Backups
-
-The `mysql-backup` service runs a `mysqldump` every **12 hours** and writes compressed `.sql.gz` files to `NAS_BACKUPS`. Backups older than 7 days are automatically deleted.
-
----
-
-## SSL / HTTPS
-
-Certificate generation (via Certbot, HTTP challenge):
-
-```bash
-sudo docker compose run --rm certbot certonly \
-  --webroot -w /var/www/certbot \
-  -d your-domain.com \
-  --email your@email.com \
-  --agree-tos --no-eff-email
+```sql
+UPDATE user_profiles SET is_admin = true WHERE user_id = '<id>';
+INSERT INTO staff_settings (staff_user_id, formation_id) VALUES ('<id>', <formation_id>);
 ```
 
-> Certificate renewal must be done over **HTTP**, not HTTPS.
+Admins only see candidates from formations they're mapped to via `staff_settings`.
 
----
+## File storage
 
-## Project Structure
+Uploaded files go under `UPLOADS_DIR` (defaults to `./uploads`), one folder per user (`u_<userId>/`). PDFs uploaded as CV are automatically watermarked using `static/watermark.png` if present.
+
+## AI grading
+
+`OPENAI_API_KEY` enables strict 0–100 grading via the Responses API with a JSON schema. Without a key, [`src/lib/server/grader.ts`](src/lib/server/grader.ts) falls back to a deterministic keyword-overlap heuristic — the test flow still works end-to-end in dev.
+
+## Scripts
 
 ```
-.
-├── docker-compose.yml              # Production compose
-├── docker-compose.override.yml     # Dev compose (local volumes)
-├── Dockerfile
-├── install.sh                      # Arch Linux one-shot setup
-├── reset.sh                        # Dev full reset
-├── db/
-│   └── init/
-│       ├── 01-init.sql             # Schema
-│       └── 02_seeder.sql           # Seed data
-└── SimplePeopleStoring-app/
-    ├── index.js                    # Express entry point & core routes
-    ├── crud.routes.js              # Profile and file upload routes
-    ├── test.routes.js              # Test delivery and scoring routes
-    ├── helpers.js                  # DB query wrapper, utilities
-    ├── mailer.js                   # Nodemailer wrapper
-    ├── controllers/
-    │   └── authControl.js          # JWT middleware
-    ├── public/                     # Static files + public pages
-    └── views/                      # Authenticated pages (profile, admin, test)
+bun run dev          # vite dev server
+bun run build        # production build
+bun run start        # serve the built app
+bun run check        # svelte-check
+bun run db:generate  # drizzle-kit generate (after editing schema.ts)
+bun run db:migrate   # apply migrations
+bun run db:seed      # insert formations + sample tests
 ```
+
+## Security notes
+
+- Sessions are HTTP-only cookies, 7-day expiry, signed by `BETTER_AUTH_SECRET` (must be ≥ 32 chars).
+- File uploads are size-capped (`MAX_UPLOAD_BYTES`), MIME- and extension-checked, and stored outside the public tree.
+- File serving validates ownership in both candidate and admin endpoints (no path traversal — see `toAbsFromStored`).
+- The admin search uses parameterized SQL (Drizzle) and an explicit `staff_settings` scope — admins cannot see candidates outside their assigned formations.
