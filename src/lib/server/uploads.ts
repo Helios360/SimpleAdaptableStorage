@@ -1,82 +1,147 @@
-import { mkdir, rm, rename, unlink, writeFile, stat } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { env } from '$env/dynamic/private';
+import { mkdir, writeFile, unlink, readFile, rm } from 'node:fs/promises';
+import { join, normalize, sep } from 'node:path';
 
-export const UPLOADS_ROOT = path.resolve(env.UPLOADS_DIR || './uploads');
-export const MAX_UPLOAD_BYTES = Number(env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024);
+export const UPLOAD_ROOT = process.env.UPLOADS_DIR
+	? join(process.env.UPLOADS_DIR)
+	: join(process.cwd(), 'uploads');
 
-export const ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png']);
-export const ALLOWED_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
-export const FILE_KINDS = ['cv', 'id_doc', 'id_doc_verso'] as const;
-export type FileKind = (typeof FILE_KINDS)[number];
-
-export const userDir = (uid: string) => path.join(UPLOADS_ROOT, `u_${uid}`);
-
-export function relFromAbs(abs: string) {
-  return path.relative(UPLOADS_ROOT, abs).replaceAll('\\', '/');
+export function extOf(name: string): string {
+	const i = name.lastIndexOf('.');
+	return i < 0 ? '' : name.slice(i + 1).toLowerCase();
 }
 
-export function toAbsFromStored(stored: string) {
-  const rel = stored.replace(/^[/\\]+/, '');
-  const abs = path.normalize(path.join(UPLOADS_ROOT, rel));
-  if (!abs.startsWith(UPLOADS_ROOT + path.sep) && abs !== UPLOADS_ROOT) {
-    throw new Error('Path escapes uploads root');
-  }
-  return abs;
+const MIMES: Record<string, string> = {
+	pdf: 'application/pdf',
+	png: 'image/png',
+	jpg: 'image/jpeg',
+	jpeg: 'image/jpeg',
+	webp: 'image/webp'
+};
+
+export function mimeFor(filename: string): string {
+	return MIMES[extOf(filename)] ?? 'application/octet-stream';
 }
 
-export function guessContentType(p: string) {
-  const ext = path.extname(p).toLowerCase();
-  if (ext === '.pdf') return 'application/pdf';
-  if (ext === '.png') return 'image/png';
-  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
-  return 'application/octet-stream';
+export interface FileSlot {
+	allowed: string[];
+	maxMB: number;
+	label: string;
 }
 
-export function validate(file: File) {
-  const ext = path.extname(file.name).toLowerCase();
-  if (!ALLOWED_EXT.has(ext)) return { ok: false as const, reason: 'extension' };
-  if (!ALLOWED_MIME.has(file.type)) return { ok: false as const, reason: 'mime' };
-  if (file.size > MAX_UPLOAD_BYTES) return { ok: false as const, reason: 'size' };
-  return { ok: true as const, ext };
+export type InscriptionSlot = 'cv' | 'id_recto' | 'id_verso';
+
+export const INSCRIPTION_SLOTS: Record<InscriptionSlot, FileSlot> = {
+	cv: { allowed: ['pdf'], maxMB: 5, label: "CV d'inscription" },
+	id_recto: { allowed: ['pdf', 'png', 'jpg', 'jpeg', 'webp'], maxMB: 5, label: "Pièce d'identité (recto)" },
+	id_verso: { allowed: ['pdf', 'png', 'jpg', 'jpeg', 'webp'], maxMB: 5, label: "Pièce d'identité (verso)" }
+};
+
+export const INSCRIPTION_COLUMNS: Record<InscriptionSlot, 'cvPath' | 'idDocPath' | 'idDocVersoPath'> = {
+	cv: 'cvPath',
+	id_recto: 'idDocPath',
+	id_verso: 'idDocVersoPath'
+};
+
+export function validateUpload(file: File | null, slot: FileSlot): string | null {
+	if (!file || !(file instanceof File) || file.size === 0) return `${slot.label} manquant.`;
+	const ext = extOf(file.name);
+	if (!slot.allowed.includes(ext)) {
+		return `${slot.label} : format invalide (${slot.allowed.join(', ')}).`;
+	}
+	if (file.size > slot.maxMB * 1024 * 1024) {
+		return `${slot.label} : fichier trop volumineux (max ${slot.maxMB} Mo).`;
+	}
+	return null;
 }
 
-/** Persist a File into the user's directory; returns the stored relative path. */
-export async function persistFile(uid: string, kind: FileKind, file: File) {
-  const v = validate(file);
-  if (!v.ok) throw Object.assign(new Error('invalid_file'), { status: 415, reason: v.reason });
-
-  const dir = userDir(uid);
-  await mkdir(dir, { recursive: true });
-  const safeName = `u_${uid}_${kind}_${crypto.randomUUID()}${v.ext}`;
-  const abs = path.join(dir, safeName);
-  await writeFile(abs, Buffer.from(await file.arrayBuffer()));
-  return { abs, rel: relFromAbs(abs) };
+/**
+ * Save a File somewhere under UPLOAD_ROOT. `relDir` is appended to the root,
+ * the resulting filename is `<basename>.<ext>`. Returns the relative path
+ * (so we can store it in the DB and round-trip it through `resolveSafe`).
+ */
+export async function saveUpload(
+	relDir: string,
+	basename: string,
+	file: File
+): Promise<string> {
+	const ext = extOf(file.name);
+	const safe = `${basename}.${ext}`;
+	const absDir = join(UPLOAD_ROOT, relDir);
+	await mkdir(absDir, { recursive: true });
+	const abs = join(absDir, safe);
+	const buf = Buffer.from(await file.arrayBuffer());
+	await writeFile(abs, buf);
+	return `${relDir.replace(/\\/g, '/')}/${safe}`;
 }
 
-export async function removeStored(stored: string | null | undefined) {
-  if (!stored) return;
-  try {
-    await unlink(toAbsFromStored(stored));
-  } catch (e: any) {
-    if (e?.code !== 'ENOENT') console.warn('[uploads] unlink failed:', e?.message);
-  }
+/**
+ * Resolve a stored relative path against UPLOAD_ROOT, refusing anything that
+ * escapes the root (defence in depth — paths come from the DB but never trust).
+ */
+export function resolveSafe(rel: string): string | null {
+	const norm = normalize(rel);
+	if (norm.startsWith('..') || norm.includes(`${sep}..${sep}`)) return null;
+	const abs = join(UPLOAD_ROOT, norm);
+	if (!abs.startsWith(UPLOAD_ROOT + sep) && abs !== UPLOAD_ROOT) return null;
+	return abs;
 }
 
-export async function removeUserDir(uid: string) {
-  try {
-    await rm(userDir(uid), { recursive: true, force: true });
-  } catch (e: any) {
-    if (e?.code !== 'ENOENT') console.warn('[uploads] rmdir failed:', e?.message);
-  }
+export async function deleteUpload(rel: string): Promise<void> {
+	const abs = resolveSafe(rel);
+	if (!abs) return;
+	try {
+		await unlink(abs);
+	} catch {
+		// Already gone — fine.
+	}
 }
 
-export async function fileStream(stored: string) {
-  const abs = toAbsFromStored(stored);
-  await stat(abs);
-  return { abs, stream: createReadStream(abs) };
+/**
+ * Recursively delete a directory inside UPLOAD_ROOT. Used when nuking all
+ * files for a candidat/user at once. Refuses to operate outside the root
+ * (resolveSafe) and tolerates a missing directory.
+ */
+export async function deleteUploadDir(rel: string): Promise<void> {
+	const abs = resolveSafe(rel);
+	if (!abs || abs === UPLOAD_ROOT) return;
+	await rm(abs, { recursive: true, force: true });
 }
 
-export { mkdir, rename };
+function asciiFallback(name: string): string {
+	return name.normalize('NFKD').replace(/[^\x20-\x7e]/g, '_').replace(/"/g, "'");
+}
+
+export async function streamFile(rel: string, filename: string, inline: boolean): Promise<Response> {
+	const abs = resolveSafe(rel);
+	if (!abs) return new Response('Not found', { status: 404 });
+	let buf: Buffer;
+	try {
+		buf = await readFile(abs);
+	} catch {
+		return new Response('Not found', { status: 404 });
+	}
+	// MIME comes from the on-disk path (the source of truth); `filename` is the
+	// label shown to the user and may have no extension — never use it for MIME.
+	const pathExt = extOf(rel);
+	const mime = MIMES[pathExt] ?? 'application/octet-stream';
+	// Ensure the download filename carries the correct extension, otherwise
+	// "Save as…" loses the type and double-click after download breaks.
+	const dlName = extOf(filename) === pathExt ? filename : `${filename}.${pathExt}`;
+	// Copy into a fresh ArrayBuffer — Bun's TypedArray types require ArrayBuffer
+	// (not the union ArrayBufferLike) for Blob/Response bodies.
+	const ab = new ArrayBuffer(buf.byteLength);
+	new Uint8Array(ab).set(buf);
+	const body = new Blob([ab], { type: mime });
+	const dispo = inline ? 'inline' : 'attachment';
+	const ascii = asciiFallback(dlName);
+	const encoded = encodeURIComponent(dlName);
+	return new Response(body, {
+		headers: {
+			'Content-Type': mime,
+			'Content-Length': String(body.size),
+			'Content-Disposition': `${dispo}; filename="${ascii}"; filename*=UTF-8''${encoded}`,
+			'X-Content-Type-Options': 'nosniff',
+			'Cache-Control': 'private, max-age=0, must-revalidate'
+		}
+	});
+}

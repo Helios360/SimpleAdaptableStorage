@@ -1,79 +1,362 @@
+/**
+ * Seeds demo data via better-auth (so password hashing matches runtime).
+ * Idempotent: re-running won't duplicate users (it skips existing emails).
+ */
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { formations, tests } from './schema';
+import { eq } from 'drizzle-orm';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import * as schema from './schema';
+import {
+	user,
+	candidat,
+	cv,
+	offre,
+	candidature,
+	formation,
+	staffFormation
+} from './schema';
 
 const url = process.env.DATABASE_URL;
-if (!url) throw new Error('DATABASE_URL is not set');
+if (!url) {
+	console.error('DATABASE_URL is required');
+	process.exit(1);
+}
 
 const client = postgres(url, { max: 1 });
-const db = drizzle(client);
+const db = drizzle(client, { schema });
 
-await db.insert(formations).values([
-  { code: 'bts_ndrc', name: 'BTS NDRC' },
-  { code: 'tp_ntc', name: 'TP NTC' },
-  { code: 'dev_web_fs', name: 'Dev Web Fullstack' },
-  { code: 'si_cybersec_expert', name: 'Expert en systèmes information et sécurité' },
-  { code: 'bts_gpme', name: 'BTS GPME' },
-  { code: 'cap_aepe', name: 'CAP AEPE' },
-  { code: 'bts_optique', name: 'BTS Opticien Lunettier' }
-]).onConflictDoNothing();
+const auth = betterAuth({
+	database: drizzleAdapter(db, { provider: 'pg', schema }),
+	emailAndPassword: { enabled: true, autoSignIn: false, minPasswordLength: 4 },
+	user: {
+		additionalFields: {
+			role: { type: 'string', required: false, defaultValue: 'candidat' },
+			avatar: { type: 'string', required: false },
+			school: { type: 'string', required: false },
+			company: { type: 'string', required: false }
+		}
+	},
+	secret: process.env.BETTER_AUTH_SECRET ?? 'seed-secret-placeholder'
+});
 
-await db.insert(tests).values([
-  // Frontend — easy
-  { question: 'Que signifie HTML ?', answer: 'HyperText Markup Language', type: 1, difficulty: 1 },
-  { question: 'Quelle balise HTML crée un paragraphe ?', answer: '<p>', type: 1, difficulty: 1 },
-  { question: 'Quelle propriété CSS change la couleur du texte ?', answer: 'color', type: 1, difficulty: 1 },
-  { question: 'À quoi sert le CSS ?', answer: 'À styliser les pages web', type: 1, difficulty: 1 },
-  { question: 'Quel langage est utilisé pour le web interactif ?', answer: 'JavaScript', type: 1, difficulty: 1 },
-  // Frontend — medium
-  { question: "Qu'est-ce que le DOM ?", answer: "La structure arborescente d'une page web", type: 1, difficulty: 2 },
-  { question: 'À quoi sert Flexbox ?', answer: 'À créer des mises en page flexibles', type: 1, difficulty: 2 },
-  { question: 'Quelle est la différence entre class et id ?', answer: "id est unique, class ne l'est pas", type: 1, difficulty: 2 },
-  { question: 'Que fait querySelector ?', answer: 'Sélectionne un élément HTML', type: 1, difficulty: 2 },
-  { question: 'À quoi sert une media query ?', answer: "Adapter le style selon l'écran", type: 1, difficulty: 2 },
-  // Frontend — hard
-  { question: 'Différence entre == et === ?', answer: '=== compare valeur et type', type: 1, difficulty: 3 },
-  { question: "Qu'est-ce que le Virtual DOM ?", answer: 'Une copie optimisée du DOM réel', type: 1, difficulty: 3 },
-  { question: 'Explique le concept de SPA', answer: 'Application web sur une seule page', type: 1, difficulty: 3 },
-  { question: "Qu'est-ce qu'un hook en React ?", answer: "Une fonction pour gérer l'état et le cycle de vie", type: 1, difficulty: 3 },
-  { question: 'À quoi sert le lazy loading ?', answer: 'Charger les ressources à la demande', type: 1, difficulty: 3 },
-  // Backend — easy
-  { question: "Qu'est-ce qu'un serveur ?", answer: 'Une machine qui fournit des services', type: 2, difficulty: 1 },
-  { question: 'Que signifie SQL ?', answer: 'Structured Query Language', type: 2, difficulty: 1 },
-  { question: "Qu'est-ce qu'une base de données ?", answer: 'Un système de stockage de données', type: 2, difficulty: 1 },
-  { question: 'Que signifie CRUD ?', answer: 'Create Read Update Delete', type: 2, difficulty: 1 },
-  { question: 'Quel langage est souvent utilisé côté serveur ?', answer: 'PHP ou NodeJS', type: 2, difficulty: 1 },
-  // Backend — medium
-  { question: "Qu'est-ce qu'une API ?", answer: 'Interface de communication entre applications', type: 2, difficulty: 2 },
-  { question: "Qu'est-ce que REST ?", answer: 'Une architecture basée sur HTTP', type: 2, difficulty: 2 },
-  { question: 'À quoi sert une clé primaire ?', answer: 'Identifier une ligne de façon unique', type: 2, difficulty: 2 },
-  { question: "Qu'est-ce qu'un middleware ?", answer: 'Un intermédiaire entre requête et réponse', type: 2, difficulty: 2 },
-  { question: "Qu'est-ce qu'une requête HTTP GET ?", answer: 'Une requête pour récupérer des données', type: 2, difficulty: 2 },
-  // Backend — hard
-  { question: 'À quoi sert un index en base de données ?', answer: 'Accélérer les recherches', type: 2, difficulty: 3 },
-  { question: 'Différence entre authentification et autorisation ?', answer: 'Identité vs permissions', type: 2, difficulty: 3 },
-  { question: "Qu'est-ce qu'un ORM ?", answer: 'Outil de mapping objet-relationnel', type: 2, difficulty: 3 },
-  { question: "Explique l'architecture MVC", answer: 'Séparation modèle vue contrôleur', type: 2, difficulty: 3 },
-  { question: "Qu'est-ce qu'un webhook ?", answer: 'Un appel automatique via HTTP', type: 2, difficulty: 3 },
-  // Psychotechnical — easy
-  { question: 'Suite logique : 1, 2, 3, 4 ?', answer: '5', type: 3, difficulty: 1 },
-  { question: 'Combien font 5 + 3 ?', answer: '8', type: 3, difficulty: 1 },
-  { question: "Quel est le contraire de grand ?", answer: 'Petit', type: 3, difficulty: 1 },
-  { question: 'Si tous les chiens sont des animaux, le chien est-il un animal ?', answer: 'Oui', type: 3, difficulty: 1 },
-  { question: 'Quelle forme a une roue ?', answer: 'Ronde', type: 3, difficulty: 1 },
-  // Psychotechnical — medium
-  { question: "Quel est l'intrus : Chat, Chien, Pomme, Cheval ?", answer: 'Pomme', type: 3, difficulty: 2 },
-  { question: 'Suite logique : 2, 4, 8, 16 ?', answer: '32', type: 3, difficulty: 2 },
-  { question: 'Paul est plus grand que Marc, Marc plus grand que Luc. Qui est le plus petit ?', answer: 'Luc', type: 3, difficulty: 2 },
-  { question: 'Combien de côtés a un hexagone ?', answer: '6', type: 3, difficulty: 2 },
-  { question: 'Si hier était lundi, quel jour est demain ?', answer: 'Mercredi', type: 3, difficulty: 2 },
-  // Psychotechnical — hard
-  { question: "Un père a 4 fils, chaque fils a une sœur. Combien d'enfants ?", answer: '5', type: 3, difficulty: 3 },
-  { question: 'Angle entre les aiguilles à 3h15 ?', answer: '7,5 degrés', type: 3, difficulty: 3 },
-  { question: 'Suite logique : 1, 1, 2, 3, 5 ?', answer: '8', type: 3, difficulty: 3 },
-  { question: 'Si 5 machines font 5 objets en 5 minutes, combien pour 100 objets ?', answer: '5 minutes', type: 3, difficulty: 3 },
-  { question: 'Complète : A C E G ?', answer: 'I', type: 3, difficulty: 3 }
-]).onConflictDoNothing();
+// ─── Formations ─────────────────────────────────────────────────────────────
 
-console.log('Seeded formations and tests.');
+const FORMATIONS = [
+	{ code: 'BTS NDRC', name: 'BTS Négociation et Digitalisation de la Relation Client' },
+	{ code: 'TP NTC', name: 'TP Négociateur Technico-Commercial' },
+	{ code: 'DWFS', name: 'Développeur Web Full Stack' },
+	{ code: 'ESI', name: "Expert en Systèmes d'Information" },
+	{ code: 'BTS GPME', name: 'BTS Gestion de la PME' },
+	{ code: 'CAP AEPE', name: 'CAP Accompagnant Éducatif Petite Enfance' },
+	{ code: 'BTS OL', name: 'BTS Opticien Lunettier' }
+] as const;
+
+console.log('Seeding formations…');
+const formationsExisting = await db.select().from(formation);
+const formationIdByCode: Record<string, number> = {};
+if (formationsExisting.length === 0) {
+	const inserted = await db.insert(formation).values([...FORMATIONS]).returning();
+	for (const f of inserted) formationIdByCode[f.code] = f.id;
+} else {
+	for (const f of formationsExisting) formationIdByCode[f.code] = f.id;
+}
+
+// ─── Comptes ────────────────────────────────────────────────────────────────
+
+type SeedAccount = {
+	email: string;
+	password: string;
+	name: string;
+	role: 'candidat' | 'cre' | 'recruteur';
+	avatar: string;
+	school?: string;
+	company?: string;
+};
+
+const ACCOUNTS: SeedAccount[] = [
+	{ email: 'lea@student.fr', password: 'demo', name: 'Léa Martin', role: 'candidat', avatar: 'LM', school: 'IPSSI Paris' },
+	{ email: 'thomas@student.fr', password: 'demo', name: 'Thomas Renard', role: 'candidat', avatar: 'TR', school: 'IPSSI Paris' },
+	{ email: 'sara@student.fr', password: 'demo', name: 'Sara Benali', role: 'candidat', avatar: 'SB', school: 'IPSSI Paris' },
+	{ email: 'hugo@student.fr', password: 'demo', name: 'Hugo Petit', role: 'candidat', avatar: 'HP', school: 'IPSSI Paris' },
+	{ email: 'ines@student.fr', password: 'demo', name: 'Inès Caron', role: 'candidat', avatar: 'IC', school: 'IPSSI Paris' },
+	{ email: 'elodie@cloudstudent.fr', password: 'demo', name: 'Élodie Garessus', role: 'cre', avatar: 'EG', school: 'IPSSI Paris' },
+	{ email: 'marie@orange.fr', password: 'demo', name: 'Marie Dupont', role: 'recruteur', avatar: 'MD', company: 'Orange' }
+];
+
+async function ensureUser(a: SeedAccount): Promise<string> {
+	const existing = await db.select().from(user).where(eq(user.email, a.email)).limit(1);
+	if (existing[0]) return existing[0].id;
+
+	await auth.api.signUpEmail({
+		body: {
+			email: a.email,
+			password: a.password,
+			name: a.name,
+			role: a.role,
+			avatar: a.avatar,
+			school: a.school,
+			company: a.company
+		} as never
+	});
+
+	const row = await db.select().from(user).where(eq(user.email, a.email)).limit(1);
+	if (!row[0]) throw new Error(`Failed to create ${a.email}`);
+	return row[0].id;
+}
+
+console.log('Seeding accounts…');
+const ids: Record<string, string> = {};
+for (const a of ACCOUNTS) {
+	ids[a.email] = await ensureUser(a);
+	console.log('  ✓', a.email);
+}
+
+// ─── Staff formations (CRE) ─────────────────────────────────────────────────
+
+console.log('Seeding staff_formation…');
+const creId = ids['elodie@cloudstudent.fr'];
+const staffExisting = await db
+	.select()
+	.from(staffFormation)
+	.where(eq(staffFormation.userId, creId));
+if (!staffExisting.length) {
+	await db.insert(staffFormation).values([
+		{ userId: creId, formationId: formationIdByCode['DWFS'] },
+		{ userId: creId, formationId: formationIdByCode['ESI'] },
+		{ userId: creId, formationId: formationIdByCode['BTS NDRC'] }
+	]);
+}
+
+// ─── Candidats ──────────────────────────────────────────────────────────────
+
+type StudentSeed = {
+	email: string;
+	lname: string;
+	fname: string;
+	tel: string;
+	birth: string;
+	addr: string | null;
+	city: string;
+	postal: string;
+	lat: number;
+	lon: number;
+	formationCode: string;
+	year: number;
+	tags: string[];
+	skills: string[];
+	permis: boolean;
+	vehicule: boolean;
+	mobile: boolean;
+	score: number | null;
+	tosa: number | null;
+	pitch: boolean;
+	statut: 'en_attente' | 'valide' | 'refuse';
+	rechercheStatut: 'active' | 'recherche' | 'entreprise' | 'archive';
+	cvs: string[];
+};
+
+const STUDENT_SEED: StudentSeed[] = [
+	{
+		email: 'lea@student.fr',
+		lname: 'Martin',
+		fname: 'Léa',
+		tel: '0612345678',
+		birth: '2002-04-12',
+		addr: '15 rue de Rivoli',
+		city: 'Paris',
+		postal: '75001',
+		lat: 48.8566,
+		lon: 2.3522,
+		formationCode: 'DWFS',
+		year: 3,
+		tags: ['Eloquence', 'Curieux'],
+		skills: ['JavaScript', 'React', 'Svelte', 'Anglais'],
+		permis: true,
+		vehicule: false,
+		mobile: true,
+		score: null,
+		tosa: 820,
+		pitch: true,
+		statut: 'en_attente',
+		rechercheStatut: 'recherche',
+		cvs: ['CV Alternance', 'CV Stage']
+	},
+	{
+		email: 'thomas@student.fr',
+		lname: 'Renard',
+		fname: 'Thomas',
+		tel: '0623456789',
+		birth: '2000-07-23',
+		addr: '8 quai Saint-Antoine',
+		city: 'Lyon',
+		postal: '69002',
+		lat: 45.7578,
+		lon: 4.832,
+		formationCode: 'ESI',
+		year: 5,
+		tags: ['Déterminé', 'Autonome'],
+		skills: ['Python', 'SQL', 'Node.js', 'Anglais'],
+		permis: true,
+		vehicule: true,
+		mobile: true,
+		score: 71,
+		tosa: 710,
+		pitch: false,
+		statut: 'en_attente',
+		rechercheStatut: 'active',
+		cvs: ['CV Alternance']
+	},
+	{
+		email: 'sara@student.fr',
+		lname: 'Benali',
+		fname: 'Sara',
+		tel: '0634567890',
+		birth: '2003-11-05',
+		addr: '12 rue Lecourbe',
+		city: 'Paris',
+		postal: '75015',
+		lat: 48.842,
+		lon: 2.3043,
+		formationCode: 'DWFS',
+		year: 2,
+		tags: ['Optimiste', 'Curieux'],
+		skills: ['Figma', 'Photoshop', 'Communication'],
+		permis: false,
+		vehicule: false,
+		mobile: false,
+		score: 90,
+		tosa: 870,
+		pitch: true,
+		statut: 'valide',
+		rechercheStatut: 'entreprise',
+		cvs: ['CV CDI', 'CV Stage']
+	},
+	{
+		email: 'hugo@student.fr',
+		lname: 'Petit',
+		fname: 'Hugo',
+		tel: '0645678901',
+		birth: '2001-02-18',
+		addr: '3 rue Nationale',
+		city: 'Lille',
+		postal: '59000',
+		lat: 50.6292,
+		lon: 3.0573,
+		formationCode: 'BTS GPME',
+		year: 2,
+		tags: ['Rigoureux'],
+		skills: ['Excel', 'Communication', 'Gestion de projet'],
+		permis: true,
+		vehicule: true,
+		mobile: false,
+		score: 55,
+		tosa: null,
+		pitch: false,
+		statut: 'refuse',
+		rechercheStatut: 'archive',
+		cvs: ['CV Stage']
+	},
+	{
+		email: 'ines@student.fr',
+		lname: 'Caron',
+		fname: 'Inès',
+		tel: '0656789012',
+		birth: '1999-09-30',
+		addr: '4 cours du Chapeau Rouge',
+		city: 'Bordeaux',
+		postal: '33000',
+		lat: 44.8378,
+		lon: -0.5792,
+		formationCode: 'ESI',
+		year: 5,
+		tags: ['Eloquence', 'Déterminé'],
+		skills: ['Python', 'SQL', 'Anglais', 'Espagnol'],
+		permis: true,
+		vehicule: true,
+		mobile: true,
+		score: 88,
+		tosa: 910,
+		pitch: true,
+		statut: 'valide',
+		rechercheStatut: 'recherche',
+		cvs: ['CV CDI']
+	}
+];
+
+console.log('Seeding candidats…');
+const candidatIds: Record<string, number> = {};
+for (const s of STUDENT_SEED) {
+	const userId = ids[s.email];
+	const existing = await db.select().from(candidat).where(eq(candidat.userId, userId)).limit(1);
+	let row = existing[0];
+	if (!row) {
+		const inserted = await db
+			.insert(candidat)
+			.values({
+				userId,
+				lname: s.lname,
+				fname: s.fname,
+				tel: s.tel,
+				birth: s.birth,
+				addr: s.addr,
+				city: s.city,
+				postal: s.postal,
+				lat: s.lat,
+				lon: s.lon,
+				formationId: formationIdByCode[s.formationCode],
+				year: s.year,
+				tags: s.tags,
+				skills: s.skills,
+				permis: s.permis,
+				vehicule: s.vehicule,
+				mobile: s.mobile,
+				score: s.score,
+				tosa: s.tosa,
+				pitch: s.pitch,
+				statut: s.statut,
+				rechercheStatut: s.rechercheStatut,
+				consent: true,
+				consentedAt: new Date()
+			})
+			.returning();
+		row = inserted[0];
+		for (const name of s.cvs) {
+			await db.insert(cv).values({ candidatId: row.id, name });
+		}
+	}
+	candidatIds[s.email] = row.id;
+	console.log('  ✓', s.email);
+}
+
+// ─── Offres / candidatures ──────────────────────────────────────────────────
+
+const OFFRES_SEED = [
+	{ titre: 'Dev React - Stage', entreprise: 'Thales', lieu: 'Paris', type: 'Stage', date: '2026-05-01' },
+	{ titre: 'Data Analyst - Alternance', entreprise: 'Orange', lieu: 'Lyon', type: 'Alternance', date: '2026-06-15' },
+	{ titre: 'UX Designer - CDI', entreprise: 'BNP', lieu: 'Bordeaux', type: 'CDI', date: '2026-04-20' }
+];
+
+console.log('Seeding offres…');
+const offresExisting = await db.select().from(offre);
+const offresById: Record<string, number> = {};
+if (offresExisting.length === 0) {
+	const inserted = await db.insert(offre).values(OFFRES_SEED).returning();
+	for (const o of inserted) offresById[o.titre] = o.id;
+} else {
+	for (const o of offresExisting) offresById[o.titre] = o.id;
+}
+
+console.log('Seeding candidatures…');
+const candidaturesExisting = await db.select().from(candidature);
+if (candidaturesExisting.length === 0) {
+	const leaId = candidatIds['lea@student.fr'];
+	await db.insert(candidature).values([
+		{ candidatId: leaId, offreId: offresById['Dev React - Stage'], statut: 'entretien' },
+		{ candidatId: leaId, offreId: offresById['Data Analyst - Alternance'], statut: 'envoyee' }
+	]);
+}
+
+console.log('Done.');
 await client.end();

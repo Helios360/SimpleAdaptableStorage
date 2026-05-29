@@ -1,146 +1,111 @@
-# Simple Adaptable Storage
+# CloudStudent
 
-A lightweight, self-hosted platform for managing candidate / student profiles in a training organization — registration, document storage (CV, ID), filterable search, and AI-graded skill tests.
+Plateforme de qualification et placement en alternance. Trois rôles — **Candidat**, **CRE / École**, **Recruteur** — chacun avec son tableau de bord et ses outils.
 
 ## Stack
 
-| Layer       | Tech                                           |
-| ----------- | ---------------------------------------------- |
-| Runtime     | [Bun](https://bun.com) 1.3                     |
-| Framework   | [SvelteKit](https://svelte.dev) 2 + Svelte 5   |
-| Build       | Vite 6                                         |
-| Styling     | Tailwind CSS 4                                 |
-| Auth        | [Better Auth](https://better-auth.com) (cookies, email verification, password reset) |
-| Database    | PostgreSQL 17 via [Drizzle ORM](https://orm.drizzle.team) |
-| AI grading  | OpenAI Responses API (`gpt-4o-mini`) — optional, falls back to a deterministic heuristic |
+- **SvelteKit** (Svelte 5 runes) + **Bun**
+- **PostgreSQL** + **Drizzle ORM**
+- **better-auth** (email/password)
+- Pas de Tailwind ni d'UI lib : CSS scoped + design tokens en variables CSS
 
-## Quick start (Docker)
+## Quickstart
+
+Prérequis : Docker, Bun.
 
 ```bash
 cp .env.example .env
-# edit .env: set POSTGRES_PASSWORD, BETTER_AUTH_SECRET (>= 32 chars), SMTP_*, OPENAI_API_KEY
-docker compose up -d --build
-docker compose exec app bun run db:seed   # one-time: insert formations + sample tests
-```
+# (édite BETTER_AUTH_SECRET pour de la prod)
 
-App runs at [http://localhost:3000](http://localhost:3000).
-
-## Local development
-
-```bash
+docker compose up -d postgres
 bun install
-# Start a Postgres locally (any way you like). Example with Docker:
-docker run --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=sas -e POSTGRES_USER=app --name sas-pg postgres:17-alpine
-
-cp .env.example .env
 bun run db:migrate
 bun run db:seed
 bun run dev
 ```
 
-## Project layout
+L'app tourne sur [http://localhost:3000](http://localhost:3000).
+
+Pour tout déployer derrière Docker :
+
+```bash
+docker compose up --build
+```
+
+## Comptes de démo
+
+Mot de passe : `demo` pour tous.
+
+| Rôle      | Email                      |
+| --------- | -------------------------- |
+| Candidat  | `lea@student.fr`           |
+| Candidat  | `thomas@student.fr`        |
+| Candidat  | `sara@student.fr`          |
+| Candidat  | `hugo@student.fr`          |
+| Candidat  | `ines@student.fr`          |
+| CRE       | `elodie@cloudstudent.fr`   |
+| Recruteur | `marie@orange.fr`          |
+
+La landing page propose un bouton "pré-remplir les identifiants démo" pour chaque rôle.
+
+## Structure
 
 ```
 src/
-├── app.html / app.css / app.d.ts
-├── hooks.server.ts          # session resolution + BetterAuth wiring
+├── app.css                  # design tokens + reset global
+├── hooks.server.ts          # better-auth handler + session → locals
 ├── lib/
-│   ├── auth-client.ts       # Svelte client for sign-in / sign-up
-│   ├── components/          # Header, Footer, Field, TagInput, ChipGroup, FileSlot, Alert
-│   └── server/
-│       ├── auth.ts          # BetterAuth instance (email/password + verification + reset)
-│       ├── db/              # Drizzle: schema, client, migrations, seed
-│       ├── mailer.ts        # nodemailer (SMTP) with dev fallback to console
-│       ├── uploads.ts       # File validation, storage, safe path resolution
-│       ├── watermark.ts     # PDF watermarking via pdf-lib
-│       ├── geocode.ts       # French city → (lon, lat) via geo.api.gouv.fr
-│       ├── grader.ts        # OpenAI test grader + heuristic fallback
-│       └── guards.ts        # requireUser / requireAdmin
+│   ├── components/          # Button, Card, Modal, Sidebar, ...
+│   ├── data/                # nav items, templates de messages
+│   ├── server/
+│   │   ├── auth.ts          # better-auth (lazy init)
+│   │   ├── db/
+│   │   │   ├── schema.ts    # tables Drizzle
+│   │   │   ├── migrate.ts   # bun-script de migration
+│   │   │   └── seed.ts      # comptes + données démo
+│   │   ├── guards.ts        # requireRole(), loadCandidatForUser()
+│   │   └── queries.ts       # jointures partagées CRE/Recruteur
+│   ├── stores/              # toast + viewport (Svelte 5 .svelte.ts)
+│   ├── tokens.ts            # mirror JS des tokens CSS
+│   └── utils.ts
 └── routes/
-    ├── +layout.{svelte,server.ts}
-    ├── +page.svelte                  # landing
-    ├── signin/                       # /signin
-    ├── register/                     # /register (uses /api/register for multipart)
-    ├── reset-password/               # /reset-password (request + confirm)
-    ├── legal/                        # /legal
-    ├── profile/                      # /profile (candidate self-service)
-    ├── admin-panel/
-    │   ├── +page.{svelte,server.ts}  # filterable candidate list
-    │   └── u/[id]/                   # single candidate edit
-    ├── test/                         # skills assessment
-    └── api/
-        ├── auth/[...all]/            # BetterAuth handler
-        ├── register/                 # multipart sign-up + uploads + geocode
-        ├── files/[kind]/             # candidate: upload/delete own files
-        ├── me/files/[kind]/          # candidate: read own files
-        ├── admin/
-        │   ├── search/               # admin candidate search (paginated)
-        │   ├── update-status/
-        │   └── files/[id]/[kind]/    # admin: read/write any candidate's files
-        └── test/{next,response}/     # serve question / score answer
+    ├── +page.svelte         # landing (choix du rôle)
+    ├── login/[role]/        # login (avec démo 1-clic)
+    ├── logout/              # action POST signOut
+    ├── candidat/            # dashboard, cvs, pitch, tests, offres, candidatures, tosa
+    ├── cre/                 # dashboard, étudiants, cvthèque, tests, envoi, messages, fiches
+    └── recruteur/           # cvthèque, retenus, offres
 ```
 
-## Database schema
-
-| Table             | Purpose                                                            |
-| ----------------- | ------------------------------------------------------------------ |
-| `formations`      | Training programs                                                  |
-| `user_profiles`   | Domain data per user (1-1 with `user`, FK to formation)            |
-| `staff_settings`  | Maps admin user → formation(s) they can see                        |
-| `tests`           | Question bank (type: 1 front, 2 back, 3 psycho × difficulty 1-3)   |
-| `test_attempts`   | Candidate answers + AI score                                       |
-| `user`, `session`, `account`, `verification` | BetterAuth core tables          |
-
-Migration files live under `src/lib/server/db/migrations/`. Regenerate with `bun run db:generate` after editing `schema.ts`.
-
-## Routes
-
-| Path                | Access | Description                              |
-| ------------------- | ------ | ---------------------------------------- |
-| `/`                 | Public | Landing                                  |
-| `/register`         | Public | Candidate sign-up (multipart, with CV / ID upload, French geocoding) |
-| `/signin`           | Public | Login                                    |
-| `/reset-password`   | Public | Request and confirm password reset       |
-| `/legal`            | Public | Legal notices                            |
-| `/profile`          | Auth   | Self-service profile edit + documents    |
-| `/test`             | Auth   | Skills assessment, AI-graded             |
-| `/admin-panel`      | Admin  | Filterable candidate list                |
-| `/admin-panel/u/:id`| Admin  | Single candidate page                    |
-
-## Promoting an admin
-
-There's no UI yet — flip the flag directly:
-
-```sql
-UPDATE user_profiles SET is_admin = true WHERE user_id = '<id>';
-INSERT INTO staff_settings (staff_user_id, formation_id) VALUES ('<id>', <formation_id>);
-```
-
-Admins only see candidates from formations they're mapped to via `staff_settings`.
-
-## File storage
-
-Uploaded files go under `UPLOADS_DIR` (defaults to `./uploads`), one folder per user (`u_<userId>/`). PDFs uploaded as CV are automatically watermarked using `static/watermark.png` if present.
-
-## AI grading
-
-`OPENAI_API_KEY` enables strict 0–100 grading via the Responses API with a JSON schema. Without a key, [`src/lib/server/grader.ts`](src/lib/server/grader.ts) falls back to a deterministic keyword-overlap heuristic — the test flow still works end-to-end in dev.
+Chaque layout de rôle gate l'accès via `requireRole()` — un mauvais rôle est redirigé vers son propre dashboard.
 
 ## Scripts
 
-```
-bun run dev          # vite dev server
-bun run build        # production build
-bun run start        # serve the built app
-bun run check        # svelte-check
-bun run db:generate  # drizzle-kit generate (after editing schema.ts)
-bun run db:migrate   # apply migrations
-bun run db:seed      # insert formations + sample tests
+```bash
+bun run dev          # serveur dev Vite
+bun run build        # build production (SvelteKit + adapter-node)
+bun run start        # lance le build (node ./build)
+bun run check        # svelte-check + typecheck
+bun run db:generate  # génère une nouvelle migration depuis schema.ts
+bun run db:migrate   # applique les migrations
+bun run db:push      # push direct du schema (dev)
+bun run db:seed      # seed des comptes et données démo (idempotent)
+bun run db:studio    # Drizzle Studio (UI web)
 ```
 
-## Security notes
+## Variables d'environnement
 
-- Sessions are HTTP-only cookies, 7-day expiry, signed by `BETTER_AUTH_SECRET` (must be ≥ 32 chars).
-- File uploads are size-capped (`MAX_UPLOAD_BYTES`), MIME- and extension-checked, and stored outside the public tree.
-- File serving validates ownership in both candidate and admin endpoints (no path traversal — see `toAbsFromStored`).
-- The admin search uses parameterized SQL (Drizzle) and an explicit `staff_settings` scope — admins cannot see candidates outside their assigned formations.
+Voir `.env.example`. Les clés importantes :
+
+- `DATABASE_URL` — connexion Postgres (lue par l'app et par drizzle-kit)
+- `BETTER_AUTH_SECRET` — secret pour signer les sessions (32+ caractères en prod)
+- `BETTER_AUTH_URL` — base URL utilisée par better-auth pour les callbacks
+- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` — utilisés par `docker-compose.yml`
+
+## Notes techniques
+
+- **Initialisation paresseuse** de la DB et de better-auth (Proxy dans `src/lib/server/db/index.ts` et `auth.ts`) pour que le build n'exige pas de `DATABASE_URL` / `BETTER_AUTH_SECRET`.
+- **Mutations** : majoritairement via SvelteKit form actions (`?/add`, `?/setStatut`, ...). Les confirmations modales utilisent un `fetch + invalidateAll()` pour rester compatibles avec le composant `Confirm`.
+- **Min password** abaissé à 4 caractères dans la config better-auth, uniquement pour que le mot de passe `demo` fonctionne.
+- **Auto-login** activé sur la création de compte (`autoSignIn: true`).
+- Le test IA candidat est volontairement un mock à 3 questions (comme dans le prototype d'origine). Seul le score final est persisté.

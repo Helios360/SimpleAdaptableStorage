@@ -1,4 +1,0 @@
-continue.continue
-jeanp413.open-remote-ssh
-esbenp.prettier-vscode
-yandeu.five-server

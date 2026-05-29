@@ -2,10 +2,11 @@ node_modules
 .svelte-kit
 build
 .git
-old
-uploads
-data
-*.log
 .env
 .env.*
 !.env.example
+data
+uploads
+*.log
+.DS_Store
+.vscode

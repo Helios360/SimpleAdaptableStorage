@@ -1,28 +1,18 @@
-import type { auth } from '$server/auth';
+import type { Session, User } from '$lib/server/auth';
 
 declare global {
-  namespace App {
-    interface Locals {
-      session: typeof auth.$Infer.Session.session | null;
-      user: AppUser | null;
-    }
-    interface PageData {
-      user: AppUser | null;
-    }
-    interface Error {
-      message: string;
-    }
-    interface Platform {}
-  }
-
-  type AppUser = {
-    id: string;
-    email: string;
-    name: string;
-    isAdmin: boolean;
-    emailVerified: boolean;
-    formationId: number | null;
-  };
+	namespace App {
+		// interface Error {}
+		interface Locals {
+			user: User | null;
+			session: Session | null;
+		}
+		interface PageData {
+			user: User | null;
+		}
+		// interface PageState {}
+		// interface Platform {}
+	}
 }
 
 export {};

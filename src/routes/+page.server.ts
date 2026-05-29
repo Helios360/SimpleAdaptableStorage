@@ -2,8 +2,8 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  if (locals.user) {
-    throw redirect(303, locals.user.isAdmin ? '/admin-panel' : '/profile');
-  }
-  return {};
+	if (locals.user) {
+		const role = (locals.user as { role?: string }).role ?? 'candidat';
+		throw redirect(303, `/${role}`);
+	}
 };

@@ -1,0 +1,448 @@
+/**
+ * Cross-page query helpers. listCandidats() keeps the simple shape for
+ * detail modals; searchCandidats() backs the rich CRE listing (chips,
+ * pagination, haversine radius, JSON tags/skills…).
+ */
+import { and, asc, desc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
+import { db } from './db';
+import { candidat, user, cv, formation, staffFormation } from './db/schema';
+import { geocode } from './geocode';
+
+export interface CvRef {
+	id: number;
+	name: string;
+	size: number | null;
+	mime: string | null;
+	hasFile: boolean;
+}
+
+export interface CandidatRow {
+	id: number;
+	userId: string;
+	name: string; // "LNAME Fname" pour rester compatible avec le composant Detail
+	lname: string;
+	fname: string;
+	email: string;
+	tel: string | null;
+	birth: string | null;
+	age: number | null;
+	formation: string;
+	formationCode: string | null;
+	formationId: number | null;
+	year: number | null;
+	addr: string | null;
+	city: string;
+	postal: string | null;
+	lat: number | null;
+	lon: number | null;
+	tags: string[];
+	skills: string[];
+	permis: boolean;
+	vehicule: boolean;
+	mobile: boolean;
+	score: number | null;
+	tosa: number | null;
+	pitch: boolean;
+	statut: string;
+	rechercheStatut: string;
+	createdAt: string;
+	cvs: CvRef[];
+	hasCvDoc: boolean;
+	hasIdRecto: boolean;
+	hasIdVerso: boolean;
+	titreValide: string | null;
+	distanceKm?: number;
+}
+
+function ageFromBirth(birth: string | null): number | null {
+	if (!birth) return null;
+	const d = new Date(birth);
+	if (Number.isNaN(d.getTime())) return null;
+	const now = new Date();
+	let age = now.getFullYear() - d.getFullYear();
+	const m = now.getMonth() - d.getMonth();
+	if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+	return age;
+}
+
+function fullName(lname: string, fname: string): string {
+	return `${lname.toUpperCase()} ${fname}`.trim();
+}
+
+async function attachCvs<T extends { id: number }>(rows: T[]): Promise<Record<number, CvRef[]>> {
+	if (!rows.length) return {};
+	const ids = rows.map((r) => r.id);
+	const cvRows = await db
+		.select({
+			id: cv.id,
+			candidatId: cv.candidatId,
+			name: cv.name,
+			size: cv.size,
+			mime: cv.mime,
+			path: cv.path
+		})
+		.from(cv)
+		.where(inArray(cv.candidatId, ids));
+	const bucket: Record<number, CvRef[]> = {};
+	for (const c of cvRows) {
+		(bucket[c.candidatId] ??= []).push({
+			id: c.id,
+			name: c.name,
+			size: c.size,
+			mime: c.mime,
+			hasFile: !!c.path
+		});
+	}
+	return bucket;
+}
+
+const BASE_COLS = {
+	id: candidat.id,
+	userId: candidat.userId,
+	lname: candidat.lname,
+	fname: candidat.fname,
+	tel: candidat.tel,
+	birth: candidat.birth,
+	addr: candidat.addr,
+	city: candidat.city,
+	postal: candidat.postal,
+	lat: candidat.lat,
+	lon: candidat.lon,
+	formationId: candidat.formationId,
+	year: candidat.year,
+	tags: candidat.tags,
+	skills: candidat.skills,
+	permis: candidat.permis,
+	vehicule: candidat.vehicule,
+	mobile: candidat.mobile,
+	score: candidat.score,
+	tosa: candidat.tosa,
+	pitch: candidat.pitch,
+	statut: candidat.statut,
+	rechercheStatut: candidat.rechercheStatut,
+	createdAt: candidat.createdAt,
+	cvPath: candidat.cvPath,
+	idDocPath: candidat.idDocPath,
+	idDocVersoPath: candidat.idDocVersoPath,
+	titreValide: candidat.titreValide,
+	email: user.email,
+	formationCode: formation.code,
+	formationName: formation.name
+} as const;
+
+type BaseRow = {
+	id: number;
+	userId: string;
+	lname: string;
+	fname: string;
+	tel: string | null;
+	birth: string | null;
+	addr: string | null;
+	city: string;
+	postal: string | null;
+	lat: number | null;
+	lon: number | null;
+	formationId: number | null;
+	year: number | null;
+	tags: string[];
+	skills: string[];
+	permis: boolean;
+	vehicule: boolean;
+	mobile: boolean;
+	score: number | null;
+	tosa: number | null;
+	pitch: boolean;
+	statut: string;
+	rechercheStatut: string;
+	createdAt: Date;
+	cvPath: string | null;
+	idDocPath: string | null;
+	idDocVersoPath: string | null;
+	titreValide: string | null;
+	email: string;
+	formationCode: string | null;
+	formationName: string | null;
+	distanceKm?: number;
+};
+
+function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
+	return {
+		id: r.id,
+		userId: r.userId,
+		name: fullName(r.lname, r.fname),
+		lname: r.lname,
+		fname: r.fname,
+		email: r.email,
+		tel: r.tel,
+		birth: r.birth,
+		age: ageFromBirth(r.birth),
+		formation: r.formationName ?? '',
+		formationCode: r.formationCode,
+		formationId: r.formationId,
+		year: r.year,
+		addr: r.addr,
+		city: r.city,
+		postal: r.postal,
+		lat: r.lat,
+		lon: r.lon,
+		tags: r.tags ?? [],
+		skills: r.skills ?? [],
+		permis: r.permis,
+		vehicule: r.vehicule,
+		mobile: r.mobile,
+		score: r.score,
+		tosa: r.tosa,
+		pitch: r.pitch,
+		statut: r.statut,
+		rechercheStatut: r.rechercheStatut,
+		createdAt: r.createdAt.toISOString(),
+		cvs,
+		hasCvDoc: !!r.cvPath,
+		hasIdRecto: !!r.idDocPath,
+		hasIdVerso: !!r.idDocVersoPath,
+		titreValide: r.titreValide,
+		distanceKm: r.distanceKm
+	};
+}
+
+export async function listCandidats(): Promise<CandidatRow[]> {
+	const base = (await db
+		.select(BASE_COLS)
+		.from(candidat)
+		.innerJoin(user, eq(candidat.userId, user.id))
+		.leftJoin(formation, eq(candidat.formationId, formation.id))) as BaseRow[];
+	const cvsBy = await attachCvs(base);
+	return base.map((r) => toRow(r, cvsBy[r.id] ?? []));
+}
+
+export async function listValidatedCandidats(): Promise<CandidatRow[]> {
+	const all = await listCandidats();
+	return all.filter((c) => c.statut === 'valide');
+}
+
+export async function getCandidatRowForUser(userId: string): Promise<CandidatRow | null> {
+	const base = (await db
+		.select(BASE_COLS)
+		.from(candidat)
+		.innerJoin(user, eq(candidat.userId, user.id))
+		.leftJoin(formation, eq(candidat.formationId, formation.id))
+		.where(eq(candidat.userId, userId))
+		.limit(1)) as BaseRow[];
+	if (!base.length) return null;
+	const cvsBy = await attachCvs(base);
+	return toRow(base[0], cvsBy[base[0].id] ?? []);
+}
+
+export interface SearchFilters {
+	q?: string;
+	statut?: string[]; // workflow CRE
+	rechercheStatut?: string[];
+	year?: number[];
+	formationId?: number[];
+	place?: string;
+	radiusKm?: number;
+	postal?: string;
+	age?: number | null;
+	trancheAge?: string; // "18-20" etc.
+	permis?: boolean;
+	vehicule?: boolean;
+	mobile?: boolean;
+	tags?: string[];
+	skills?: string[];
+}
+
+export type SortKey = 'name' | 'score' | 'city' | 'statut' | 'createdAt';
+
+export interface SearchOptions {
+	page?: number;
+	pageSize?: number;
+	sortBy?: SortKey;
+	sortDir?: 'asc' | 'desc';
+}
+
+export interface SearchResult {
+	rows: CandidatRow[];
+	page: number;
+	pageSize: number;
+	total: number;
+	totalPages: number;
+}
+
+const PAGE_SIZE_DEFAULT = 10;
+
+export async function searchCandidats(
+	filters: SearchFilters = {},
+	opts: SearchOptions = {}
+): Promise<SearchResult> {
+	const page = Math.max(1, opts.page ?? 1);
+	const pageSize = Math.min(50, Math.max(1, opts.pageSize ?? PAGE_SIZE_DEFAULT));
+	const sortBy = opts.sortBy ?? 'createdAt';
+	const sortDir = opts.sortDir ?? 'desc';
+
+	const conds: SQL[] = [];
+
+	if (filters.q?.trim()) {
+		const needle = `%${filters.q.trim()}%`;
+		conds.push(sql`(${candidat.lname} ILIKE ${needle} OR ${candidat.fname} ILIKE ${needle})`);
+	}
+	if (filters.statut?.length) conds.push(inArray(candidat.statut, filters.statut));
+	if (filters.rechercheStatut?.length)
+		conds.push(inArray(candidat.rechercheStatut, filters.rechercheStatut));
+	if (filters.year?.length) conds.push(inArray(candidat.year, filters.year));
+	if (filters.formationId?.length) conds.push(inArray(candidat.formationId, filters.formationId));
+	if (filters.postal?.trim()) conds.push(eq(candidat.postal, filters.postal.trim()));
+
+	// tranche d'âge — convertit en bornes sur birth date
+	const today = new Date();
+	const todayISO = today.toISOString().slice(0, 10);
+	function birthBoundForAge(age: number): string {
+		const d = new Date(today.getFullYear() - age, today.getMonth(), today.getDate());
+		return d.toISOString().slice(0, 10);
+	}
+	if (filters.age != null && Number.isFinite(filters.age)) {
+		const min = birthBoundForAge(filters.age + 1);
+		const max = birthBoundForAge(filters.age);
+		conds.push(sql`${candidat.birth} > ${min}::date AND ${candidat.birth} <= ${max}::date`);
+	} else if (filters.trancheAge && /^\d+-\d+$/.test(filters.trancheAge)) {
+		const [lo, hi] = filters.trancheAge.split('-').map(Number);
+		const minBirth = birthBoundForAge(hi + 1);
+		const maxBirth = birthBoundForAge(lo);
+		conds.push(
+			sql`${candidat.birth} > ${minBirth}::date AND ${candidat.birth} <= ${maxBirth}::date AND ${candidat.birth} <= ${todayISO}::date`
+		);
+	}
+
+	if (filters.permis) conds.push(eq(candidat.permis, true));
+	if (filters.vehicule) conds.push(eq(candidat.vehicule, true));
+	if (filters.mobile) conds.push(eq(candidat.mobile, true));
+
+	// tags / skills : tableau JSON contient TOUS les libellés demandés (?& opérateur).
+	// Drizzle ne peut pas binder un tableau en un seul param text[] sans un cast
+	// explicite côté SQL, d'où le ARRAY[…]::text[] construit avec sql.join.
+	const arrayParam = (vals: string[]) =>
+		sql`ARRAY[${sql.join(
+			vals.map((v) => sql`${v}`),
+			sql`, `
+		)}]::text[]`;
+	if (filters.tags?.length) {
+		conds.push(sql`${candidat.tags} ?& ${arrayParam(filters.tags)}`);
+	}
+	if (filters.skills?.length) {
+		conds.push(sql`${candidat.skills} ?& ${arrayParam(filters.skills)}`);
+	}
+
+	// Haversine — calculé seulement si on a un point de référence
+	let distanceExpr: SQL<number> | null = null;
+	if (filters.place?.trim() && filters.radiusKm && filters.radiusKm > 0) {
+		const point = await geocode(filters.place, filters.postal);
+		if (point) {
+			distanceExpr = sql<number>`(
+				6371 * acos(
+					least(1.0, greatest(-1.0,
+						cos(radians(${point.lat})) * cos(radians(${candidat.lat}))
+						* cos(radians(${candidat.lon}) - radians(${point.lon}))
+						+ sin(radians(${point.lat})) * sin(radians(${candidat.lat}))
+					))
+				)
+			)`;
+			conds.push(sql`${candidat.lat} IS NOT NULL AND ${candidat.lon} IS NOT NULL`);
+			conds.push(sql`${distanceExpr} <= ${filters.radiusKm}`);
+		}
+	}
+
+	const where = conds.length ? and(...conds) : undefined;
+
+	const sortCols = {
+		name: candidat.lname,
+		score: candidat.score,
+		city: candidat.city,
+		statut: candidat.statut,
+		createdAt: candidat.createdAt
+	} as const;
+	const sortCol = sortCols[sortBy] ?? candidat.createdAt;
+	const orderBy = sortDir === 'asc' ? asc(sortCol) : desc(sortCol);
+
+	const selectCols = distanceExpr
+		? { ...BASE_COLS, distanceKm: distanceExpr }
+		: BASE_COLS;
+
+	const totalRow = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(candidat)
+		.innerJoin(user, eq(candidat.userId, user.id))
+		.leftJoin(formation, eq(candidat.formationId, formation.id))
+		.where(where);
+	const total = totalRow[0]?.count ?? 0;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+	const base = (await db
+		.select(selectCols)
+		.from(candidat)
+		.innerJoin(user, eq(candidat.userId, user.id))
+		.leftJoin(formation, eq(candidat.formationId, formation.id))
+		.where(where)
+		.orderBy(orderBy)
+		.limit(pageSize)
+		.offset((page - 1) * pageSize)) as BaseRow[];
+
+	const cvsBy = await attachCvs(base);
+	const rows = base.map((r) => toRow(r, cvsBy[r.id] ?? []));
+	return { rows, page, pageSize, total, totalPages };
+}
+
+export async function listFormations() {
+	return db.select().from(formation).orderBy(asc(formation.id));
+}
+
+export async function listStaffFormations(userId: string): Promise<number[]> {
+	const rows = await db
+		.select({ id: staffFormation.formationId })
+		.from(staffFormation)
+		.where(eq(staffFormation.userId, userId));
+	return rows.map((r) => r.id);
+}
+
+// Catalogue de tags / compétences proposé à la recherche (datalist).
+// Garde le minimum côté code, le reste viendra naturellement des candidats.
+export const DEFAULT_TAGS = ['Eloquence', 'Optimiste', 'Curieux', 'Déterminé', 'Autonome', 'Rigoureux'];
+
+export const DEFAULT_SKILLS = [
+	'JavaScript',
+	'TypeScript',
+	'React',
+	'Svelte',
+	'Node.js',
+	'Python',
+	'SQL',
+	'Figma',
+	'Photoshop',
+	'Anglais',
+	'Espagnol',
+	'Excel',
+	'PowerPoint',
+	'Communication',
+	'Gestion de projet'
+];
+
+// Mapping skill → famille pour colorer les puces.
+export const SKILL_TYPES: Record<string, 'dev' | 'design' | 'lang' | 'office' | 'soft'> = {
+	JavaScript: 'dev',
+	TypeScript: 'dev',
+	React: 'dev',
+	Svelte: 'dev',
+	'Node.js': 'dev',
+	Python: 'dev',
+	SQL: 'dev',
+	Figma: 'design',
+	Photoshop: 'design',
+	Anglais: 'lang',
+	Espagnol: 'lang',
+	Excel: 'office',
+	PowerPoint: 'office',
+	Communication: 'soft',
+	'Gestion de projet': 'soft'
+};
+
+export function getSkillType(skill: string): 'dev' | 'design' | 'lang' | 'office' | 'soft' {
+	return SKILL_TYPES[skill] ?? 'soft';
+}

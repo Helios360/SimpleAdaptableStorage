@@ -1,13 +1,8 @@
 <script lang="ts">
-  import '../app.css';
-  import Header from '$components/Header.svelte';
-  import Footer from '$components/Footer.svelte';
-
-  let { children } = $props();
+	import '../app.css';
+	import Toasts from '$lib/components/Toasts.svelte';
+	let { children } = $props();
 </script>
 
-<Header />
-<main>
-  {@render children?.()}
-</main>
-<Footer />
+{#if children}{@render children()}{/if}
+<Toasts />
