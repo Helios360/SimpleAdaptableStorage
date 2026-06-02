@@ -16,7 +16,8 @@ function kindOf(s: string): FileKind {
 const COLUMN = {
   cv: userProfiles.cv,
   id_doc: userProfiles.idDoc,
-  id_doc_verso: userProfiles.idDocVerso
+  id_doc_verso: userProfiles.idDocVerso,
+  video: userProfiles.video
 } as const;
 
 export const POST: RequestHandler = async (event) => {
@@ -65,6 +66,9 @@ export const DELETE: RequestHandler = async (event) => {
   return json({ success: true });
 };
 
-function kindToColumnKey(k: FileKind): 'cv' | 'idDoc' | 'idDocVerso' {
-  return k === 'cv' ? 'cv' : k === 'id_doc' ? 'idDoc' : 'idDocVerso';
+function kindToColumnKey(k: FileKind): 'cv' | 'idDoc' | 'idDocVerso' | 'video' {
+  if (k === 'cv') return 'cv';
+  if (k === 'id_doc') return 'idDoc';
+  if (k === 'id_doc_verso') return 'idDocVerso';
+  return 'video';
 }

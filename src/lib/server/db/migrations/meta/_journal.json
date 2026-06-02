@@ -8,6 +8,13 @@
       "when": 1779972151654,
       "tag": "0000_curvy_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780386926616,
+      "tag": "0001_add_user_video",
+      "breakpoints": true
     }
   ]
 }

@@ -91,6 +91,7 @@
       <FileSlot label="CV" kind="cv" stored={p.cv} endpoint={`/api/admin/files/${p.userId}/cv`} />
       <FileSlot label="Pièce d'identité (recto)" kind="id_doc" stored={p.idDoc} endpoint={`/api/admin/files/${p.userId}/id_doc`} />
       <FileSlot label="Pièce d'identité (verso)" kind="id_doc_verso" stored={p.idDocVerso} endpoint={`/api/admin/files/${p.userId}/id_doc_verso`} />
+      <FileSlot label="Vidéo de présentation" kind="video" stored={p.video} endpoint={`/api/admin/files/${p.userId}/video`} />
     </div>
   </div>
 </div>

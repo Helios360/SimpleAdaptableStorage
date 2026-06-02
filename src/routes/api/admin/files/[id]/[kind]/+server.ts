@@ -19,7 +19,8 @@ import type { RequestHandler } from './$types';
 const COLUMN = {
   cv: userProfiles.cv,
   id_doc: userProfiles.idDoc,
-  id_doc_verso: userProfiles.idDocVerso
+  id_doc_verso: userProfiles.idDocVerso,
+  video: userProfiles.video
 } as const;
 
 function kindOf(s: string): FileKind {
@@ -27,8 +28,11 @@ function kindOf(s: string): FileKind {
   return s as FileKind;
 }
 
-function colKey(k: FileKind): 'cv' | 'idDoc' | 'idDocVerso' {
-  return k === 'cv' ? 'cv' : k === 'id_doc' ? 'idDoc' : 'idDocVerso';
+function colKey(k: FileKind): 'cv' | 'idDoc' | 'idDocVerso' | 'video' {
+  if (k === 'cv') return 'cv';
+  if (k === 'id_doc') return 'idDoc';
+  if (k === 'id_doc_verso') return 'idDocVerso';
+  return 'video';
 }
 
 export const GET: RequestHandler = async (event) => {

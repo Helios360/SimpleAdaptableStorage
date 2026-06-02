@@ -51,6 +51,7 @@ export const userProfiles = pgTable(
     cv: varchar('cv', { length: 254 }),
     idDoc: varchar('id_doc', { length: 254 }),
     idDocVerso: varchar('id_doc_verso', { length: 254 }),
+    video: varchar('video', { length: 254 }),
     titreValide: date('titre_valide'),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     skills: jsonb('skills').$type<string[]>().notNull().default([]),

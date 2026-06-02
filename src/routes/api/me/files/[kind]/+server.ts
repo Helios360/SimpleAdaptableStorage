@@ -10,7 +10,8 @@ import type { RequestHandler } from './$types';
 const COLUMN = {
   cv: userProfiles.cv,
   id_doc: userProfiles.idDoc,
-  id_doc_verso: userProfiles.idDocVerso
+  id_doc_verso: userProfiles.idDocVerso,
+  video: userProfiles.video
 } as const;
 
 export const GET: RequestHandler = async (event) => {

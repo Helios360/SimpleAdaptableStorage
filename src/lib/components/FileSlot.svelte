@@ -3,12 +3,20 @@
 
   type Props = {
     label: string;
-    kind: 'cv' | 'id_doc' | 'id_doc_verso';
+    kind: 'cv' | 'id_doc' | 'id_doc_verso' | 'video';
     stored: string | null;
     /** Upload URL — POST multipart with `file`; DELETE removes. */
     endpoint?: string;
   };
   let { label, kind, stored, endpoint = `/api/files/${kind}` }: Props = $props();
+  const isVideo = $derived(kind === 'video');
+  const accept = $derived(
+    kind === 'video'
+      ? 'video/mp4,video/webm,video/quicktime,video/x-m4v'
+      : kind === 'cv'
+        ? 'application/pdf'
+        : '.pdf,image/jpeg,image/png'
+  );
   let busy = $state(false);
   let error = $state('');
 
@@ -58,12 +66,17 @@
   </div>
 
   {#if viewUrl}
-    <iframe src={viewUrl} title={label}></iframe>
+    {#if isVideo}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video src={viewUrl} controls preload="metadata"></video>
+    {:else}
+      <iframe src={viewUrl} title={label}></iframe>
+    {/if}
   {/if}
 
   <div class="row">
     <label class="file-upload-btn">
-      <input class="hidden-file" type="file" accept=".pdf,image/jpeg,image/png" onchange={upload} disabled={busy} />
+      <input class="hidden-file" type="file" {accept} onchange={upload} disabled={busy} />
       {stored ? 'Remplacer' : 'Téléverser'}
     </label>
     {#if stored}
@@ -77,6 +90,7 @@
 <style>
   /* The component's iframe should match the original CSS profile.css iframe rule */
   iframe { width: 100%; min-height: 320px; border-radius: 8px; border: 2px solid var(--secondary); margin-top: 0.5rem; }
+  video { width: 100%; max-height: 480px; border-radius: 8px; border: 2px solid var(--secondary); margin-top: 0.5rem; background: black; }
   .hidden-file { display: none; }
   .file-upload-btn{
     display: inline-flex; align-items: center; justify-content: center;

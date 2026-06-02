@@ -6,11 +6,33 @@ import { env } from '$env/dynamic/private';
 
 export const UPLOADS_ROOT = path.resolve(env.UPLOADS_DIR || './uploads');
 export const MAX_UPLOAD_BYTES = Number(env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024);
+export const MAX_VIDEO_BYTES = Number(env.MAX_VIDEO_BYTES || 200 * 1024 * 1024);
 
-export const ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png']);
-export const ALLOWED_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
-export const FILE_KINDS = ['cv', 'id_doc', 'id_doc_verso'] as const;
+export const FILE_KINDS = ['cv', 'id_doc', 'id_doc_verso', 'video'] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
+
+type Rule = { ext: Set<string>; mime: Set<string>; maxBytes: number };
+const DOC_RULE: Rule = {
+  ext: new Set(['.pdf', '.jpg', '.jpeg', '.png']),
+  mime: new Set(['application/pdf', 'image/jpeg', 'image/png']),
+  maxBytes: MAX_UPLOAD_BYTES
+};
+const CV_RULE: Rule = {
+  ext: new Set(['.pdf']),
+  mime: new Set(['application/pdf']),
+  maxBytes: MAX_UPLOAD_BYTES
+};
+const VIDEO_RULE: Rule = {
+  ext: new Set(['.mp4', '.webm', '.mov', '.m4v']),
+  mime: new Set(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']),
+  maxBytes: MAX_VIDEO_BYTES
+};
+const RULES: Record<FileKind, Rule> = {
+  cv: CV_RULE,
+  id_doc: DOC_RULE,
+  id_doc_verso: DOC_RULE,
+  video: VIDEO_RULE
+};
 
 export const userDir = (uid: string) => path.join(UPLOADS_ROOT, `u_${uid}`);
 
@@ -32,20 +54,24 @@ export function guessContentType(p: string) {
   if (ext === '.pdf') return 'application/pdf';
   if (ext === '.png') return 'image/png';
   if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.mp4' || ext === '.m4v') return 'video/mp4';
+  if (ext === '.webm') return 'video/webm';
+  if (ext === '.mov') return 'video/quicktime';
   return 'application/octet-stream';
 }
 
-export function validate(file: File) {
+export function validate(file: File, kind: FileKind) {
+  const rule = RULES[kind];
   const ext = path.extname(file.name).toLowerCase();
-  if (!ALLOWED_EXT.has(ext)) return { ok: false as const, reason: 'extension' };
-  if (!ALLOWED_MIME.has(file.type)) return { ok: false as const, reason: 'mime' };
-  if (file.size > MAX_UPLOAD_BYTES) return { ok: false as const, reason: 'size' };
+  if (!rule.ext.has(ext)) return { ok: false as const, reason: 'extension' };
+  if (!rule.mime.has(file.type)) return { ok: false as const, reason: 'mime' };
+  if (file.size > rule.maxBytes) return { ok: false as const, reason: 'size' };
   return { ok: true as const, ext };
 }
 
 /** Persist a File into the user's directory; returns the stored relative path. */
 export async function persistFile(uid: string, kind: FileKind, file: File) {
-  const v = validate(file);
+  const v = validate(file, kind);
   if (!v.ok) throw Object.assign(new Error('invalid_file'), { status: 415, reason: v.reason });
 
   const dir = userDir(uid);

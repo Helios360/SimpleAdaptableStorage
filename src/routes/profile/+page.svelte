@@ -77,6 +77,7 @@
       <FileSlot label="CV" kind="cv" stored={data.profile.cv} />
       <FileSlot label="Pièce d'identité (recto)" kind="id_doc" stored={data.profile.idDoc} />
       <FileSlot label="Pièce d'identité (verso)" kind="id_doc_verso" stored={data.profile.idDocVerso} />
+      <FileSlot label="Vidéo de présentation" kind="video" stored={data.profile.video} />
 
       <form method="POST" action="?/delete" use:enhance>
         <button
