@@ -3,11 +3,27 @@ import { and, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { retenu } from '$lib/server/db/schema';
-import { listValidatedCandidats } from '$lib/server/queries';
+import { searchCandidats, type SearchFilters } from '$lib/server/queries';
 
-export const load: PageServerLoad = async () => {
-	const candidats = await listValidatedCandidats();
-	return { candidats };
+export const load: PageServerLoad = async ({ url }) => {
+	const q = url.searchParams.get('q')?.trim() ?? '';
+	const minScoreRaw = url.searchParams.get('minScore') ?? '';
+	const minScore = minScoreRaw && Number.isFinite(Number(minScoreRaw)) ? Number(minScoreRaw) : null;
+
+	// Recruteur : tous les candidats validés (toutes écoles confondues) + filtres.
+	const filters: SearchFilters = { statut: ['valide'], q: q || undefined, minScore };
+	const result = await searchCandidats(filters, {
+		page: 1,
+		pageSize: 50,
+		sortBy: 'score',
+		sortDir: 'desc'
+	});
+
+	return {
+		candidats: result.rows,
+		total: result.total,
+		filters: { q, minScore: minScoreRaw }
+	};
 };
 
 export const actions: Actions = {
