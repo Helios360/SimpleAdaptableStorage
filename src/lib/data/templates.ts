@@ -32,7 +32,7 @@ export const MSG_TEMPLATES: MessageTemplate[] = [
 
 Je me permets de revenir vers vous concernant les {nb} profils que je vous ai transmis la semaine dernière pour vos besoins en recrutement.
 
-Ces candidats ont été qualifiés via notre processus d'évaluation (tests techniques + certification Tosa) et correspondent à vos critères.
+Ces candidats ont été qualifiés via notre processus d'évaluation (tests techniques) et correspondent à vos critères.
 
 Seriez-vous disponible cette semaine pour un court échange ? Je reste à votre écoute pour toute information complémentaire.
 
@@ -99,7 +99,6 @@ Bien à vous,
 Dans le cadre de votre recherche pour le poste de {poste}, je souhaite vous présenter {candidat}, dont le profil correspond particulièrement à vos attentes.
 
 • Score d'évaluation IA : {score}/100
-• Certification Tosa obtenue
 • Vidéo de présentation disponible
 
 Vous pouvez consulter son dossier complet directement sur votre extranet recruteur. Je reste disponible pour organiser un entretien.

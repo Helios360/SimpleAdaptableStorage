@@ -22,7 +22,7 @@
 
 	const roleColors = { candidat: 'var(--c-blue)', cre: 'var(--c-purple)', recruteur: 'var(--c-accent)' };
 	const roleBg = { candidat: 'var(--c-blue-light)', cre: 'var(--c-purple-light)', recruteur: 'var(--c-accent-light)' };
-	const roleLabel = { candidat: 'Candidat', cre: 'CRE', recruteur: 'Recruteur' };
+	const roleLabel = { candidat: 'Candidat', cre: 'École', recruteur: 'Recruteur' };
 
 	const r = $derived((user.role as keyof typeof roleColors) ?? 'candidat');
 
