@@ -1,14 +1,15 @@
 import { fail } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
-import { candidat, cv } from '$lib/server/db/schema';
+import { candidat, candidature, cv, user } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/guards';
 import {
 	searchCandidats,
 	listFormations,
 	listStaffFormations,
+	listCompetences,
 	DEFAULT_TAGS,
 	DEFAULT_SKILLS
 } from '$lib/server/queries';
@@ -50,16 +51,17 @@ function intOrNull(raw: unknown): number | null {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const [formations, staffFormationIds, initial] = await Promise.all([
+	const [formations, staffFormationIds, competences, initial] = await Promise.all([
 		listFormations(),
 		locals.user ? listStaffFormations(locals.user.id) : Promise.resolve([] as number[]),
+		listCompetences(),
 		searchCandidats({}, { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' })
 	]);
 	return {
 		formations,
 		staffFormationIds,
 		defaultTags: DEFAULT_TAGS,
-		defaultSkills: DEFAULT_SKILLS,
+		defaultSkills: competences.length ? competences : DEFAULT_SKILLS,
 		initial
 	};
 };
@@ -80,10 +82,39 @@ export const actions: Actions = {
 		const id = Number(form.get('id'));
 		const statut = String(form.get('statut') ?? '');
 		if (!Number.isFinite(id) || !VALID_STATUTS.has(statut)) return fail(400);
-		await db
-			.update(candidat)
-			.set({ statut, updatedAt: new Date() })
-			.where(eq(candidat.id, id));
+
+		// Validation gate : impossible de valider un dossier sans au moins un test IA passé.
+		if (statut === 'valide') {
+			const rows = await db
+				.select({ score: candidat.score })
+				.from(candidat)
+				.where(eq(candidat.id, id))
+				.limit(1);
+			if (!rows.length) return fail(404, { error: 'Candidat introuvable.' });
+			if (rows[0].score == null) {
+				return fail(400, {
+					error: "Validation impossible : l'étudiant n'a passé aucun test IA."
+				});
+			}
+		}
+
+		await db.update(candidat).set({ statut, updatedAt: new Date() }).where(eq(candidat.id, id));
+
+		// Propagation sur les candidatures du dossier.
+		if (statut === 'valide') {
+			// Le dossier validé est officiellement envoyé : on (re)place les candidatures
+			// non confirmées en entretien sur "envoyée".
+			await db
+				.update(candidature)
+				.set({ statut: 'envoyee' })
+				.where(and(eq(candidature.candidatId, id), ne(candidature.statut, 'entretien')));
+		} else if (statut === 'refuse') {
+			await db
+				.update(candidature)
+				.set({ statut: 'refusee' })
+				.where(eq(candidature.candidatId, id));
+		}
+
 		return { success: true, statut };
 	},
 	setRechercheStatut: async ({ request, locals }) => {
@@ -109,7 +140,6 @@ export const actions: Actions = {
 		const tel = String(form.get('tel') ?? '').trim();
 		const city = String(form.get('city') ?? '').trim();
 		const postal = String(form.get('postal') ?? '').trim();
-		const addr = String(form.get('addr') ?? '').trim();
 		const birth = String(form.get('birth') ?? '').trim();
 		const yearRaw = form.get('year');
 		const year = yearRaw && String(yearRaw).trim() !== '' ? Number(yearRaw) : null;
@@ -178,7 +208,6 @@ export const actions: Actions = {
 			tel: tel || null,
 			city: city || '',
 			postal: postal || null,
-			addr: addr || null,
 			birth: birth || null,
 			formationId,
 			year,
@@ -214,14 +243,11 @@ export const actions: Actions = {
 			lname,
 			fname,
 			tel: strOrNull(form.get('tel')),
-			addr: strOrNull(form.get('addr')),
 			city: String(form.get('city') ?? '').trim(),
 			postal: strOrNull(form.get('postal')),
 			birth: strOrNull(form.get('birth')),
 			formationId: intOrNull(form.get('formationId')),
 			year: intOrNull(form.get('year')),
-			score: intOrNull(form.get('score')),
-			tosa: intOrNull(form.get('tosa')),
 			permis: form.get('permis') === '1',
 			vehicule: form.get('vehicule') === '1',
 			mobile: form.get('mobile') === '1',
@@ -309,5 +335,30 @@ export const actions: Actions = {
 		const ok = await deleteCandidatForUser(userId);
 		if (!ok) return fail(404, { error: 'Compte déjà supprimé' });
 		return { success: true };
+	},
+	sendReset: async ({ request, locals }) => {
+		requireRole(locals.user, 'cre');
+		const form = await request.formData();
+		const id = Number(form.get('id'));
+		if (!Number.isFinite(id)) return fail(400, { error: 'ID invalide' });
+
+		const rows = await db
+			.select({ email: user.email })
+			.from(candidat)
+			.innerJoin(user, eq(user.id, candidat.userId))
+			.where(eq(candidat.id, id))
+			.limit(1);
+		const email = rows[0]?.email;
+		if (!email) return fail(404, { error: 'Candidat introuvable' });
+
+		try {
+			await auth.api.requestPasswordReset({
+				body: { email, redirectTo: '/reset-password' } as never
+			});
+		} catch (e) {
+			console.error('requestPasswordReset failed:', e);
+			return fail(500, { error: "Échec de l'envoi du mail de réinitialisation." });
+		}
+		return { resetSent: email };
 	}
 };

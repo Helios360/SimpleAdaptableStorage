@@ -4,31 +4,38 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import Empty from '$lib/components/Empty.svelte';
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
-	import { initials } from '$lib/utils';
-	import { pushToast } from '$lib/stores/toast.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { debounce } from '$lib/utils';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
 	import type { CandidatView } from '$lib/components/CandidatDetail.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let q = $state('');
-	let debounced = $state('');
-	let timer: ReturnType<typeof setTimeout>;
-	$effect(() => {
-		clearTimeout(timer);
-		const v = q;
-		timer = setTimeout(() => (debounced = v), 250);
-	});
+	// Filtres pilotés côté serveur via la querystring (load() relit l'URL).
+	// Snapshot initial volontaire : ces inputs sont resynchronisés par la navigation.
+	// svelte-ignore state_referenced_locally
+	let q = $state(data.filters.q);
+	// svelte-ignore state_referenced_locally
+	let minScore = $state(data.filters.minScore);
+	// svelte-ignore state_referenced_locally
+	let formationId = $state(data.filters.formationId);
+
+	function applyFilters() {
+		const params = new URLSearchParams();
+		if (q.trim()) params.set('q', q.trim());
+		if (minScore) params.set('minScore', minScore);
+		if (formationId) params.set('formationId', formationId);
+		const qs = params.toString();
+		goto(qs ? `?${qs}` : $page.url.pathname, { keepFocus: true, noScroll: true });
+	}
+	const applyDebounced = debounce(applyFilters, 300);
 
 	let selected = $state(new Set<number>());
 	let detail = $state<CandidatView | null>(null);
 
-	const filtered = $derived(
-		data.candidats.filter((c) =>
-			[c.name, c.formation].some((x) => x.toLowerCase().includes(debounced.toLowerCase()))
-		)
-	);
+	const candidats = $derived(data.candidats);
 
 	function toggle(id: number) {
 		const n = new Set(selected);
@@ -38,12 +45,20 @@
 	}
 
 	function toggleAll() {
-		selected = selected.size === filtered.length ? new Set() : new Set(filtered.map((c) => c.id));
+		selected =
+			selected.size === candidats.length ? new Set() : new Set(candidats.map((c) => c.id));
 	}
 
 	function sendSelected() {
-		pushToast(`${selected.size} profil(s) envoyés ✓`);
-		selected = new Set();
+		const ids = [...selected].join(',');
+		goto(`/cre/envoi?students=${ids}`);
+	}
+
+	function resetFilters() {
+		q = '';
+		minScore = '';
+		formationId = '';
+		applyFilters();
 	}
 </script>
 
@@ -51,27 +66,50 @@
 	{#if selected.size > 0}
 		<div class="cs-cvth__head">
 			<Button icon="📤" onclick={sendSelected}>
-				Envoyer {selected.size} profil(s)
+				Préparer un envoi · {selected.size} profil(s)
 			</Button>
 		</div>
 	{/if}
 
-	<input class="cs-cvth__search" bind:value={q} placeholder="🔍 Rechercher un candidat…" />
+	<div class="cs-cvth__filters">
+		<input
+			class="cs-cvth__search"
+			bind:value={q}
+			oninput={applyDebounced}
+			placeholder="🔍 Nom ou formation…"
+		/>
+		<input
+			class="cs-cvth__num"
+			type="number"
+			min="0"
+			max="100"
+			bind:value={minScore}
+			oninput={applyDebounced}
+			placeholder="Score IA min"
+		/>
+		<select class="cs-cvth__select" bind:value={formationId} onchange={applyFilters}>
+			<option value="">Toutes formations</option>
+			{#each data.formations as f}
+				<option value={String(f.id)}>{f.name}</option>
+			{/each}
+		</select>
+		<Button size="sm" variant="subtle" onclick={resetFilters}>Réinitialiser</Button>
+	</div>
 
 	<div class="cs-cvth__all">
 		<input
 			type="checkbox"
 			id="all"
-			checked={selected.size === filtered.length && filtered.length > 0}
+			checked={selected.size === candidats.length && candidats.length > 0}
 			onchange={toggleAll}
 		/>
-		<label for="all">Tout sélectionner ({filtered.length})</label>
+		<label for="all">Tout sélectionner ({data.total})</label>
 	</div>
 
-	{#if filtered.length === 0}
-		<Empty icon="📚" title="Aucun profil" sub={`Aucun résultat pour "${debounced}"`} />
+	{#if candidats.length === 0}
+		<Empty icon="📚" title="Aucun profil" sub="Aucun résultat pour ces filtres." />
 	{:else}
-		{#each filtered as c (c.id)}
+		{#each candidats as c (c.id)}
 			<Card padding="14px 18px" class="cs-cvth__row" style={selected.has(c.id) ? `border:2px solid ${C.blue};background:${C.blueSoft}` : ''}>
 				<input
 					type="checkbox"
@@ -84,12 +122,12 @@
 					<p class="cs-cvth__sub">{c.formation}</p>
 				</button>
 				<div class="cs-cvth__tags">
+					<Badge label={`📄 ${c.cvs.length} CV`} color={C.bg} textColor={C.sub} />
 					<Badge
 						label={c.score != null ? `IA: ${c.score}/100` : 'Pas de test'}
 						color={c.score != null ? C.blueLight : C.redLight}
 						textColor={c.score != null ? C.blue : C.red}
 					/>
-					{#if c.tosa}<Badge label="Tosa: {c.tosa}" color={C.purpleLight} textColor={C.purple} />{/if}
 					{#if c.pitch}<Badge label="🎥" color={C.greenLight} textColor={C.green} />{/if}
 				</div>
 			</Card>
@@ -109,14 +147,35 @@
 		align-items: center;
 		margin-bottom: 16px;
 	}
+	.cs-cvth__filters {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-bottom: 14px;
+	}
 	.cs-cvth__search {
-		width: 100%;
+		flex: 1 1 220px;
 		padding: 10px 16px;
 		border-radius: 10px;
 		border: 1.5px solid var(--c-border);
 		font-size: 14px;
-		margin-bottom: 12px;
 		outline: none;
+	}
+	.cs-cvth__num {
+		width: 130px;
+		padding: 10px 12px;
+		border-radius: 10px;
+		border: 1.5px solid var(--c-border);
+		font-size: 14px;
+		outline: none;
+	}
+	.cs-cvth__select {
+		padding: 10px 12px;
+		border-radius: 10px;
+		border: 1.5px solid var(--c-border);
+		font-size: 14px;
+		outline: none;
+		background: var(--c-card);
 	}
 	.cs-cvth__all {
 		display: flex;
