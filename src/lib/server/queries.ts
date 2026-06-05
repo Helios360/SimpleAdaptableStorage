@@ -5,7 +5,15 @@
  */
 import { and, asc, desc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
-import { candidat, user, cv, formation, staffFormation } from './db/schema';
+import {
+	candidat,
+	user,
+	cv,
+	formation,
+	staffFormation,
+	competence,
+	formationCompetence
+} from './db/schema';
 import { geocode } from './geocode';
 
 export interface CvRef {
@@ -30,7 +38,6 @@ export interface CandidatRow {
 	formationCode: string | null;
 	formationId: number | null;
 	year: number | null;
-	addr: string | null;
 	city: string;
 	postal: string | null;
 	lat: number | null;
@@ -41,7 +48,6 @@ export interface CandidatRow {
 	vehicule: boolean;
 	mobile: boolean;
 	score: number | null;
-	tosa: number | null;
 	pitch: boolean;
 	statut: string;
 	rechercheStatut: string;
@@ -50,8 +56,20 @@ export interface CandidatRow {
 	hasCvDoc: boolean;
 	hasIdRecto: boolean;
 	hasIdVerso: boolean;
+	// Type réel des pièces d'identité (l'URL d'aperçu est sans extension, donc
+	// le client ne peut pas le déduire seul — une pièce peut être pdf OU image).
+	idRectoKind: 'pdf' | 'image' | undefined;
+	idVersoKind: 'pdf' | 'image' | undefined;
 	titreValide: string | null;
 	distanceKm?: number;
+}
+
+function docKind(path: string | null): 'pdf' | 'image' | undefined {
+	if (!path) return undefined;
+	const ext = path.split('.').pop()?.toLowerCase() ?? '';
+	if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) return 'image';
+	if (ext === 'pdf') return 'pdf';
+	return undefined;
 }
 
 function ageFromBirth(birth: string | null): number | null {
@@ -103,7 +121,6 @@ const BASE_COLS = {
 	fname: candidat.fname,
 	tel: candidat.tel,
 	birth: candidat.birth,
-	addr: candidat.addr,
 	city: candidat.city,
 	postal: candidat.postal,
 	lat: candidat.lat,
@@ -116,7 +133,6 @@ const BASE_COLS = {
 	vehicule: candidat.vehicule,
 	mobile: candidat.mobile,
 	score: candidat.score,
-	tosa: candidat.tosa,
 	pitch: candidat.pitch,
 	statut: candidat.statut,
 	rechercheStatut: candidat.rechercheStatut,
@@ -137,7 +153,6 @@ type BaseRow = {
 	fname: string;
 	tel: string | null;
 	birth: string | null;
-	addr: string | null;
 	city: string;
 	postal: string | null;
 	lat: number | null;
@@ -150,7 +165,6 @@ type BaseRow = {
 	vehicule: boolean;
 	mobile: boolean;
 	score: number | null;
-	tosa: number | null;
 	pitch: boolean;
 	statut: string;
 	rechercheStatut: string;
@@ -180,7 +194,6 @@ function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
 		formationCode: r.formationCode,
 		formationId: r.formationId,
 		year: r.year,
-		addr: r.addr,
 		city: r.city,
 		postal: r.postal,
 		lat: r.lat,
@@ -191,7 +204,6 @@ function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
 		vehicule: r.vehicule,
 		mobile: r.mobile,
 		score: r.score,
-		tosa: r.tosa,
 		pitch: r.pitch,
 		statut: r.statut,
 		rechercheStatut: r.rechercheStatut,
@@ -200,6 +212,8 @@ function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
 		hasCvDoc: !!r.cvPath,
 		hasIdRecto: !!r.idDocPath,
 		hasIdVerso: !!r.idDocVersoPath,
+		idRectoKind: docKind(r.idDocPath),
+		idVersoKind: docKind(r.idDocVersoPath),
 		titreValide: r.titreValide,
 		distanceKm: r.distanceKm
 	};
@@ -237,6 +251,7 @@ export interface SearchFilters {
 	q?: string;
 	statut?: string[]; // workflow CRE
 	rechercheStatut?: string[];
+	minScore?: number | null; // score IA minimum
 	year?: number[];
 	formationId?: number[];
 	place?: string;
@@ -281,6 +296,10 @@ export async function searchCandidats(
 
 	const conds: SQL[] = [];
 
+	// On ne liste que les vrais étudiants : un compte staff (cre) qui aurait
+	// par erreur une fiche candidat ne doit pas apparaître dans les listes.
+	conds.push(eq(user.role, 'candidat'));
+
 	if (filters.q?.trim()) {
 		const needle = `%${filters.q.trim()}%`;
 		conds.push(sql`(${candidat.lname} ILIKE ${needle} OR ${candidat.fname} ILIKE ${needle})`);
@@ -288,6 +307,8 @@ export async function searchCandidats(
 	if (filters.statut?.length) conds.push(inArray(candidat.statut, filters.statut));
 	if (filters.rechercheStatut?.length)
 		conds.push(inArray(candidat.rechercheStatut, filters.rechercheStatut));
+	if (filters.minScore != null && Number.isFinite(filters.minScore))
+		conds.push(sql`${candidat.score} >= ${filters.minScore}`);
 	if (filters.year?.length) conds.push(inArray(candidat.year, filters.year));
 	if (filters.formationId?.length) conds.push(inArray(candidat.formationId, filters.formationId));
 	if (filters.postal?.trim()) conds.push(eq(candidat.postal, filters.postal.trim()));
@@ -390,8 +411,38 @@ export async function searchCandidats(
 	return { rows, page, pageSize, total, totalPages };
 }
 
+// Formations masquées des listes de sélection (réversible : retirer le code).
+// Les étudiants déjà rattachés à ces formations ne sont pas impactés (données conservées).
+export const HIDDEN_FORMATION_CODES = ['BTS OL'];
+
 export async function listFormations() {
-	return db.select().from(formation).orderBy(asc(formation.id));
+	const rows = await db.select().from(formation).orderBy(asc(formation.id));
+	return rows.filter((f) => !HIDDEN_FORMATION_CODES.includes(f.code));
+}
+
+// Référentiel complet des compétences (libellés), trié alphabétiquement.
+export async function listCompetences(): Promise<string[]> {
+	const rows = await db
+		.select({ label: competence.label })
+		.from(competence)
+		.orderBy(asc(competence.label));
+	return rows.map((r) => r.label);
+}
+
+// Compétences rattachées à une formation donnée. Si la formation n'a aucune
+// compétence liée (ou est nulle), on retombe sur le référentiel complet.
+export async function listCompetencesForFormation(
+	formationId: number | null | undefined
+): Promise<string[]> {
+	if (formationId == null) return listCompetences();
+	const rows = await db
+		.select({ label: competence.label })
+		.from(formationCompetence)
+		.innerJoin(competence, eq(competence.id, formationCompetence.competenceId))
+		.where(eq(formationCompetence.formationId, formationId))
+		.orderBy(asc(competence.label));
+	const labels = rows.map((r) => r.label);
+	return labels.length ? labels : listCompetences();
 }
 
 export async function listStaffFormations(userId: string): Promise<number[]> {
