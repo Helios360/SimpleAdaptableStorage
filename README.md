@@ -72,7 +72,7 @@ src/
     ├── +page.svelte         # landing (choix du rôle)
     ├── login/[role]/        # login (avec démo 1-clic)
     ├── logout/              # action POST signOut
-    ├── candidat/            # dashboard, cvs, pitch, tests, offres, candidatures, tosa
+    ├── candidat/            # dashboard, cvs, pitch, tests, offres & candidatures
     ├── cre/                 # dashboard, étudiants, cvthèque, tests, envoi, messages, fiches
     └── recruteur/           # cvthèque, retenus, offres
 ```
