@@ -79,6 +79,29 @@ export const formation = pgTable('formation', {
 	name: text('name').notNull()
 });
 
+// Catalogue de compétences (référentiel), rattachables à des formations.
+export const competence = pgTable('competence', {
+	id: serial('id').primaryKey(),
+	label: text('label').notNull().unique(),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+// Liaison N-N entre formations et compétences attendues.
+export const formationCompetence = pgTable(
+	'formation_competence',
+	{
+		formationId: integer('formation_id')
+			.notNull()
+			.references(() => formation.id, { onDelete: 'cascade' }),
+		competenceId: integer('competence_id')
+			.notNull()
+			.references(() => competence.id, { onDelete: 'cascade' })
+	},
+	(t) => ({
+		pk: primaryKey({ columns: [t.formationId, t.competenceId] })
+	})
+);
+
 export const candidat = pgTable(
 	'candidat',
 	{
@@ -92,8 +115,7 @@ export const candidat = pgTable(
 		fname: text('fname').notNull(),
 		tel: text('tel'),
 		birth: date('birth'),
-		// adresse + géoloc
-		addr: text('addr'),
+		// géoloc
 		city: text('city').notNull().default(''),
 		postal: text('postal'),
 		lon: doublePrecision('lon'),
@@ -105,6 +127,7 @@ export const candidat = pgTable(
 		cvPath: text('cv_path'),
 		idDocPath: text('id_doc_path'),
 		idDocVersoPath: text('id_doc_verso_path'),
+		pitchPath: text('pitch_path'),
 		titreValide: date('titre_valide'),
 		// tags & compétences (libellés libres + listes prédéfinies)
 		tags: jsonb('tags').$type<string[]>().notNull().default([]),
@@ -115,7 +138,6 @@ export const candidat = pgTable(
 		mobile: boolean('mobile').notNull().default(false),
 		// scoring
 		score: integer('score'),
-		tosa: integer('tosa'),
 		pitch: boolean('pitch').notNull().default(false),
 		// workflow CRE (dossier)
 		statut: text('statut').notNull().default('en_attente'), // en_attente | valide | refuse
@@ -158,6 +180,10 @@ export const cv = pgTable('cv', {
 		.notNull()
 		.references(() => candidat.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
+	// tag/type du CV : Alternance | Stage | CDI | CDD | Freelance | International
+	tag: text('tag'),
+	// un seul CV actif à la fois par candidat (sélectionné par défaut aux candidatures)
+	active: boolean('active').notNull().default(false),
 	path: text('path'),
 	size: integer('size'),
 	mime: text('mime'),
@@ -169,10 +195,74 @@ export const offre = pgTable('offre', {
 	titre: text('titre').notNull(),
 	entreprise: text('entreprise').notNull(),
 	lieu: text('lieu').notNull(),
-	type: text('type').notNull(), // Stage | Alternance | CDI
+	type: text('type').notNull(), // Stage | Alternance | CDI | CDD
+	niveau: text('niveau'), // niveau attendu (Bac+2, Bac+3…)
+	description: text('description'),
+	skills: jsonb('skills').$type<string[]>().notNull().default([]),
 	date: text('date').notNull(),
+	// publication : true = publiée, false = brouillon
+	active: boolean('active').notNull().default(true),
+	// rattachement CRE / école (null pour les offres seed historiques)
+	school: text('school'),
+	creId: text('cre_id').references(() => user.id, { onDelete: 'set null' }),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
+
+// Envoi groupé de profils à une entreprise
+export const envoi = pgTable(
+	'envoi',
+	{
+		id: serial('id').primaryKey(),
+		entreprise: text('entreprise').notNull(),
+		contact: text('contact'),
+		email: text('email').notNull(),
+		message: text('message'),
+		opens: integer('opens').notNull().default(0),
+		statut: text('statut').notNull().default('envoye'), // envoye | ouvert
+		school: text('school'),
+		creId: text('cre_id').references(() => user.id, { onDelete: 'set null' }),
+		lastOpenAt: timestamp('last_open_at'),
+		createdAt: timestamp('created_at').notNull().defaultNow()
+	},
+	(t) => ({
+		creIdx: index('envoi_cre_idx').on(t.creId),
+		schoolIdx: index('envoi_school_idx').on(t.school)
+	})
+);
+
+// Étudiants inclus dans un envoi (table de jonction)
+export const envoiEtudiant = pgTable(
+	'envoi_etudiant',
+	{
+		envoiId: integer('envoi_id')
+			.notNull()
+			.references(() => envoi.id, { onDelete: 'cascade' }),
+		candidatId: integer('candidat_id')
+			.notNull()
+			.references(() => candidat.id, { onDelete: 'cascade' })
+	},
+	(t) => ({
+		pk: primaryKey({ columns: [t.envoiId, t.candidatId] })
+	})
+);
+
+// Événements de l'école (ateliers, forums, coaching…)
+export const evenement = pgTable(
+	'evenement',
+	{
+		id: serial('id').primaryKey(),
+		titre: text('titre').notNull(),
+		type: text('type'),
+		date: text('date').notNull(),
+		description: text('description'),
+		online: boolean('online').notNull().default(false),
+		school: text('school'),
+		createdAt: timestamp('created_at').notNull().defaultNow()
+	},
+	(t) => ({
+		schoolIdx: index('evenement_school_idx').on(t.school)
+	})
+);
 
 export const candidature = pgTable('candidature', {
 	id: serial('id').primaryKey(),
@@ -234,9 +324,14 @@ export const testAttempt = pgTable(
 
 export type User = typeof user.$inferSelect;
 export type Formation = typeof formation.$inferSelect;
+export type Competence = typeof competence.$inferSelect;
+export type FormationCompetence = typeof formationCompetence.$inferSelect;
 export type Candidat = typeof candidat.$inferSelect;
 export type Offre = typeof offre.$inferSelect;
 export type Candidature = typeof candidature.$inferSelect;
 export type Cv = typeof cv.$inferSelect;
 export type Test = typeof test.$inferSelect;
 export type TestAttempt = typeof testAttempt.$inferSelect;
+export type Envoi = typeof envoi.$inferSelect;
+export type EnvoiEtudiant = typeof envoiEtudiant.$inferSelect;
+export type Evenement = typeof evenement.$inferSelect;

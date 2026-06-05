@@ -15,7 +15,9 @@ import {
 	offre,
 	candidature,
 	formation,
-	staffFormation
+	staffFormation,
+	competence,
+	formationCompetence
 } from './schema';
 
 const url = process.env.DATABASE_URL;
@@ -49,8 +51,7 @@ const FORMATIONS = [
 	{ code: 'DWFS', name: 'Développeur Web Full Stack' },
 	{ code: 'ESI', name: "Expert en Systèmes d'Information" },
 	{ code: 'BTS GPME', name: 'BTS Gestion de la PME' },
-	{ code: 'CAP AEPE', name: 'CAP Accompagnant Éducatif Petite Enfance' },
-	{ code: 'BTS OL', name: 'BTS Opticien Lunettier' }
+	{ code: 'CAP AEPE', name: 'CAP Accompagnant Éducatif Petite Enfance' }
 ] as const;
 
 console.log('Seeding formations…');
@@ -63,7 +64,72 @@ if (formationsExisting.length === 0) {
 	for (const f of formationsExisting) formationIdByCode[f.code] = f.id;
 }
 
-// ─── Comptes ────────────────────────────────────────────────────────────────
+// ─── Compétences (référentiel) liées aux formations ─────────────────────────
+
+const COMPETENCES_BY_FORMATION: Record<string, string[]> = {
+	'BTS NDRC': [
+		'Prospection commerciale',
+		'Négociation',
+		'Relation client',
+		'CRM',
+		'Communication',
+		'Marketing digital'
+	],
+	'TP NTC': [
+		'Prospection commerciale',
+		'Négociation',
+		'Relation client',
+		'Vente B2B',
+		'Veille concurrentielle'
+	],
+	DWFS: ['JavaScript', 'TypeScript', 'React', 'Svelte', 'Node.js', 'SQL', 'HTML/CSS', 'Git'],
+	ESI: ['SQL', 'Réseaux', 'Cybersécurité', 'Administration système', 'Cloud', 'Gestion de projet'],
+	'BTS GPME': ['Gestion administrative', 'Comptabilité', 'Excel', 'Relation client', 'Communication'],
+	'CAP AEPE': [
+		'Accompagnement de l’enfant',
+		'Soins et hygiène',
+		'Animation d’activités',
+		'Communication',
+		'Sécurité'
+	]
+};
+
+console.log('Seeding compétences…');
+// Référentiel global dédupliqué.
+const allCompetenceLabels = [...new Set(Object.values(COMPETENCES_BY_FORMATION).flat())];
+const competenceIdByLabel: Record<string, number> = {};
+const competencesExisting = await db.select().from(competence);
+for (const c of competencesExisting) competenceIdByLabel[c.label] = c.id;
+
+const missingLabels = allCompetenceLabels.filter((l) => competenceIdByLabel[l] == null);
+if (missingLabels.length) {
+	const insertedCompetences = await db
+		.insert(competence)
+		.values(missingLabels.map((label) => ({ label })))
+		.returning();
+	for (const c of insertedCompetences) competenceIdByLabel[c.label] = c.id;
+}
+
+// Liaisons formation ↔ compétence (idempotent via onConflictDoNothing).
+const links: { formationId: number; competenceId: number }[] = [];
+for (const [code, labels] of Object.entries(COMPETENCES_BY_FORMATION)) {
+	const fid = formationIdByCode[code];
+	if (fid == null) continue;
+	for (const label of labels) {
+		const cid = competenceIdByLabel[label];
+		if (cid != null) links.push({ formationId: fid, competenceId: cid });
+	}
+}
+if (links.length) {
+	await db.insert(formationCompetence).values(links).onConflictDoNothing();
+}
+
+// ─── Données de démonstration ────────────────────────────────────────────────
+// Comptes, candidats, offres et candidatures de DÉMO uniquement.
+// En PRODUCTION : ne PAS définir SEED_DEMO → ce bloc est ignoré (seules les
+// formations + compétences de référence ci-dessus sont créées).
+// En dev : lancer avec `SEED_DEMO=1 bun ./src/lib/server/db/seed.ts`.
+if (process.env.SEED_DEMO === '1') {
 
 type SeedAccount = {
 	email: string;
@@ -137,7 +203,6 @@ type StudentSeed = {
 	fname: string;
 	tel: string;
 	birth: string;
-	addr: string | null;
 	city: string;
 	postal: string;
 	lat: number;
@@ -150,7 +215,6 @@ type StudentSeed = {
 	vehicule: boolean;
 	mobile: boolean;
 	score: number | null;
-	tosa: number | null;
 	pitch: boolean;
 	statut: 'en_attente' | 'valide' | 'refuse';
 	rechercheStatut: 'active' | 'recherche' | 'entreprise' | 'archive';
@@ -164,7 +228,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		fname: 'Léa',
 		tel: '0612345678',
 		birth: '2002-04-12',
-		addr: '15 rue de Rivoli',
 		city: 'Paris',
 		postal: '75001',
 		lat: 48.8566,
@@ -177,7 +240,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		vehicule: false,
 		mobile: true,
 		score: null,
-		tosa: 820,
 		pitch: true,
 		statut: 'en_attente',
 		rechercheStatut: 'recherche',
@@ -189,7 +251,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		fname: 'Thomas',
 		tel: '0623456789',
 		birth: '2000-07-23',
-		addr: '8 quai Saint-Antoine',
 		city: 'Lyon',
 		postal: '69002',
 		lat: 45.7578,
@@ -202,7 +263,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		vehicule: true,
 		mobile: true,
 		score: 71,
-		tosa: 710,
 		pitch: false,
 		statut: 'en_attente',
 		rechercheStatut: 'active',
@@ -214,7 +274,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		fname: 'Sara',
 		tel: '0634567890',
 		birth: '2003-11-05',
-		addr: '12 rue Lecourbe',
 		city: 'Paris',
 		postal: '75015',
 		lat: 48.842,
@@ -227,7 +286,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		vehicule: false,
 		mobile: false,
 		score: 90,
-		tosa: 870,
 		pitch: true,
 		statut: 'valide',
 		rechercheStatut: 'entreprise',
@@ -239,7 +297,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		fname: 'Hugo',
 		tel: '0645678901',
 		birth: '2001-02-18',
-		addr: '3 rue Nationale',
 		city: 'Lille',
 		postal: '59000',
 		lat: 50.6292,
@@ -252,7 +309,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		vehicule: true,
 		mobile: false,
 		score: 55,
-		tosa: null,
 		pitch: false,
 		statut: 'refuse',
 		rechercheStatut: 'archive',
@@ -264,7 +320,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		fname: 'Inès',
 		tel: '0656789012',
 		birth: '1999-09-30',
-		addr: '4 cours du Chapeau Rouge',
 		city: 'Bordeaux',
 		postal: '33000',
 		lat: 44.8378,
@@ -277,7 +332,6 @@ const STUDENT_SEED: StudentSeed[] = [
 		vehicule: true,
 		mobile: true,
 		score: 88,
-		tosa: 910,
 		pitch: true,
 		statut: 'valide',
 		rechercheStatut: 'recherche',
@@ -300,7 +354,6 @@ for (const s of STUDENT_SEED) {
 				fname: s.fname,
 				tel: s.tel,
 				birth: s.birth,
-				addr: s.addr,
 				city: s.city,
 				postal: s.postal,
 				lat: s.lat,
@@ -313,7 +366,6 @@ for (const s of STUDENT_SEED) {
 				vehicule: s.vehicule,
 				mobile: s.mobile,
 				score: s.score,
-				tosa: s.tosa,
 				pitch: s.pitch,
 				statut: s.statut,
 				rechercheStatut: s.rechercheStatut,
@@ -356,6 +408,10 @@ if (candidaturesExisting.length === 0) {
 		{ candidatId: leaId, offreId: offresById['Dev React - Stage'], statut: 'entretien' },
 		{ candidatId: leaId, offreId: offresById['Data Analyst - Alternance'], statut: 'envoyee' }
 	]);
+}
+
+} else {
+	console.log('Données de démo ignorées (définir SEED_DEMO=1 pour les créer).');
 }
 
 console.log('Done.');
