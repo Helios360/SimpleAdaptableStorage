@@ -4,6 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { candidat, formation as formationTable } from '$lib/server/db/schema';
+import { listFormations } from '$lib/server/queries';
 import { saveUpload, validateUpload, type FileSlot } from '$lib/server/uploads';
 
 const CV_SLOT: FileSlot = { allowed: ['pdf'], maxMB: 2, label: 'CV' };
@@ -32,7 +33,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 		throw redirect(303, `/${role}`);
 	}
-	return {};
+	const formations = await listFormations();
+	return { formations };
 };
 
 function forwardCookies(res: Response, cookies: import('@sveltejs/kit').Cookies) {
@@ -63,31 +65,6 @@ function initialsOf(fname: string, lname: string): string {
 	return ((fname[0] ?? '') + (lname[0] ?? '')).toUpperCase();
 }
 
-function codeFromName(name: string): string {
-	return name
-		.toLowerCase()
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 60) || 'formation';
-}
-
-async function findOrCreateFormation(name: string): Promise<number> {
-	const code = codeFromName(name);
-	const existing = await db
-		.select({ id: formationTable.id })
-		.from(formationTable)
-		.where(eq(formationTable.code, code))
-		.limit(1);
-	if (existing[0]) return existing[0].id;
-	const inserted = await db
-		.insert(formationTable)
-		.values({ code, name })
-		.returning({ id: formationTable.id });
-	return inserted[0].id;
-}
-
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const form = await request.formData();
@@ -96,7 +73,8 @@ export const actions: Actions = {
 		const email = String(form.get('email') ?? '').toLowerCase().trim();
 		const password = String(form.get('password') ?? '');
 		const confirm = String(form.get('confirm') ?? '');
-		const formationName = String(form.get('formation') ?? '').trim();
+		const formationIdRaw = String(form.get('formation') ?? '').trim();
+		const formationId = Number.parseInt(formationIdRaw, 10);
 		const city = String(form.get('ville') ?? '').trim();
 		const tel = String(form.get('tel') ?? '').trim();
 		const sejour = form.get('sejour') != null;
@@ -106,13 +84,19 @@ export const actions: Actions = {
 		const idRecto = form.get('id_doc') as File | null;
 		const idVerso = form.get('id_doc_verso') as File | null;
 
-		const values = { fname, lname, email, formation: formationName, ville: city, tel };
+		const values = { fname, lname, email, formation: formationIdRaw, ville: city, tel };
 
 		if (!fname || !lname) return fail(400, { ...values, error: 'Nom et prénom requis.' });
 		if (!/\S+@\S+\.\S+/.test(email)) return fail(400, { ...values, error: 'Email invalide.' });
 		if (password.length < 4) return fail(400, { ...values, error: 'Mot de passe trop court (4 caractères min).' });
 		if (password !== confirm) return fail(400, { ...values, error: 'Les mots de passe ne correspondent pas.' });
-		if (!formationName) return fail(400, { ...values, error: 'Formation requise.' });
+		if (!Number.isInteger(formationId)) return fail(400, { ...values, error: 'Formation requise.' });
+		const formationRow = await db
+			.select({ id: formationTable.id })
+			.from(formationTable)
+			.where(eq(formationTable.id, formationId))
+			.limit(1);
+		if (!formationRow[0]) return fail(400, { ...values, error: 'Formation invalide.' });
 		if (!city) return fail(400, { ...values, error: 'Ville requise.' });
 		if (!tel) return fail(400, { ...values, error: 'Téléphone requis.' });
 
@@ -168,8 +152,6 @@ export const actions: Actions = {
 		} catch {
 			return fail(500, { ...values, error: "Erreur lors de l'enregistrement des fichiers." });
 		}
-
-		const formationId = await findOrCreateFormation(formationName);
 
 		await db.insert(candidat).values({
 			userId,

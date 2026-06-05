@@ -56,7 +56,7 @@
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 22px;
-		color: var(--c-navy);
+		color: var(--c-text);
 		text-align: center;
 		margin-bottom: 14px;
 	}
