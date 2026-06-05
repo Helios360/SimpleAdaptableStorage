@@ -9,12 +9,9 @@
 	const titles: Record<string, string> = {
 		'/candidat': 'Tableau de bord',
 		'/candidat/profile': 'Mon profil',
-		'/candidat/cvs': 'Mes CVs',
-		'/candidat/pitch': 'Vidéo pitch',
+		'/candidat/files': 'Mes fichiers',
 		'/candidat/tests': 'Tests IA',
-		'/candidat/offres': 'Offres',
-		'/candidat/candidatures': 'Candidatures',
-		'/candidat/tosa': 'Certification Tosa'
+		'/candidat/offres': 'Offres & candidatures'
 	};
 
 	let title = $derived(titles[$page.url.pathname] ?? 'CloudStudent');
@@ -28,11 +25,8 @@
 		)
 	);
 
-	let notifs = $derived(
-		data.candidat && data.candidat.score == null
-			? [{ icon: '🧠', text: "Un test IA t'attend pour valider ton dossier." }]
-			: []
-	);
+	// Notification Tests IA désactivée tant que l'onglet est masqué (réversible)
+	let notifs = $derived([] as { icon: string; text: string }[]);
 </script>
 
 <AppShell user={data.user} {nav} {title} notifications={notifs}>

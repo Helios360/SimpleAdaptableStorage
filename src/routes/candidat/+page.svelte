@@ -26,7 +26,7 @@
 
 <div class="cs-dash">
 	<h1 class="cs-dash__hi">Bonjour, {firstName} 👋</h1>
-	<p class="cs-dash__sub">{c?.formation ?? '—'} · {data.user.school ?? 'IPSSI Paris'}</p>
+	<p class="cs-dash__sub">{c?.formation ?? '—'} · {data.user.school ?? 'AJ-formation'}</p>
 
 	<Card padding="22px">
 		<div class="cs-dash__progress-head">
@@ -52,16 +52,19 @@
 			<div class="cs-dash__stat-lab">Score IA</div>
 		</Card>
 		<Card padding="18px">
-			<div class="cs-dash__stat-icon">🎓</div>
-			<div class="cs-dash__stat-val" style:color={C.purple}>
-				{c?.tosa ? `${c.tosa}/1000` : '—'}
-			</div>
-			<div class="cs-dash__stat-lab">Tosa</div>
-		</Card>
-		<Card padding="18px">
 			<div class="cs-dash__stat-icon">📄</div>
 			<div class="cs-dash__stat-val" style:color={C.green}>{data.cvCount}</div>
 			<div class="cs-dash__stat-lab">CVs</div>
+		</Card>
+		<Card padding="18px">
+			<div class="cs-dash__stat-icon">📮</div>
+			<div class="cs-dash__stat-val" style:color={C.blue}>{data.appCount}</div>
+			<div class="cs-dash__stat-lab">Candidatures</div>
+		</Card>
+		<Card padding="18px">
+			<div class="cs-dash__stat-icon">🗓️</div>
+			<div class="cs-dash__stat-val" style:color={C.purple}>{data.entretienCount}</div>
+			<div class="cs-dash__stat-lab">Entretiens</div>
 		</Card>
 		<Card padding="18px">
 			<div class="cs-dash__stat-icon">📋</div>
@@ -96,7 +99,7 @@
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 22px;
-		color: var(--c-navy);
+		color: var(--c-text);
 		margin-bottom: 4px;
 	}
 	.cs-dash__sub {
@@ -190,11 +193,11 @@
 	.cs-dash__alert-title {
 		font-weight: 700;
 		font-size: 14px;
-		color: #92400e;
+		color: var(--c-orange-text);
 	}
 	.cs-dash__alert-sub {
 		font-size: 12px;
-		color: #92400e;
+		color: var(--c-orange-text);
 		margin-top: 2px;
 	}
 	@media (max-width: 540px) {

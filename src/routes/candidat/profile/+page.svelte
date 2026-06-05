@@ -37,7 +37,8 @@
 		editable
 		inline
 		hideTags
-		manageCvs={false}
+		hideFiles
+		studentMode
 		actionName="?/updateMyProfile"
 		formations={data.formations}
 		skillSuggestions={data.defaultSkills}
