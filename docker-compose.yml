@@ -14,6 +14,14 @@ services:
     networks:
       - shared
       - sharedNet
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "wget -qO- http://127.0.0.1:3000/api/healthz | grep -q '\"status\":\"ok\"'"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 networks:
   shared:

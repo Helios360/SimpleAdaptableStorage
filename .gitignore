@@ -11,3 +11,9 @@ uploads
 !.vscode/settings.json
 .bun
 bun.lock
+
+# Testing
+coverage
+playwright-report
+test-results
+.vitest-cache
