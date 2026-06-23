@@ -117,6 +117,7 @@ export const candidat = pgTable(
 		score: integer('score'),
 		tosa: integer('tosa'),
 		pitch: boolean('pitch').notNull().default(false),
+		pitchPath: text('pitch_path'),
 		// workflow CRE (dossier)
 		statut: text('statut').notNull().default('en_attente'), // en_attente | valide | refuse
 		// état recherche emploi

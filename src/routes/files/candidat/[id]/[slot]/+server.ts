@@ -4,13 +4,14 @@ import { db } from '$lib/server/db';
 import { candidat } from '$lib/server/db/schema';
 import { streamFile } from '$lib/server/uploads';
 
-const SLOTS = ['cv', 'id_recto', 'id_verso'] as const;
+const SLOTS = ['cv', 'id_recto', 'id_verso', 'pitch'] as const;
 type Slot = (typeof SLOTS)[number];
 
 const LABELS: Record<Slot, string> = {
 	cv: 'CV',
 	id_recto: 'Pièce d\'identité (recto)',
-	id_verso: 'Pièce d\'identité (verso)'
+	id_verso: 'Pièce d\'identité (verso)',
+	pitch: 'Vidéo pitch'
 };
 
 export const GET: RequestHandler = async ({ params, locals, url }) => {
@@ -24,7 +25,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			ownerId: candidat.userId,
 			cvPath: candidat.cvPath,
 			idDocPath: candidat.idDocPath,
-			idDocVersoPath: candidat.idDocVersoPath
+			idDocVersoPath: candidat.idDocVersoPath,
+			pitchPath: candidat.pitchPath
 		})
 		.from(candidat)
 		.where(eq(candidat.id, id))
@@ -39,7 +41,13 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	if (!isOwner && !isStaff) throw error(403, 'Interdit');
 
 	const path =
-		slot === 'cv' ? row.cvPath : slot === 'id_recto' ? row.idDocPath : row.idDocVersoPath;
+		slot === 'cv'
+			? row.cvPath
+			: slot === 'id_recto'
+				? row.idDocPath
+				: slot === 'id_verso'
+					? row.idDocVersoPath
+					: row.pitchPath;
 	if (!path) throw error(404, 'Document non déposé');
 
 	const ext = path.split('.').pop() ?? 'bin';

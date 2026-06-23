@@ -33,6 +33,7 @@ export async function loadCandidatForUser(userId: string) {
 			score: candidat.score,
 			tosa: candidat.tosa,
 			pitch: candidat.pitch,
+			pitchPath: candidat.pitchPath,
 			statut: candidat.statut,
 			rechercheStatut: candidat.rechercheStatut,
 			createdAt: candidat.createdAt

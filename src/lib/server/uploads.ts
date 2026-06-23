@@ -15,7 +15,11 @@ const MIMES: Record<string, string> = {
 	png: 'image/png',
 	jpg: 'image/jpeg',
 	jpeg: 'image/jpeg',
-	webp: 'image/webp'
+	webp: 'image/webp',
+	mp4: 'video/mp4',
+	webm: 'video/webm',
+	mov: 'video/quicktime',
+	m4v: 'video/x-m4v'
 };
 
 export function mimeFor(filename: string): string {
