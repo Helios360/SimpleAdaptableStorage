@@ -230,6 +230,17 @@
 		}
 	}
 
+	async function copyEmail() {
+		const email = edit?.email;
+		if (!email) return;
+		try {
+			await navigator.clipboard.writeText(email);
+			pushToast('Email copié ✓', 'success');
+		} catch {
+			pushToast('Impossible de copier', 'error');
+		}
+	}
+
 	async function deleteCv(cvId: number) {
 		if (!edit) return;
 		if (!confirm('Supprimer ce CV ?')) return;
@@ -434,7 +445,19 @@
 			<!-- ───────── Editable form ───────── -->
 			<div class="cs-detail__grid">
 				<label class="cs-detail__lbl">Email <span>(non modifiable)</span>
-					<input class="cs-detail__inp" value={edit.email ?? ''} disabled />
+					<div class="cs-detail__email-row">
+						<input class="cs-detail__inp cs-detail__inp--email" value={edit.email ?? ''} readonly />
+						<button
+							type="button"
+							class="cs-detail__copy-btn"
+							onclick={copyEmail}
+							disabled={!edit.email}
+							title="Copier l'email"
+							aria-label="Copier l'email"
+						>
+							📋
+						</button>
+					</div>
 				</label>
 				<label class="cs-detail__lbl">Téléphone
 					<input class="cs-detail__inp" type="tel" bind:value={edit.tel} />
@@ -894,6 +917,38 @@
 	.cs-detail__inp:disabled {
 		background: var(--c-bg);
 		color: var(--c-muted);
+		cursor: not-allowed;
+	}
+	.cs-detail__inp[readonly] {
+		background: var(--c-bg);
+		color: var(--c-muted);
+	}
+	.cs-detail__email-row {
+		display: flex;
+		gap: 6px;
+		align-items: stretch;
+	}
+	.cs-detail__inp--email {
+		flex: 1;
+		min-width: 0;
+	}
+	.cs-detail__copy-btn {
+		flex-shrink: 0;
+		padding: 0 10px;
+		border-radius: 8px;
+		border: 1.5px solid var(--c-border);
+		background: var(--c-card);
+		font-size: 14px;
+		cursor: pointer;
+		color: var(--c-sub);
+		font-family: var(--font-body);
+	}
+	.cs-detail__copy-btn:not(:disabled):hover {
+		border-color: var(--c-blue);
+		background: var(--c-blue-soft);
+	}
+	.cs-detail__copy-btn:disabled {
+		opacity: 0.4;
 		cursor: not-allowed;
 	}
 	.cs-detail__inp--inline {
