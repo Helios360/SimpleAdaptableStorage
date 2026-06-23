@@ -22,7 +22,6 @@
 		age?: number | null;
 		tel?: string | null;
 		email?: string;
-		addr?: string | null;
 		postal?: string | null;
 		birth?: string | null;
 		tags?: string[];
@@ -31,7 +30,6 @@
 		vehicule?: boolean;
 		mobile?: boolean;
 		score: number | null;
-		tosa: number | null;
 		pitch: boolean;
 		statut: string;
 		rechercheStatut?: string;
@@ -39,6 +37,8 @@
 		hasCvDoc?: boolean;
 		hasIdRecto?: boolean;
 		hasIdVerso?: boolean;
+		idRectoKind?: 'pdf' | 'image';
+		idVersoKind?: 'pdf' | 'image';
 		titreValide?: string | null;
 	}
 
@@ -74,10 +74,15 @@
 		inline?: boolean;
 		/** Hide the tags section + omit tags from the save payload (student mode). */
 		hideTags?: boolean;
+		/** Student-facing mode: hide fields the student shouldn't see/edit
+		 *  (adresse, statut recherche, fin de validité du titre de séjour). */
+		studentMode?: boolean;
 		/** Hide CV upload form + per-CV delete buttons (read-only CV list). */
 		manageCvs?: boolean;
 		/** Allow upload/remove of the 3 inscription slots (cv/id_recto/id_verso). */
 		manageInscription?: boolean;
+		/** Hide the Documents + CVs sections entirely (e.g. when files live elsewhere). */
+		hideFiles?: boolean;
 		/** Form action to POST the save payload to. */
 		actionName?: string;
 		/** When set, render a danger button in the footer; runs on confirm. */
@@ -88,6 +93,10 @@
 		deleteConfirmTitle?: string;
 		/** Custom confirm dialog message. */
 		deleteConfirmMessage?: string;
+		/** When set, render a "send reset link" button next to delete; runs on click. */
+		onresetpassword?: () => void | Promise<void>;
+		/** Custom label for the reset-password button. */
+		resetLabel?: string;
 	}
 
 	let {
@@ -102,13 +111,17 @@
 		onsaved,
 		inline = false,
 		hideTags = false,
+		studentMode = false,
 		manageCvs = true,
 		manageInscription = true,
+		hideFiles = false,
 		actionName = '?/updateCandidat',
 		ondelete,
 		deleteLabel = 'Supprimer',
 		deleteConfirmTitle = 'Suppression définitive',
-		deleteConfirmMessage = 'Cette action est irréversible. Le compte, le profil et tous les fichiers associés seront effacés.'
+		deleteConfirmMessage = 'Cette action est irréversible. Le compte, le profil et tous les fichiers associés seront effacés.',
+		onresetpassword,
+		resetLabel = 'Envoyer un lien de reset'
 	}: Props = $props();
 
 	let deleteConfirmOpen = $state(false);
@@ -124,11 +137,22 @@
 		}
 	}
 
+	let resetting = $state(false);
+	async function runReset() {
+		if (!onresetpassword || resetting) return;
+		resetting = true;
+		try {
+			await onresetpassword();
+		} finally {
+			resetting = false;
+		}
+	}
+
 	let edit = $state<CandidatView | null>(null);
 	let saving = $state(false);
 	let tagInput = $state('');
 	let skillInput = $state('');
-	let preview = $state<{ url: string; title: string; kind: 'pdf' | 'image' } | null>(null);
+	let preview = $state<{ url: string; title: string; kind: 'pdf' | 'image' | 'video' } | null>(null);
 
 	// New CV state for admin upload
 	let newCvName = $state('');
@@ -143,11 +167,13 @@
 		}
 	});
 
-	function inferKind(name: string): 'pdf' | 'image' {
-		return /\.(png|jpe?g|webp|gif)$/i.test(name) ? 'image' : 'pdf';
+	function inferKind(name: string): 'pdf' | 'image' | 'video' {
+		if (/\.(png|jpe?g|webp|gif)$/i.test(name)) return 'image';
+		if (/\.(mp4|webm|mov|ogg|ogv)$/i.test(name)) return 'video';
+		return 'pdf';
 	}
 
-	function openPreview(url: string, title: string, kind?: 'pdf' | 'image') {
+	function openPreview(url: string, title: string, kind?: 'pdf' | 'image' | 'video') {
 		preview = { url, title, kind: kind ?? inferKind(url) };
 	}
 
@@ -180,14 +206,11 @@
 		fd.set('lname', edit.lname ?? '');
 		fd.set('fname', edit.fname ?? '');
 		fd.set('tel', edit.tel ?? '');
-		fd.set('addr', edit.addr ?? '');
 		fd.set('city', edit.city ?? '');
 		fd.set('postal', edit.postal ?? '');
 		fd.set('birth', edit.birth ?? '');
 		fd.set('formationId', edit.formationId != null ? String(edit.formationId) : '');
 		fd.set('year', edit.year != null ? String(edit.year) : '');
-		fd.set('score', edit.score != null ? String(edit.score) : '');
-		fd.set('tosa', edit.tosa != null ? String(edit.tosa) : '');
 		fd.set('permis', edit.permis ? '1' : '');
 		fd.set('vehicule', edit.vehicule ? '1' : '');
 		fd.set('mobile', edit.mobile ? '1' : '');
@@ -341,6 +364,16 @@
 		return `/files/candidat/${edit!.id}/${slot}`;
 	}
 
+	// Le CV d'inscription est toujours un PDF ; les pièces d'identité peuvent être
+	// pdf OU image — on s'appuie sur le type renseigné par le serveur (undefined →
+	// inferKind sur l'URL, qui retombe sur 'pdf' par défaut).
+	function inscriptionKind(slot: InscriptionSlotKey): 'pdf' | 'image' | undefined {
+		if (slot === 'cv') return 'pdf';
+		if (slot === 'id_recto') return edit?.idRectoKind;
+		if (slot === 'id_verso') return edit?.idVersoKind;
+		return undefined;
+	}
+
 	function fmtSize(b: number | null): string {
 		if (!b) return '';
 		if (b < 1024) return `${b} o`;
@@ -401,12 +434,6 @@
 					</div>
 					<div class="cs-detail__stat-lab">Score IA</div>
 				</div>
-				<div class="cs-detail__stat">
-					<div class="cs-detail__stat-val" style:color={edit.tosa ? C.purple : C.muted}>
-						{edit.tosa ?? '—'}{#if edit.tosa}<small>/1000</small>{/if}
-					</div>
-					<div class="cs-detail__stat-lab">Tosa</div>
-				</div>
 			</div>
 
 			{#if edit.rechercheStatut || edit.permis || edit.vehicule || edit.mobile}
@@ -416,7 +443,7 @@
 					{/if}
 					{#if edit.permis}<Badge label="Permis B" color={C.greenLight} textColor={C.green} />{/if}
 					{#if edit.vehicule}<Badge label="Véhiculé" color={C.greenLight} textColor={C.green} />{/if}
-					{#if edit.mobile}<Badge label="Mobile" color={C.greenLight} textColor={C.green} />{/if}
+					{#if edit.mobile}<Badge label="Déménagement possible" color={C.greenLight} textColor={C.green} />{/if}
 				</div>
 			{/if}
 
@@ -473,11 +500,13 @@
 						{/each}
 					</select>
 				</label>
-				<label class="cs-detail__lbl">Année
-					<input class="cs-detail__inp" type="number" min="0" max="10" bind:value={edit.year} />
-				</label>
-				<label class="cs-detail__lbl">Adresse
-					<input class="cs-detail__inp" bind:value={edit.addr} />
+				<label class="cs-detail__lbl">Niveau
+					<select class="cs-detail__inp" bind:value={edit.year}>
+						<option value={null}>—</option>
+						{#each [1, 2, 3, 4, 5] as n}
+							<option value={n}>Bac+{n}</option>
+						{/each}
+					</select>
 				</label>
 				<label class="cs-detail__lbl">Ville
 					<input class="cs-detail__inp" bind:value={edit.city} />
@@ -486,21 +515,26 @@
 					<input class="cs-detail__inp" bind:value={edit.postal} />
 				</label>
 				<label class="cs-detail__lbl">Score IA
-					<input class="cs-detail__inp" type="number" min="0" max="100" bind:value={edit.score} />
+					<input
+						class="cs-detail__inp"
+						type="number"
+						value={edit.score ?? ''}
+						readonly
+						disabled
+					/>
 				</label>
-				<label class="cs-detail__lbl">TOSA
-					<input class="cs-detail__inp" type="number" min="0" max="1000" bind:value={edit.tosa} />
-				</label>
-				<label class="cs-detail__lbl">Statut recherche
-					<select class="cs-detail__inp" bind:value={edit.rechercheStatut}>
-						{#each RECHERCHE_OPTS as o}
-							<option value={o.value}>{o.label}</option>
-						{/each}
-					</select>
-				</label>
-				<label class="cs-detail__lbl">Titre de séjour — fin de validité
-					<input class="cs-detail__inp" type="date" bind:value={edit.titreValide} />
-				</label>
+				{#if !studentMode}
+					<label class="cs-detail__lbl">Statut recherche
+						<select class="cs-detail__inp" bind:value={edit.rechercheStatut}>
+							{#each RECHERCHE_OPTS as o}
+								<option value={o.value}>{o.label}</option>
+							{/each}
+						</select>
+					</label>
+					<label class="cs-detail__lbl">Titre de séjour — fin de validité
+						<input class="cs-detail__inp" type="date" bind:value={edit.titreValide} />
+					</label>
+				{/if}
 			</div>
 
 			<div class="cs-detail__check-row">
@@ -511,7 +545,7 @@
 					<input type="checkbox" bind:checked={edit.vehicule} /> Véhiculé
 				</label>
 				<label class="cs-detail__check">
-					<input type="checkbox" bind:checked={edit.mobile} /> Mobile
+					<input type="checkbox" bind:checked={edit.mobile} /> Déménagement possible
 				</label>
 			</div>
 
@@ -564,6 +598,7 @@
 			</div>
 		{/if}
 
+		{#if !hideFiles}
 		<!-- Documents : preview + manage -->
 		<div class="cs-detail__section">
 			<p class="cs-detail__section-lab">Documents d'inscription</p>
@@ -588,7 +623,7 @@
 									<button
 										class="cs-detail__cv-btn"
 										type="button"
-										onclick={() => openPreview(inscriptionPreviewUrl(slot), INSCRIPTION_LABELS[slot], slot === 'cv' ? 'pdf' : undefined)}
+										onclick={() => openPreview(inscriptionPreviewUrl(slot), INSCRIPTION_LABELS[slot], inscriptionKind(slot))}
 									>
 										Aperçu
 									</button>
@@ -633,7 +668,7 @@
 						class:cs-detail__doc--off={!edit.hasIdRecto}
 						type="button"
 						disabled={!edit.hasIdRecto}
-						onclick={() => openPreview(`/files/candidat/${edit!.id}/id_recto`, 'Pièce d\'identité (recto)')}
+						onclick={() => openPreview(`/files/candidat/${edit!.id}/id_recto`, 'Pièce d\'identité (recto)', edit!.idRectoKind)}
 					>
 						🪪 ID recto
 					</button>
@@ -642,13 +677,22 @@
 						class:cs-detail__doc--off={!edit.hasIdVerso}
 						type="button"
 						disabled={!edit.hasIdVerso}
-						onclick={() => openPreview(`/files/candidat/${edit!.id}/id_verso`, 'Pièce d\'identité (verso)')}
+						onclick={() => openPreview(`/files/candidat/${edit!.id}/id_verso`, 'Pièce d\'identité (verso)', edit!.idVersoKind)}
 					>
 						🪪 ID verso
 					</button>
+					<button
+						class="cs-detail__doc"
+						class:cs-detail__doc--off={!edit.pitch}
+						type="button"
+						disabled={!edit.pitch}
+						onclick={() => openPreview(`/files/candidat/${edit!.id}/pitch`, 'Vidéo pitch', 'video')}
+					>
+						🎥 Vidéo pitch
+					</button>
 				</div>
 			{/if}
-			{#if edit.titreValide}
+			{#if edit.titreValide && !studentMode}
 				<p class="cs-detail__hint">Titre de séjour — fin de validité : {edit.titreValide}</p>
 			{/if}
 		</div>
@@ -700,6 +744,7 @@
 				</div>
 			{/if}
 		</div>
+		{/if}
 
 		{#if editable}
 			<div class="cs-detail__footer">
@@ -711,6 +756,17 @@
 					>
 						{deleting ? 'Suppression…' : deleteLabel}
 					</Button>
+				{/if}
+				{#if onresetpassword}
+					<Button
+						variant="subtle"
+						onclick={runReset}
+						disabled={resetting || saving || deleting}
+					>
+						{resetting ? 'Envoi…' : resetLabel}
+					</Button>
+				{/if}
+				{#if ondelete || onresetpassword}
 					<div class="cs-detail__footer-spacer"></div>
 				{/if}
 				{#if !inline}
@@ -738,6 +794,9 @@
 	{#if preview}
 		{#if preview.kind === 'pdf'}
 			<iframe class="cs-detail__viewer" src={preview.url} title={preview.title}></iframe>
+		{:else if preview.kind === 'video'}
+			<!-- svelte-ignore a11y_media_has_caption -->
+			<video class="cs-detail__viewer-video" src={preview.url} controls preload="metadata"></video>
 		{:else}
 			<img class="cs-detail__viewer-img" src={preview.url} alt={preview.title} />
 		{/if}
@@ -837,7 +896,7 @@
 	}
 	.cs-detail__stats {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
 		gap: 10px;
 		margin-bottom: 14px;
 	}
@@ -1176,6 +1235,13 @@
 		object-fit: contain;
 		border-radius: 10px;
 		background: var(--c-bg);
+	}
+	.cs-detail__viewer-video {
+		display: block;
+		width: 100%;
+		max-height: 70vh;
+		border-radius: 10px;
+		background: #000;
 	}
 	.cs-detail__dl {
 		font-size: 13px;

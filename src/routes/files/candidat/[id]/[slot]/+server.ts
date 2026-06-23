@@ -14,7 +14,7 @@ const LABELS: Record<Slot, string> = {
 	pitch: 'Vidéo pitch'
 };
 
-export const GET: RequestHandler = async ({ params, locals, url }) => {
+export const GET: RequestHandler = async ({ params, locals, url, request }) => {
 	if (!locals.user) throw error(401, 'Non autorisé');
 	const id = Number(params.id);
 	const slot = params.slot as Slot;
@@ -52,5 +52,5 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 	const ext = path.split('.').pop() ?? 'bin';
 	const inline = url.searchParams.get('dl') !== '1';
-	return streamFile(path, `${LABELS[slot]}.${ext}`, inline);
+	return streamFile(path, `${LABELS[slot]}.${ext}`, inline, request.headers.get('range'));
 };

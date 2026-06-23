@@ -11,6 +11,7 @@
 	--c-green-light: #d1fae5;
 	--c-orange: #f59e0b;
 	--c-orange-light: #fef3c7;
+	--c-orange-text: #92400e;
 	--c-red: #ef4444;
 	--c-red-light: #fee2e2;
 	--c-purple: #8b5cf6;
@@ -23,8 +24,8 @@
 	--c-border: #e2e8f0;
 	--c-border-mid: #cbd5e1;
 
-	--font-display: 'Syne', system-ui, sans-serif;
-	--font-body: 'DM Sans', system-ui, sans-serif;
+	--font-display: 'Inter', system-ui, sans-serif;
+	--font-body: 'Inter', system-ui, sans-serif;
 
 	color-scheme: light;
 }
@@ -42,6 +43,7 @@
 	--c-green-light: #064e3b;
 	--c-orange: #fbbf24;
 	--c-orange-light: #78350f;
+	--c-orange-text: #fcd34d;
 	--c-red: #f87171;
 	--c-red-light: #7f1d1d;
 	--c-purple: #a78bfa;
@@ -138,5 +140,132 @@ ol {
 	to {
 		opacity: 1;
 		transform: scale(1);
+	}
+}
+
+/* ── Shared form primitives ─────────────────────────────────────────
+   Canonical, reusable building blocks. Components/routes use these
+   global classes instead of re-declaring identical rules locally. */
+
+.cs-input {
+	width: 100%;
+	min-width: 0;
+	padding: 10px 14px;
+	border-radius: 9px;
+	border: 1.5px solid var(--c-border);
+	font-size: 14px;
+	color: var(--c-text);
+	background: var(--c-card);
+	outline: none;
+	transition: border-color 0.12s;
+}
+.cs-input:focus {
+	border-color: var(--c-blue);
+}
+.cs-input:disabled {
+	background: var(--c-bg);
+	color: var(--c-muted);
+	cursor: not-allowed;
+}
+.cs-input--error,
+.cs-input--error:focus {
+	border-color: var(--c-red);
+}
+select.cs-input {
+	cursor: pointer;
+}
+
+.cs-label {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--c-sub);
+}
+.cs-req {
+	color: var(--c-red);
+	margin-left: 3px;
+}
+.cs-field-error {
+	font-size: 12px;
+	color: var(--c-red);
+}
+.cs-section-label {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--c-sub);
+}
+
+/* Vertical label + control group */
+.cs-field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+}
+
+/* Responsive 2-column grid that collapses on narrow screens */
+.cs-grid-2 {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+@media (max-width: 480px) {
+	.cs-grid-2 {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Inline status messages */
+.cs-alert {
+	font-size: 13px;
+	padding: 10px 14px;
+	border-radius: 8px;
+}
+.cs-alert--error {
+	background: var(--c-red-light);
+	color: var(--c-red);
+}
+.cs-alert--success {
+	background: var(--c-green-light);
+	color: var(--c-green);
+}
+
+/* ── Auth page shell (login / register / reset-password) ───────────── */
+
+.cs-auth {
+	min-height: 100vh;
+	background: var(--c-bg);
+	display: grid;
+	place-items: center;
+	padding: 24px;
+}
+.cs-auth__inner {
+	width: 100%;
+	max-width: 400px;
+}
+.cs-auth__back {
+	color: var(--c-muted);
+	font-size: 13px;
+	margin-bottom: 24px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.cs-auth__back:hover {
+	color: var(--c-blue);
+}
+.cs-auth__brand {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-bottom: 24px;
+}
+.cs-auth__form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+@media (max-width: 540px) {
+	.cs-auth {
+		padding: 16px;
 	}
 }

@@ -12,8 +12,8 @@
 	let loading = $state(false);
 </script>
 
-<div class="cs-rp">
-	<div class="cs-rp__inner">
+<div class="cs-auth">
+	<div class="cs-auth__inner">
 		<Card padding="32px">
 			<div class="cs-rp__brand">
 				<div class="cs-rp__title">
@@ -55,7 +55,7 @@
 				/>
 
 				{#if form?.error}
-					<div class="cs-rp__err">⚠ {form.error}</div>
+					<div class="cs-alert cs-alert--error">⚠ {form.error}</div>
 				{/if}
 
 				<Button variant="primary" size="lg" type="submit" disabled={loading} fullWidth>
@@ -67,17 +67,6 @@
 </div>
 
 <style>
-	.cs-rp {
-		min-height: 100vh;
-		background: var(--c-bg);
-		display: grid;
-		place-items: center;
-		padding: 24px;
-	}
-	.cs-rp__inner {
-		width: 100%;
-		max-width: 400px;
-	}
 	.cs-rp__brand {
 		text-align: center;
 		margin-bottom: 22px;
@@ -86,7 +75,7 @@
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 22px;
-		color: var(--c-navy);
+		color: var(--c-text);
 	}
 	.cs-rp__title span {
 		color: var(--c-accent);
@@ -100,12 +89,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-	}
-	.cs-rp__err {
-		background: var(--c-red-light);
-		color: var(--c-red);
-		font-size: 13px;
-		padding: 10px 14px;
-		border-radius: 8px;
 	}
 </style>

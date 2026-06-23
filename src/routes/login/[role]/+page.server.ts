@@ -5,19 +5,13 @@ import { auth } from '$lib/server/auth';
 const VALID_ROLES = ['candidat', 'cre', 'recruteur'] as const;
 type Role = (typeof VALID_ROLES)[number];
 
-const DEMO_EMAIL: Record<Role, string> = {
-	candidat: 'lea@student.fr',
-	cre: 'elodie@cloudstudent.fr',
-	recruteur: 'marie@orange.fr'
-};
-
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!VALID_ROLES.includes(params.role as Role)) throw redirect(303, '/');
 	if (locals.user) {
 		const role = (locals.user as { role?: string }).role ?? 'candidat';
 		throw redirect(303, `/${role}`);
 	}
-	return { role: params.role as Role, demoEmail: DEMO_EMAIL[params.role as Role] };
+	return { role: params.role as Role };
 };
 
 function forwardCookies(res: Response, cookies: import('@sveltejs/kit').Cookies) {
@@ -45,7 +39,7 @@ function forwardCookies(res: Response, cookies: import('@sveltejs/kit').Cookies)
 }
 
 export const actions: Actions = {
-	default: async ({ request, params, cookies }) => {
+	login: async ({ request, params, cookies }) => {
 		const role = params.role as Role;
 		if (!VALID_ROLES.includes(role)) return fail(400, { error: 'Rôle invalide' });
 
@@ -73,5 +67,26 @@ export const actions: Actions = {
 		if (!res.ok) return fail(401, { error: 'Email ou mot de passe incorrect.', email });
 		forwardCookies(res, cookies);
 		throw redirect(303, `/${role}`);
+	},
+
+	forgot: async ({ request }) => {
+		const form = await request.formData();
+		const email = String(form.get('email') ?? '')
+			.toLowerCase()
+			.trim();
+
+		if (!email) return fail(400, { error: "Saisissez votre email pour réinitialiser le mot de passe.", email });
+		if (!/\S+@\S+/.test(email)) return fail(400, { error: 'Email invalide.', email });
+
+		// On ne révèle pas si l'email existe : on renvoie toujours un succès.
+		try {
+			await auth.api.requestPasswordReset({
+				body: { email, redirectTo: '/reset-password' } as never
+			});
+		} catch (e) {
+			console.error('requestPasswordReset failed:', e);
+		}
+
+		return { sent: true, email };
 	}
 };

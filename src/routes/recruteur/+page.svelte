@@ -4,8 +4,9 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import Empty from '$lib/components/Empty.svelte';
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
-	import { invalidateAll } from '$app/navigation';
-	import { initials } from '$lib/utils';
+	import { invalidateAll, goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { initials, debounce } from '$lib/utils';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { C } from '$lib/tokens';
 	import type { PageData, LayoutData } from './$types';
@@ -15,6 +16,20 @@
 	let detail = $state<CandidatView | null>(null);
 
 	const retenus = $derived(new Set(data.retenuIds));
+
+	// svelte-ignore state_referenced_locally
+	let q = $state(data.filters.q);
+	// svelte-ignore state_referenced_locally
+	let minScore = $state(data.filters.minScore);
+
+	function applyFilters() {
+		const params = new URLSearchParams();
+		if (q.trim()) params.set('q', q.trim());
+		if (minScore) params.set('minScore', minScore);
+		const qs = params.toString();
+		goto(qs ? `?${qs}` : $page.url.pathname, { keepFocus: true, noScroll: true });
+	}
+	const applyDebounced = debounce(applyFilters, 300);
 
 	async function toggle(candidatId: number) {
 		const fd = new FormData();
@@ -26,11 +41,29 @@
 </script>
 
 <div class="cs-rec">
+	<div class="cs-rec__filters">
+		<input
+			class="cs-rec__search"
+			bind:value={q}
+			oninput={applyDebounced}
+			placeholder="🔍 Nom ou formation…"
+		/>
+		<input
+			class="cs-rec__num"
+			type="number"
+			min="0"
+			max="100"
+			bind:value={minScore}
+			oninput={applyDebounced}
+			placeholder="Score IA min"
+		/>
+	</div>
+
 	{#if data.candidats.length === 0}
 		<Empty
 			icon="📚"
 			title="Aucun profil validé"
-			sub="Les profils apparaissent après validation par le CRE."
+			sub="Aucun candidat ne correspond à ces filtres."
 		/>
 	{:else}
 		{#each data.candidats as c (c.id)}
@@ -44,7 +77,6 @@
 				</button>
 				<div class="cs-rec__tags">
 					<Badge label="IA: {c.score}/100" color={C.blueLight} />
-					{#if c.tosa}<Badge label="Tosa: {c.tosa}" color={C.purpleLight} textColor={C.purple} />{/if}
 					{#if c.pitch}<Badge label="🎥" color={C.greenLight} textColor={C.green} />{/if}
 				</div>
 				<Button
@@ -77,6 +109,28 @@
 <style>
 	.cs-rec {
 		max-width: 800px;
+	}
+	.cs-rec__filters {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-bottom: 16px;
+	}
+	.cs-rec__search {
+		flex: 1 1 220px;
+		padding: 10px 16px;
+		border-radius: 10px;
+		border: 1.5px solid var(--c-border);
+		font-size: 14px;
+		outline: none;
+	}
+	.cs-rec__num {
+		width: 130px;
+		padding: 10px 12px;
+		border-radius: 10px;
+		border: 1.5px solid var(--c-border);
+		font-size: 14px;
+		outline: none;
 	}
 	:global(.cs-rec__row) {
 		display: flex;

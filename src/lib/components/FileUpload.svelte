@@ -45,8 +45,8 @@
 			{#if fileName}📎{:else}⬆{/if}
 		</span>
 		<span class="cs-file__text">
-			<span class="cs-file__label">
-				{label}{#if required}<span class="cs-file__req">*</span>{/if}
+			<span class="cs-label">
+				{label}{#if required}<span class="cs-req">*</span>{/if}
 			</span>
 			<span class="cs-file__name">
 				{fileName ?? hint ?? 'Choisir un fichier'}
@@ -67,7 +67,7 @@
 		class="cs-file__input"
 	/>
 	{#if sizeError || error}
-		<span class="cs-file__error">⚠ {sizeError ?? error}</span>
+		<span class="cs-field-error cs-file__error">⚠ {sizeError ?? error}</span>
 	{/if}
 </div>
 
@@ -113,15 +113,6 @@
 		min-width: 0;
 		flex: 1;
 	}
-	.cs-file__label {
-		font-size: 13px;
-		font-weight: 600;
-		color: var(--c-sub);
-	}
-	.cs-file__req {
-		color: var(--c-red);
-		margin-left: 3px;
-	}
 	.cs-file__name {
 		font-size: 12px;
 		color: var(--c-muted);
@@ -159,7 +150,5 @@
 	}
 	.cs-file__error {
 		width: 100%;
-		font-size: 12px;
-		color: var(--c-red);
 	}
 </style>

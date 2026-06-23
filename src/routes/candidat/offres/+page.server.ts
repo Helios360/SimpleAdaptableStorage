@@ -5,9 +5,27 @@ import { db } from '$lib/server/db';
 import { offre, candidature } from '$lib/server/db/schema';
 import { loadCandidatForUser } from '$lib/server/guards';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ parent }) => {
+	const { candidat } = await parent();
 	const offres = await db.select().from(offre);
-	return { offres };
+
+	const rows = candidat
+		? await db
+				.select({
+					id: candidature.id,
+					offreId: candidature.offreId,
+					statut: candidature.statut,
+					date: candidature.createdAt,
+					titre: offre.titre,
+					entreprise: offre.entreprise
+				})
+				.from(candidature)
+				.innerJoin(offre, eq(candidature.offreId, offre.id))
+				.where(eq(candidature.candidatId, candidat.id))
+		: [];
+
+	const appliedIds = rows.map((r) => r.offreId);
+	return { offres, rows, appliedIds };
 };
 
 export const actions: Actions = {

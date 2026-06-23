@@ -1,4 +1,4 @@
-import { mkdir, writeFile, unlink, readFile, rm } from 'node:fs/promises';
+import { mkdir, writeFile, unlink, readFile, rm, stat, open } from 'node:fs/promises';
 import { join, normalize, sep } from 'node:path';
 
 export const UPLOAD_ROOT = process.env.UPLOADS_DIR
@@ -19,7 +19,8 @@ const MIMES: Record<string, string> = {
 	mp4: 'video/mp4',
 	webm: 'video/webm',
 	mov: 'video/quicktime',
-	m4v: 'video/x-m4v'
+	ogg: 'video/ogg',
+	ogv: 'video/ogg'
 };
 
 export function mimeFor(filename: string): string {
@@ -44,6 +45,14 @@ export const INSCRIPTION_COLUMNS: Record<InscriptionSlot, 'cvPath' | 'idDocPath'
 	cv: 'cvPath',
 	id_recto: 'idDocPath',
 	id_verso: 'idDocVersoPath'
+};
+
+/** Pitch video upload. Browsers reliably play mp4/webm; mov is accepted but
+ * served as video/quicktime (Safari-friendly, hit-or-miss elsewhere). */
+export const PITCH_SLOT: FileSlot = {
+	allowed: ['mp4', 'webm', 'mov', 'ogg', 'ogv'],
+	maxMB: 50,
+	label: 'Vidéo pitch'
 };
 
 export function validateUpload(file: File | null, slot: FileSlot): string | null {
@@ -115,12 +124,48 @@ function asciiFallback(name: string): string {
 	return name.normalize('NFKD').replace(/[^\x20-\x7e]/g, '_').replace(/"/g, "'");
 }
 
-export async function streamFile(rel: string, filename: string, inline: boolean): Promise<Response> {
+/** Parse a single-range `Range: bytes=start-end` header against `size`.
+ * Returns null when the header is absent/multi-range/unsatisfiable. */
+function parseRange(header: string | null, size: number): { start: number; end: number } | null {
+	if (!header) return null;
+	const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+	if (!m) return null;
+	const [, rawStart, rawEnd] = m;
+	let start: number;
+	let end: number;
+	if (rawStart === '') {
+		// Suffix range: last N bytes.
+		const n = Number(rawEnd);
+		if (!Number.isFinite(n) || n <= 0) return null;
+		start = Math.max(0, size - n);
+		end = size - 1;
+	} else {
+		start = Number(rawStart);
+		end = rawEnd === '' ? size - 1 : Number(rawEnd);
+	}
+	if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+	if (start > end || start < 0 || start >= size) return null;
+	if (end >= size) end = size - 1;
+	return { start, end };
+}
+
+/**
+ * Stream a stored file to the client. Pass `rangeHeader` (the request's
+ * `Range` header) to honour partial requests — required for smooth seeking in
+ * large media like pitch videos; absent/unparseable ranges fall back to a full
+ * 200 response.
+ */
+export async function streamFile(
+	rel: string,
+	filename: string,
+	inline: boolean,
+	rangeHeader: string | null = null
+): Promise<Response> {
 	const abs = resolveSafe(rel);
 	if (!abs) return new Response('Not found', { status: 404 });
-	let buf: Buffer;
+	let size: number;
 	try {
-		buf = await readFile(abs);
+		size = (await stat(abs)).size;
 	} catch {
 		return new Response('Not found', { status: 404 });
 	}
@@ -131,21 +176,46 @@ export async function streamFile(rel: string, filename: string, inline: boolean)
 	// Ensure the download filename carries the correct extension, otherwise
 	// "Save as…" loses the type and double-click after download breaks.
 	const dlName = extOf(filename) === pathExt ? filename : `${filename}.${pathExt}`;
+	const dispo = inline ? 'inline' : 'attachment';
+	const ascii = asciiFallback(dlName);
+	const encoded = encodeURIComponent(dlName);
+
+	const range = parseRange(rangeHeader, size);
+	// Read either the whole file or just the requested byte range.
+	let buf: Buffer;
+	try {
+		if (range) {
+			const fh = await open(abs, 'r');
+			try {
+				const len = range.end - range.start + 1;
+				buf = Buffer.alloc(len);
+				await fh.read(buf, 0, len, range.start);
+			} finally {
+				await fh.close();
+			}
+		} else {
+			buf = await readFile(abs);
+		}
+	} catch {
+		return new Response('Not found', { status: 404 });
+	}
+
 	// Copy into a fresh ArrayBuffer — Bun's TypedArray types require ArrayBuffer
 	// (not the union ArrayBufferLike) for Blob/Response bodies.
 	const ab = new ArrayBuffer(buf.byteLength);
 	new Uint8Array(ab).set(buf);
 	const body = new Blob([ab], { type: mime });
-	const dispo = inline ? 'inline' : 'attachment';
-	const ascii = asciiFallback(dlName);
-	const encoded = encodeURIComponent(dlName);
-	return new Response(body, {
-		headers: {
-			'Content-Type': mime,
-			'Content-Length': String(body.size),
-			'Content-Disposition': `${dispo}; filename="${ascii}"; filename*=UTF-8''${encoded}`,
-			'X-Content-Type-Options': 'nosniff',
-			'Cache-Control': 'private, max-age=0, must-revalidate'
-		}
-	});
+	const headers: Record<string, string> = {
+		'Content-Type': mime,
+		'Content-Length': String(body.size),
+		'Content-Disposition': `${dispo}; filename="${ascii}"; filename*=UTF-8''${encoded}`,
+		'X-Content-Type-Options': 'nosniff',
+		'Cache-Control': 'private, max-age=0, must-revalidate',
+		'Accept-Ranges': 'bytes'
+	};
+	if (range) {
+		headers['Content-Range'] = `bytes ${range.start}-${range.end}/${size}`;
+		return new Response(body, { status: 206, headers });
+	}
+	return new Response(body, { headers });
 }

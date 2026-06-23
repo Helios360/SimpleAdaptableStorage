@@ -6,9 +6,9 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
 	import { applyAction, enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { form, data }: { form: ActionData; data: PageData } = $props();
 
 	let fname = $state('');
 	let lname = $state('');
@@ -37,11 +37,11 @@
 	const idVersoLabel = $derived(sejour ? 'Titre de séjour (verso)' : "Pièce d'identité (verso)");
 </script>
 
-<div class="cs-reg">
-	<div class="cs-reg__inner">
-		<a href="/" class="cs-reg__back">← Retour</a>
+<div class="cs-auth">
+	<div class="cs-auth__inner cs-reg__inner">
+		<a href="/" class="cs-auth__back">← Retour</a>
 		<Card padding="32px">
-			<div class="cs-reg__brand">
+			<div class="cs-auth__brand cs-reg__brand">
 				<Logo size={40} />
 				<div class="cs-reg__tag">
 					<Badge label="Inscription étudiant" color="var(--c-blue-light)" textColor="var(--c-blue)" size={13} />
@@ -64,12 +64,12 @@
 					};
 				}}
 			>
-				<div class="cs-reg__row">
+				<div class="cs-grid-2">
 					<Input label="Prénom" name="fname" bind:value={fname} placeholder="Léa" required autofocus />
 					<Input label="Nom" name="lname" bind:value={lname} placeholder="Martin" required />
 				</div>
 				<Input label="Email" name="email" type="email" bind:value={email} placeholder="prenom@email.fr" required />
-				<div class="cs-reg__row">
+				<div class="cs-grid-2">
 					<Input
 						label="Mot de passe"
 						name="password"
@@ -89,14 +89,22 @@
 						minlength={4}
 					/>
 				</div>
-				<Input label="Formation" name="formation" bind:value={formation} placeholder="Bac+3 Webdev" required />
-				<div class="cs-reg__row">
+				<div class="cs-field">
+					<label for="formation" class="cs-label">Formation<span class="cs-req">*</span></label>
+					<select id="formation" name="formation" bind:value={formation} required class="cs-input">
+						<option value="" disabled>Sélectionne ta formation…</option>
+						{#each data.formations as f}
+							<option value={String(f.id)}>{f.name}</option>
+						{/each}
+					</select>
+				</div>
+				<div class="cs-grid-2">
 					<Input label="Ville" name="ville" bind:value={ville} placeholder="Paris" required />
 					<Input label="Téléphone" name="tel" type="tel" bind:value={tel} placeholder="06 12 34 56 78" required />
 				</div>
 
 				<div class="cs-reg__docs">
-					<div class="cs-reg__docs-title">Documents</div>
+					<div class="cs-section-label cs-reg__docs-title">Documents</div>
 
 					<FileUpload
 						label="CV"
@@ -109,7 +117,7 @@
 
 					<label class="cs-reg__check">
 						<input type="checkbox" name="sejour" bind:checked={sejour} value="1" />
-						<span>J'ai un titre de séjour plutôt qu'une pièce d'identité</span>
+						<span>J'ai un titre de séjour</span>
 					</label>
 
 					{#if sejour}
@@ -141,7 +149,7 @@
 				</div>
 
 				{#if form?.error}
-					<div class="cs-reg__err">⚠ {form.error}</div>
+					<div class="cs-alert cs-alert--error">⚠ {form.error}</div>
 				{/if}
 
 				<Button variant="primary" size="lg" type="submit" disabled={loading} fullWidth>
@@ -157,30 +165,10 @@
 </div>
 
 <style>
-	.cs-reg {
-		min-height: 100vh;
-		background: var(--c-bg);
-		display: grid;
-		place-items: center;
-		padding: 24px;
-	}
 	.cs-reg__inner {
-		width: 100%;
 		max-width: 480px;
 	}
-	.cs-reg__back {
-		color: var(--c-muted);
-		font-size: 13px;
-		margin-bottom: 24px;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		text-decoration: none;
-	}
 	.cs-reg__brand {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
 		margin-bottom: 16px;
 	}
 	.cs-reg__tag {
@@ -198,11 +186,6 @@
 		flex-direction: column;
 		gap: 14px;
 	}
-	.cs-reg__row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 12px;
-	}
 	.cs-reg__docs {
 		display: flex;
 		flex-direction: column;
@@ -212,9 +195,6 @@
 		margin-top: 4px;
 	}
 	.cs-reg__docs-title {
-		font-size: 13px;
-		font-weight: 700;
-		color: var(--c-sub);
 		margin-top: 8px;
 		margin-bottom: 2px;
 	}
@@ -233,18 +213,6 @@
 		accent-color: var(--c-blue);
 		cursor: pointer;
 	}
-	@media (max-width: 480px) {
-		.cs-reg__row {
-			grid-template-columns: 1fr;
-		}
-	}
-	.cs-reg__err {
-		background: var(--c-red-light);
-		color: var(--c-red);
-		font-size: 13px;
-		padding: 10px 14px;
-		border-radius: 8px;
-	}
 	.cs-reg__hint {
 		text-align: center;
 		margin-top: 18px;
@@ -255,10 +223,5 @@
 		color: var(--c-blue);
 		font-weight: 600;
 		text-decoration: none;
-	}
-	@media (max-width: 540px) {
-		.cs-reg {
-			padding: 14px;
-		}
 	}
 </style>

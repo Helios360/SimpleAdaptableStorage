@@ -8,9 +8,9 @@ import { requireRole } from '$lib/server/guards';
 import {
 	getCandidatRowForUser,
 	listFormations,
+	listCompetencesForFormation,
 	DEFAULT_SKILLS
 } from '$lib/server/queries';
-import { updateInscriptionDocFor, removeInscriptionDocFor } from '$lib/server/inscription';
 import { deleteCandidatForUser } from '$lib/server/deletion';
 
 function parseJsonArray(raw: unknown): string[] {
@@ -41,10 +41,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		getCandidatRowForUser(locals.user.id),
 		listFormations()
 	]);
+	// Suggestions de compétences issues du référentiel, ciblées sur la formation
+	// du candidat (fallback : référentiel complet, puis liste statique).
+	const competences = await listCompetencesForFormation(profile?.formationId ?? null);
 	return {
 		profile,
 		formations,
-		defaultSkills: DEFAULT_SKILLS
+		defaultSkills: competences.length ? competences : DEFAULT_SKILLS
 	};
 };
 
@@ -64,14 +67,11 @@ export const actions: Actions = {
 			lname,
 			fname,
 			tel: strOrNull(form.get('tel')),
-			addr: strOrNull(form.get('addr')),
 			city: String(form.get('city') ?? '').trim(),
 			postal: strOrNull(form.get('postal')),
 			birth: strOrNull(form.get('birth')),
 			formationId: intOrNull(form.get('formationId')),
 			year: intOrNull(form.get('year')),
-			score: intOrNull(form.get('score')),
-			tosa: intOrNull(form.get('tosa')),
 			permis: form.get('permis') === '1',
 			vehicule: form.get('vehicule') === '1',
 			mobile: form.get('mobile') === '1',
@@ -88,14 +88,6 @@ export const actions: Actions = {
 			.returning({ id: candidat.id });
 		if (!res.length) return fail(403, { error: 'Non autorisé' });
 		return { success: true };
-	},
-	updateInscriptionDoc: async ({ request, locals }) => {
-		requireRole(locals.user, 'candidat');
-		return updateInscriptionDocFor(await request.formData(), locals.user.id);
-	},
-	removeInscriptionDoc: async ({ request, locals }) => {
-		requireRole(locals.user, 'candidat');
-		return removeInscriptionDocFor(await request.formData(), locals.user.id);
 	},
 	deleteAccount: async ({ request, cookies, locals }) => {
 		requireRole(locals.user, 'candidat');

@@ -1,21 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
-import { candidature, offre } from '$lib/server/db/schema';
 
-export const load: PageServerLoad = async ({ parent }) => {
-	const { candidat } = await parent();
-	if (!candidat) return { rows: [] };
-	const rows = await db
-		.select({
-			id: candidature.id,
-			statut: candidature.statut,
-			date: candidature.createdAt,
-			titre: offre.titre,
-			entreprise: offre.entreprise
-		})
-		.from(candidature)
-		.innerJoin(offre, eq(candidature.offreId, offre.id))
-		.where(eq(candidature.candidatId, candidat.id));
-	return { rows };
+// Merged into /candidat/offres (tab "Mes candidatures"). Kept as a redirect so
+// existing links/bookmarks don't 404.
+export const load: PageServerLoad = async () => {
+	throw redirect(308, '/candidat/offres');
 };

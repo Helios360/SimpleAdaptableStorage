@@ -19,8 +19,36 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1782345600000,
-      "tag": "0002_pitch_video",
+      "when": 1780388749198,
+      "tag": "0002_omniscient_kulan_gath",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780391513903,
+      "tag": "0003_icy_vengeance",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780403599317,
+      "tag": "0004_windy_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780406429255,
+      "tag": "0005_competences",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780559553205,
+      "tag": "0006_drop_addr",
       "breakpoints": true
     }
   ]

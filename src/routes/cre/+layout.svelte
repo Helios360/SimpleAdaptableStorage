@@ -7,7 +7,7 @@
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	const titles: Record<string, string> = {
-		'/cre': 'Dashboard CRE',
+		'/cre': 'Dashboard École',
 		'/cre/etudiants': 'Étudiants',
 		'/cre/cvtheque': 'CVthèque',
 		'/cre/tests': 'Tests IA',

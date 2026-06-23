@@ -31,7 +31,6 @@ export async function loadCandidatForUser(userId: string) {
 			formationCode: formation.code,
 			year: candidat.year,
 			score: candidat.score,
-			tosa: candidat.tosa,
 			pitch: candidat.pitch,
 			pitchPath: candidat.pitchPath,
 			statut: candidat.statut,

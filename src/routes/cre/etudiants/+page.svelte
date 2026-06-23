@@ -10,6 +10,7 @@
 	import FileUpload from '$lib/components/FileUpload.svelte';
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
 	import { initials, statutLabel, scoreColor, debounce } from '$lib/utils';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { C } from '$lib/tokens';
@@ -52,6 +53,17 @@
 		null
 	);
 	let detail = $state<CandidatView | null>(null);
+	// Aperçu (lecture seule, façon CVthèque) vs édition complète.
+	let previewMode = $state(false);
+
+	function openEdit(r: CandidatRow) {
+		previewMode = false;
+		detail = r as CandidatView;
+	}
+	function openPreview(r: CandidatRow) {
+		previewMode = true;
+		detail = r as CandidatView;
+	}
 
 	// État du modal d'ajout
 	let addOpen = $state(false);
@@ -64,7 +76,6 @@
 	let newTel = $state('');
 	let newCity = $state('');
 	let newPostal = $state('');
-	let newAddr = $state('');
 	let newBirth = $state('');
 	let newYear = $state('');
 
@@ -76,7 +87,6 @@
 		newTel = '';
 		newCity = '';
 		newPostal = '';
-		newAddr = '';
 		newBirth = '';
 		newYear = '';
 		addError = null;
@@ -143,8 +153,7 @@
 		{ value: 'refuse', label: 'Refusé' }
 	];
 	const YEAR_CHIPS = [1, 2, 3, 4, 5];
-	const TRANCHES = [
-		{ value: '', label: 'Tranche' },
+	const TRANCHE_CHIPS = [
 		{ value: '0-17', label: '-18' },
 		{ value: '18-20', label: '18 — 20' },
 		{ value: '21-25', label: '21 — 25' },
@@ -252,7 +261,14 @@
 		const fd = new FormData();
 		fd.set('id', String(id));
 		fd.set('statut', statut);
-		await fetch('?/setStatut', { method: 'POST', body: fd });
+		const res = await fetch('?/setStatut', { method: 'POST', body: fd });
+		const result = deserialize(await res.text());
+		if (result.type === 'failure') {
+			const msg =
+				(result.data?.error as string | undefined) ?? 'Action impossible.';
+			pushToast(msg, 'error');
+			return;
+		}
 		const r = rows.find((x) => x.id === id);
 		if (r) r.statut = statut;
 		rows = [...rows];
@@ -303,24 +319,22 @@
 
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">🎓 Profil</p>
-			{#if data.staffFormationIds.length}
+			{#if data.formations.length}
 				<div class="cs-etu__filter-row">
 					<span class="cs-etu__filter-lab">Formations</span>
 					<div class="cs-etu__chips">
-						{#each data.staffFormationIds as fid}
-							{@const f = data.formations.find((x) => x.id === fid)}
-							{#if f}
-								<button
-									class="cs-etu__chip"
-									class:cs-etu__chip--active={selectedFormations.includes(fid)}
-									onclick={() => {
-										selectedFormations = toggle(selectedFormations, fid);
-										debouncedSearch();
-									}}
-								>
-									{f.code}
-								</button>
-							{/if}
+						{#each data.formations as f}
+							<button
+								class="cs-etu__chip"
+								class:cs-etu__chip--active={selectedFormations.includes(f.id)}
+								title={f.name}
+								onclick={() => {
+									selectedFormations = toggle(selectedFormations, f.id);
+									debouncedSearch();
+								}}
+							>
+								{f.code}
+							</button>
 						{/each}
 					</div>
 				</div>
@@ -420,15 +434,23 @@
 					bind:value={age}
 					oninput={debouncedSearch}
 				/>
-				<select
-					class="cs-etu__input cs-etu__input--sm"
-					bind:value={trancheAge}
-					onchange={debouncedSearch}
-				>
-					{#each TRANCHES as t}
-						<option value={t.value}>{t.label}</option>
+			</div>
+			<div class="cs-etu__filter-row">
+				<span class="cs-etu__filter-lab">Tranche d'âge</span>
+				<div class="cs-etu__chips">
+					{#each TRANCHE_CHIPS as t}
+						<button
+							class="cs-etu__chip"
+							class:cs-etu__chip--active={trancheAge === t.value}
+							onclick={() => {
+								trancheAge = trancheAge === t.value ? '' : t.value;
+								debouncedSearch();
+							}}
+						>
+							{t.label}
+						</button>
 					{/each}
-				</select>
+				</div>
 			</div>
 			<div class="cs-etu__filter-row">
 				<span class="cs-etu__filter-lab">Mobilité</span>
@@ -461,7 +483,7 @@
 							debouncedSearch();
 						}}
 					>
-						Mobile
+						Déménagement possible
 					</button>
 				</div>
 			</div>
@@ -551,13 +573,17 @@
 			{#each rows as r (r.id)}
 				{@const sc = statColor[r.statut] ?? { bg: C.bg, fg: C.muted }}
 				<div class="cs-etu__row" class:cs-etu__row--loading={loading}>
-					<button class="cs-etu__cell cs-etu__cell--name" onclick={() => (detail = r as CandidatView)}>
+					<button class="cs-etu__cell cs-etu__cell--name" onclick={() => openEdit(r)}>
 						<div class="cs-etu__avatar">{initials(r.name)}</div>
 						<div>
 							<p class="cs-etu__name">{r.lname.toUpperCase()} {r.fname}</p>
 							<p class="cs-etu__sub">
 								{r.formation}{#if r.formationCode} <span class="cs-etu__formation">({r.formationCode})</span>{/if}
 								{#if r.year} · Bac+{r.year}{/if}
+							</p>
+							<p class="cs-etu__rowtags">
+								<span>📄 {r.cvs.length} CV</span>
+								{#if r.pitch}<span>🎥 Pitch</span>{/if}
 							</p>
 						</div>
 					</button>
@@ -584,8 +610,11 @@
 					</div>
 					<div class="cs-etu__cell cs-etu__cell--date">
 						<span>{r.createdAt.slice(0, 10)}</span>
-						{#if r.statut === 'en_attente'}
-							<div class="cs-etu__actions">
+						<div class="cs-etu__actions">
+							<Button size="sm" variant="subtle" icon="👁" onclick={() => openPreview(r)}>
+								Aperçu
+							</Button>
+							{#if r.statut === 'en_attente'}
 								<Button
 									size="sm"
 									onclick={() =>
@@ -601,8 +630,8 @@
 								>
 									Refuser
 								</Button>
-							</div>
-						{/if}
+							{/if}
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -645,8 +674,11 @@
 <CandidatDetail
 	candidat={detail}
 	open={!!detail}
-	onclose={() => (detail = null)}
-	editable
+	onclose={() => {
+		detail = null;
+		previewMode = false;
+	}}
+	editable={!previewMode}
 	formations={data.formations}
 	tagSuggestions={data.defaultTags}
 	skillSuggestions={data.defaultSkills}
@@ -657,6 +689,21 @@
 	deleteLabel="Supprimer le compte"
 	deleteConfirmTitle={detail ? `Supprimer ${detail.name} ?` : 'Supprimer'}
 	deleteConfirmMessage="Le compte, le dossier et tous les fichiers seront effacés définitivement."
+	resetLabel="Envoyer un lien de reset"
+	onresetpassword={detail
+		? async () => {
+				const d = detail;
+				if (!d) return;
+				const fd = new FormData();
+				fd.set('id', String(d.id));
+				const res = await fetch('?/sendReset', { method: 'POST', body: fd });
+				if (res.ok) {
+					pushToast(`Lien de réinitialisation envoyé à ${d.email}`, 'success');
+				} else {
+					pushToast("Échec de l'envoi du lien de reset", 'error');
+				}
+			}
+		: undefined}
 	ondelete={detail
 		? async () => {
 				const d = detail;
@@ -754,7 +801,6 @@
 			<Input label="Téléphone" name="tel" type="tel" bind:value={newTel} placeholder="06 12 34 56 78" />
 			<Input label="Date de naissance" name="birth" type="date" bind:value={newBirth} />
 		</div>
-		<Input label="Adresse" name="addr" bind:value={newAddr} placeholder="12 rue de Paris" />
 		<div class="cs-add__row">
 			<Input label="Ville" name="city" bind:value={newCity} placeholder="Paris" />
 			<Input label="Code postal" name="postal" bind:value={newPostal} placeholder="75001" />
@@ -1082,6 +1128,19 @@
 		color: var(--c-muted);
 		margin-top: 2px;
 	}
+	.cs-etu__rowtags {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-top: 4px;
+		font-size: 11px;
+		color: var(--c-sub);
+	}
+	.cs-etu__rowtags span {
+		background: var(--c-bg);
+		border-radius: 6px;
+		padding: 1px 6px;
+	}
 	.cs-etu__formation {
 		color: var(--c-blue);
 		font-weight: 600;
@@ -1133,6 +1192,7 @@
 		font-weight: 600;
 	}
 	.cs-etu__detail-actions {
+		margin-top:1rem;
 		display: flex;
 		gap: 10px;
 	}
