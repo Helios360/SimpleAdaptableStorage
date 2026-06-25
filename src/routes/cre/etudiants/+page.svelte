@@ -27,7 +27,7 @@
 	let selectedYears = $state<number[]>([]);
 	let selectedFormations = $state<number[]>([]);
 	let place = $state('');
-	let radius = $state('');
+	let radius = $state('5');
 	let postal = $state('');
 
 	type PlaceSuggestion = { label: string; postcode?: string; city?: string };
@@ -305,7 +305,7 @@
 		selectedYears = [];
 		selectedFormations = [];
 		place = '';
-		radius = '';
+		radius = '5';
 		postal = '';
 		placeSuggestions = [];
 		showPlaceSuggestions = false;
