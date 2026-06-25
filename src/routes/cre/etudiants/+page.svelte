@@ -29,6 +29,67 @@
 	let place = $state('');
 	let radius = $state('');
 	let postal = $state('');
+
+	type PlaceSuggestion = { label: string; postcode?: string; city?: string };
+	let placeSuggestions = $state<PlaceSuggestion[]>([]);
+	let showPlaceSuggestions = $state(false);
+	let placeAbort: AbortController | null = null;
+	const BAN_URL = 'https://api-adresse.data.gouv.fr/search/';
+
+	async function fetchPlaceSuggestions(query: string): Promise<PlaceSuggestion[]> {
+		const trimmed = query.trim();
+		if (trimmed.length < 2) return [];
+		placeAbort?.abort();
+		placeAbort = new AbortController();
+		try {
+			const params = new URLSearchParams({ q: trimmed, limit: '5', autocomplete: '1' });
+			const res = await fetch(`${BAN_URL}?${params}`, { signal: placeAbort.signal });
+			if (!res.ok) return [];
+			const data = (await res.json()) as {
+				features?: Array<{
+					properties?: { label?: string; postcode?: string; city?: string };
+				}>;
+			};
+			return (data.features ?? []).flatMap((f) => {
+				const p = f.properties;
+				return p?.label ? [{ label: p.label, postcode: p.postcode, city: p.city }] : [];
+			});
+		} catch {
+			return [];
+		}
+	}
+
+	const updatePlaceSuggestions = debounce(async () => {
+		placeSuggestions = await fetchPlaceSuggestions(place);
+	}, 200);
+
+	function onPlaceInput() {
+		showPlaceSuggestions = true;
+		updatePlaceSuggestions();
+		debouncedSearch();
+	}
+
+	function pickPlaceSuggestion(s: PlaceSuggestion) {
+		place = s.label;
+		if (s.postcode) postal = s.postcode;
+		placeSuggestions = [];
+		showPlaceSuggestions = false;
+		fetchPage(1);
+	}
+
+	async function resolvePlaceForSearch(): Promise<string> {
+		const trimmed = place.trim();
+		if (!trimmed) return '';
+		const r = Number(radius);
+		if (!r || r <= 0) return trimmed;
+		if (placeSuggestions.length > 0) return placeSuggestions[0].label;
+		const fresh = await fetchPlaceSuggestions(trimmed);
+		if (fresh.length > 0) {
+			placeSuggestions = fresh;
+			return fresh[0].label;
+		}
+		return trimmed;
+	}
 	let age = $state('');
 	let trancheAge = $state('');
 	let permis = $state(false);
@@ -168,6 +229,7 @@
 	async function fetchPage(p: number) {
 		loading = true;
 		try {
+			const effectivePlace = await resolvePlaceForSearch();
 			const res = await fetch('/cre/etudiants/search', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -177,7 +239,7 @@
 					rechercheStatut: selectedRecherche,
 					year: selectedYears,
 					formationId: selectedFormations,
-					place,
+					place: effectivePlace,
 					radiusKm: radius ? Number(radius) : undefined,
 					postal,
 					age: age ? Number(age) : null,
@@ -245,6 +307,8 @@
 		place = '';
 		radius = '';
 		postal = '';
+		placeSuggestions = [];
+		showPlaceSuggestions = false;
 		age = '';
 		trancheAge = '';
 		permis = false;
@@ -399,12 +463,35 @@
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">📍 Localisation</p>
 			<div class="cs-etu__inputs-row">
-				<input
-					class="cs-etu__input"
-					placeholder="Lieu (ville, adresse…)"
-					bind:value={place}
-					oninput={debouncedSearch}
-				/>
+				<div class="cs-etu__place">
+					<input
+						class="cs-etu__input cs-etu__place-input"
+						placeholder="Lieu (ville, adresse…)"
+						bind:value={place}
+						oninput={onPlaceInput}
+						onfocus={() => (showPlaceSuggestions = true)}
+						onblur={() => setTimeout(() => (showPlaceSuggestions = false), 150)}
+						autocomplete="off"
+					/>
+					{#if showPlaceSuggestions && placeSuggestions.length > 0}
+						<ul class="cs-etu__suggest" role="listbox">
+							{#each placeSuggestions as s}
+								<li>
+									<button
+										type="button"
+										class="cs-etu__suggest-item"
+										onmousedown={(e) => {
+											e.preventDefault();
+											pickPlaceSuggestion(s);
+										}}
+									>
+										{s.label}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
 				<input
 					class="cs-etu__input cs-etu__input--sm"
 					placeholder="Rayon km"
@@ -1015,6 +1102,48 @@
 	}
 	.cs-etu__input--sm {
 		flex: 0 0 130px;
+	}
+	.cs-etu__place {
+		position: relative;
+		flex: 1;
+		min-width: 140px;
+		display: flex;
+	}
+	.cs-etu__place-input {
+		flex: 1;
+		min-width: 0;
+	}
+	.cs-etu__suggest {
+		position: absolute;
+		top: calc(100% + 4px);
+		left: 0;
+		right: 0;
+		z-index: 20;
+		margin: 0;
+		padding: 4px;
+		list-style: none;
+		background: var(--c-card);
+		border: 1.5px solid var(--c-border);
+		border-radius: 9px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+		max-height: 220px;
+		overflow-y: auto;
+	}
+	.cs-etu__suggest-item {
+		width: 100%;
+		text-align: left;
+		padding: 8px 10px;
+		border: none;
+		background: none;
+		border-radius: 6px;
+		font-size: 13px;
+		color: var(--c-text);
+		font-family: var(--font-body);
+		cursor: pointer;
+	}
+	.cs-etu__suggest-item:hover {
+		background: var(--c-bg);
+		color: var(--c-blue);
 	}
 	.cs-etu__input--inline {
 		flex: 0 0 240px;
