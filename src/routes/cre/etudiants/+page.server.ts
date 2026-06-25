@@ -83,17 +83,32 @@ export const actions: Actions = {
 		const statut = String(form.get('statut') ?? '');
 		if (!Number.isFinite(id) || !VALID_STATUTS.has(statut)) return fail(400);
 
-		// Validation gate : impossible de valider un dossier sans au moins un test IA passé.
+		// Validation gate : test IA passé + CV + pièce d'identité recto/verso.
 		if (statut === 'valide') {
 			const rows = await db
-				.select({ score: candidat.score })
+				.select({
+					score: candidat.score,
+					cvPath: candidat.cvPath,
+					idDocPath: candidat.idDocPath,
+					idDocVersoPath: candidat.idDocVersoPath
+				})
 				.from(candidat)
 				.where(eq(candidat.id, id))
 				.limit(1);
 			if (!rows.length) return fail(404, { error: 'Candidat introuvable.' });
-			if (rows[0].score == null) {
+			const c = rows[0];
+			if (c.score == null) {
 				return fail(400, {
 					error: "Validation impossible : l'étudiant n'a passé aucun test IA."
+				});
+			}
+			const missing: string[] = [];
+			if (!c.cvPath) missing.push('CV');
+			if (!c.idDocPath) missing.push("pièce d'identité (recto)");
+			if (!c.idDocVersoPath) missing.push("pièce d'identité (verso)");
+			if (missing.length) {
+				return fail(400, {
+					error: `Validation impossible : document(s) manquant(s) — ${missing.join(', ')}.`
 				});
 			}
 		}
