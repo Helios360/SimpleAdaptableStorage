@@ -4,6 +4,8 @@
 	import Input from '$lib/components/Input.svelte';
 	import Loader from '$lib/components/Loader.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
+	import type { ActionResult } from '@sveltejs/kit';
 	import { scoreColor } from '$lib/utils';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import type { LayoutData } from '../$types';
@@ -11,7 +13,6 @@
 	interface Question {
 		q: string;
 		options: string[];
-		answer: number;
 	}
 	type TestType = 'code' | 'logique' | 'psycho' | 'culture';
 
@@ -69,17 +70,23 @@
 		if (current < questions.length - 1) current += 1;
 	}
 
-	function computeScore(): number {
-		const correct = questions.reduce((n, q, i) => n + (answers[i] === q.answer ? 1 : 0), 0);
-		return Math.round((correct / questions.length) * 100);
-	}
-
 	async function submit() {
-		const sc = computeScore();
 		const fd = new FormData();
-		fd.set('score', String(sc));
-		await fetch('?/submit', { method: 'POST', body: fd });
-		finalScore = sc;
+		fd.set('answers', JSON.stringify(answers));
+		const res = await fetch('?/submit', { method: 'POST', body: fd });
+		const result = deserialize(await res.text()) as ActionResult<{ score: number }>;
+		if (result.type === 'failure') {
+			pushToast(
+				(result.data as { error?: string } | undefined)?.error ?? 'Échec de l’envoi du test',
+				'error'
+			);
+			return;
+		}
+		if (result.type !== 'success' || !result.data) {
+			pushToast('Réponse serveur inattendue', 'error');
+			return;
+		}
+		finalScore = result.data.score;
 		phase = 'done';
 		await invalidateAll();
 		pushToast('Test terminé ! Score envoyé ✓', 'success');
