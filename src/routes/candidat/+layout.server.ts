@@ -2,8 +2,9 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { requireRole, loadCandidatForUser } from '$lib/server/guards';
 
-// Seule URL accessible aux candidats non encore validés : la page de test IA,
-// passage obligatoire avant qu'un CRE puisse valider le dossier.
+// Seule URL accessible aux candidats non encore validés : la page de test IA.
+// Le test est indépendant de la validation : il ne la bloque pas et reste
+// accessible aussi bien avant qu'après validation du dossier.
 const PENDING_ALLOWED = new Set(['/candidat/tests']);
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {

@@ -83,11 +83,11 @@ export const actions: Actions = {
 		const statut = String(form.get('statut') ?? '');
 		if (!Number.isFinite(id) || !VALID_STATUTS.has(statut)) return fail(400);
 
-		// Validation gate : test IA passé + CV + pièce d'identité recto/verso.
+		// Validation gate : CV + pièce d'identité recto/verso.
+		// Le test IA est indépendant de la validation : il ne la bloque pas (et vice-versa).
 		if (statut === 'valide') {
 			const rows = await db
 				.select({
-					score: candidat.score,
 					cvPath: candidat.cvPath,
 					idDocPath: candidat.idDocPath,
 					idDocVersoPath: candidat.idDocVersoPath
@@ -97,11 +97,6 @@ export const actions: Actions = {
 				.limit(1);
 			if (!rows.length) return fail(404, { error: 'Candidat introuvable.' });
 			const c = rows[0];
-			if (c.score == null) {
-				return fail(400, {
-					error: "Validation impossible : l'étudiant n'a passé aucun test IA."
-				});
-			}
 			const missing: string[] = [];
 			if (!c.cvPath) missing.push('CV');
 			if (!c.idDocPath) missing.push("pièce d'identité (recto)");
@@ -229,7 +224,7 @@ export const actions: Actions = {
 			cvPath,
 			idDocPath,
 			idDocVersoPath,
-			statut: 'en_attente'
+			statut: 'valide'
 		});
 
 		try {
