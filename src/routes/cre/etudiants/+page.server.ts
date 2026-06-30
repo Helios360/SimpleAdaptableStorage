@@ -83,31 +83,8 @@ export const actions: Actions = {
 		const statut = String(form.get('statut') ?? '');
 		if (!Number.isFinite(id) || !VALID_STATUTS.has(statut)) return fail(400);
 
-		// Validation gate : CV + pièce d'identité recto/verso.
-		// Le test IA est indépendant de la validation : il ne la bloque pas (et vice-versa).
-		if (statut === 'valide') {
-			const rows = await db
-				.select({
-					cvPath: candidat.cvPath,
-					idDocPath: candidat.idDocPath,
-					idDocVersoPath: candidat.idDocVersoPath
-				})
-				.from(candidat)
-				.where(eq(candidat.id, id))
-				.limit(1);
-			if (!rows.length) return fail(404, { error: 'Candidat introuvable.' });
-			const c = rows[0];
-			const missing: string[] = [];
-			if (!c.cvPath) missing.push('CV');
-			if (!c.idDocPath) missing.push("pièce d'identité (recto)");
-			if (!c.idDocVersoPath) missing.push("pièce d'identité (verso)");
-			if (missing.length) {
-				return fail(400, {
-					error: `Validation impossible : document(s) manquant(s) — ${missing.join(', ')}.`
-				});
-			}
-		}
-
+		// Aucun verrou de validation : l'admin valide toujours le dossier, même si des
+		// champs ou des documents (CV, pièce d'identité, test IA) sont manquants.
 		await db.update(candidat).set({ statut, updatedAt: new Date() }).where(eq(candidat.id, id));
 
 		// Propagation sur les candidatures du dossier.
