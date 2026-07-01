@@ -27,8 +27,14 @@
 	let selectedYears = $state<number[]>([]);
 	let selectedFormations = $state<number[]>([]);
 	let place = $state('');
-	let radius = $state('5');
+	let radius = $state('');
 	let postal = $state('');
+	// Vrai une fois une ville choisie dans les suggestions : c'est le signal qui
+	// autorise la recherche par rayon. Tant que l'utilisateur tape, on reste en
+	// simple comparaison de chaîne sur la ville.
+	let placeSelected = $state(false);
+	// Libellé complet de la ville retenue (pour le géocodage côté serveur).
+	let selectedLabel = $state('');
 
 	type PlaceSuggestion = { label: string; postcode?: string; city?: string };
 	let placeSuggestions = $state<PlaceSuggestion[]>([]);
@@ -42,7 +48,14 @@
 		placeAbort?.abort();
 		placeAbort = new AbortController();
 		try {
-			const params = new URLSearchParams({ q: trimmed, limit: '5', autocomplete: '1' });
+			// type=municipality : on cherche des villes (ex. « par » → Paris), pas
+			// des adresses, pour coller à une recherche par rayon centrée ville.
+			const params = new URLSearchParams({
+				q: trimmed,
+				limit: '5',
+				autocomplete: '1',
+				type: 'municipality'
+			});
 			const res = await fetch(`${BAN_URL}?${params}`, { signal: placeAbort.signal });
 			if (!res.ok) return [];
 			const data = (await res.json()) as {
@@ -64,49 +77,34 @@
 	}, 200);
 
 	function onPlaceInput() {
+		// L'utilisateur modifie le texte : on repasse en comparaison de chaîne sur
+		// la ville et on relance les suggestions. La recherche par rayon attendra
+		// qu'une ville soit choisie dans la liste.
 		showPlaceSuggestions = true;
+		placeSelected = false;
+		selectedLabel = '';
 		updatePlaceSuggestions();
-		// On ne lance pas la recherche à chaque frappe : le rayon se calcule sur une
-		// ville complète (suggestion choisie ou touche Entrée). Vider le champ retire
-		// simplement le filtre de localisation.
-		if (place.trim() === '') debouncedSearch();
-	}
-
-	function onPlaceKeydown(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			showPlaceSuggestions = false;
-			fetchPage(1);
-		}
-	}
-
-	function onPostalInput() {
-		const p = postal.trim();
-		// Le code postal ne filtre qu'une fois saisi entièrement (5 chiffres), ou
-		// lorsqu'il est vidé pour retirer le filtre.
-		if (p === '' || /^\d{5}$/.test(p)) debouncedSearch();
+		debouncedSearch();
 	}
 
 	function pickPlaceSuggestion(s: PlaceSuggestion) {
-		place = s.label;
-		if (s.postcode) postal = s.postcode;
+		place = s.city ?? s.label;
+		selectedLabel = s.label;
+		placeSelected = true;
 		placeSuggestions = [];
 		showPlaceSuggestions = false;
 		fetchPage(1);
 	}
 
-	async function resolvePlaceForSearch(): Promise<string> {
-		const trimmed = place.trim();
-		if (!trimmed) return '';
-		const r = Number(radius);
-		if (!r || r <= 0) return trimmed;
-		if (placeSuggestions.length > 0) return placeSuggestions[0].label;
-		const fresh = await fetchPlaceSuggestions(trimmed);
-		if (fresh.length > 0) {
-			placeSuggestions = fresh;
-			return fresh[0].label;
-		}
-		return trimmed;
+	function onRadiusInput() {
+		// Le rayon n'a de sens qu'après avoir choisi une ville dans les suggestions.
+		if (placeSelected) debouncedSearch();
+	}
+
+	function onPostalInput() {
+		// Comparaison de chaîne progressive : on filtre par préfixe de code postal
+		// à chaque saisie, sans attendre les 5 chiffres.
+		debouncedSearch();
 	}
 	let age = $state('');
 	let trancheAge = $state('');
@@ -247,7 +245,10 @@
 	async function fetchPage(p: number) {
 		loading = true;
 		try {
-			const effectivePlace = await resolvePlaceForSearch();
+			// Deux modes : rayon (ville choisie + rayon renseigné → géocodage côté
+			// serveur sur le libellé complet) ou comparaison de chaîne sur la ville
+			// pendant la saisie.
+			const radiusMode = placeSelected && !!radius && Number(radius) > 0;
 			const res = await fetch('/cre/etudiants/search', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -257,8 +258,8 @@
 					rechercheStatut: selectedRecherche,
 					year: selectedYears,
 					formationId: selectedFormations,
-					place: effectivePlace,
-					radiusKm: radius ? Number(radius) : undefined,
+					place: radiusMode ? selectedLabel : place,
+					radiusKm: radiusMode ? Number(radius) : undefined,
 					postal,
 					age: age ? Number(age) : null,
 					trancheAge,
@@ -484,10 +485,9 @@
 				<div class="cs-etu__place">
 					<input
 						class="cs-etu__input cs-etu__place-input"
-						placeholder="Lieu (ville, adresse…)"
+						placeholder="Ville"
 						bind:value={place}
 						oninput={onPlaceInput}
-						onkeydown={onPlaceKeydown}
 						onfocus={() => (showPlaceSuggestions = true)}
 						onblur={() => setTimeout(() => (showPlaceSuggestions = false), 150)}
 						autocomplete="off"
@@ -517,7 +517,7 @@
 					type="number"
 					min="0"
 					bind:value={radius}
-					oninput={debouncedSearch}
+					oninput={onRadiusInput}
 				/>
 				<input
 					class="cs-etu__input cs-etu__input--sm"

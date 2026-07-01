@@ -311,7 +311,9 @@ export async function searchCandidats(
 		conds.push(sql`${candidat.score} >= ${filters.minScore}`);
 	if (filters.year?.length) conds.push(inArray(candidat.year, filters.year));
 	if (filters.formationId?.length) conds.push(inArray(candidat.formationId, filters.formationId));
-	if (filters.postal?.trim()) conds.push(eq(candidat.postal, filters.postal.trim()));
+	// Code postal : comparaison par préfixe (progressive pendant la saisie).
+	if (filters.postal?.trim())
+		conds.push(sql`${candidat.postal} ILIKE ${filters.postal.trim() + '%'}`);
 
 	// tranche d'âge — convertit en bornes sur birth date
 	const today = new Date();
@@ -352,22 +354,28 @@ export async function searchCandidats(
 		conds.push(sql`${candidat.skills} ?& ${arrayParam(filters.skills)}`);
 	}
 
-	// Haversine — calculé seulement si on a un point de référence
+	// Localisation — deux modes :
+	//  • rayon : une ville a été choisie et un rayon est fourni → géocodage + Haversine.
+	//  • chaîne : pendant la saisie → simple comparaison sur la ville (ILIKE).
 	let distanceExpr: SQL<number> | null = null;
-	if (filters.place?.trim() && filters.radiusKm && filters.radiusKm > 0) {
-		const point = await geocode(filters.place, filters.postal);
-		if (point) {
-			distanceExpr = sql<number>`(
-				6371 * acos(
-					least(1.0, greatest(-1.0,
-						cos(radians(${point.lat})) * cos(radians(${candidat.lat}))
-						* cos(radians(${candidat.lon}) - radians(${point.lon}))
-						+ sin(radians(${point.lat})) * sin(radians(${candidat.lat}))
-					))
-				)
-			)`;
-			conds.push(sql`${candidat.lat} IS NOT NULL AND ${candidat.lon} IS NOT NULL`);
-			conds.push(sql`${distanceExpr} <= ${filters.radiusKm}`);
+	if (filters.place?.trim()) {
+		if (filters.radiusKm && filters.radiusKm > 0) {
+			const point = await geocode(filters.place, filters.postal);
+			if (point) {
+				distanceExpr = sql<number>`(
+					6371 * acos(
+						least(1.0, greatest(-1.0,
+							cos(radians(${point.lat})) * cos(radians(${candidat.lat}))
+							* cos(radians(${candidat.lon}) - radians(${point.lon}))
+							+ sin(radians(${point.lat})) * sin(radians(${candidat.lat}))
+						))
+					)
+				)`;
+				conds.push(sql`${candidat.lat} IS NOT NULL AND ${candidat.lon} IS NOT NULL`);
+				conds.push(sql`${distanceExpr} <= ${filters.radiusKm}`);
+			}
+		} else {
+			conds.push(sql`${candidat.city} ILIKE ${'%' + filters.place.trim() + '%'}`);
 		}
 	}
 
