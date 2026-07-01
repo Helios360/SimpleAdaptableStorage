@@ -66,7 +66,25 @@
 	function onPlaceInput() {
 		showPlaceSuggestions = true;
 		updatePlaceSuggestions();
-		debouncedSearch();
+		// On ne lance pas la recherche à chaque frappe : le rayon se calcule sur une
+		// ville complète (suggestion choisie ou touche Entrée). Vider le champ retire
+		// simplement le filtre de localisation.
+		if (place.trim() === '') debouncedSearch();
+	}
+
+	function onPlaceKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			showPlaceSuggestions = false;
+			fetchPage(1);
+		}
+	}
+
+	function onPostalInput() {
+		const p = postal.trim();
+		// Le code postal ne filtre qu'une fois saisi entièrement (5 chiffres), ou
+		// lorsqu'il est vidé pour retirer le filtre.
+		if (p === '' || /^\d{5}$/.test(p)) debouncedSearch();
 	}
 
 	function pickPlaceSuggestion(s: PlaceSuggestion) {
@@ -469,6 +487,7 @@
 						placeholder="Lieu (ville, adresse…)"
 						bind:value={place}
 						oninput={onPlaceInput}
+						onkeydown={onPlaceKeydown}
 						onfocus={() => (showPlaceSuggestions = true)}
 						onblur={() => setTimeout(() => (showPlaceSuggestions = false), 150)}
 						autocomplete="off"
@@ -503,8 +522,10 @@
 				<input
 					class="cs-etu__input cs-etu__input--sm"
 					placeholder="Code postal"
+					inputmode="numeric"
+					maxlength="5"
 					bind:value={postal}
-					oninput={debouncedSearch}
+					oninput={onPostalInput}
 				/>
 			</div>
 		</section>
