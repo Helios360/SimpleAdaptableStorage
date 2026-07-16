@@ -6,7 +6,7 @@ import { deleteUploadDir } from './uploads';
 /**
  * Permanently delete a candidat account. Wipes the per-user uploads tree
  * and removes the `user` row — every dependent record (candidat, cv,
- * candidature, retenu, session, account, testAttempt, staffFormation)
+ * candidature, retenu, session, account, staffFormation)
  * cascades automatically via the FK definitions in schema.ts.
  *
  * Returns false if no matching user row existed.

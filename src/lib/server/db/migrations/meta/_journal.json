@@ -50,6 +50,13 @@
       "when": 1780559553205,
       "tag": "0006_drop_addr",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784214813808,
+      "tag": "0007_hesitant_proemial_gods",
+      "breakpoints": true
     }
   ]
 }

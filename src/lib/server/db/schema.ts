@@ -9,8 +9,6 @@ import {
 	jsonb,
 	date,
 	doublePrecision,
-	smallint,
-	bigserial,
 	index
 } from 'drizzle-orm/pg-core';
 
@@ -139,7 +137,6 @@ export const candidat = pgTable(
 		// scoring
 		score: integer('score'),
 		pitch: boolean('pitch').notNull().default(false),
-		pitchPath: text('pitch_path'),
 		// workflow CRE (dossier)
 		statut: text('statut').notNull().default('en_attente'), // en_attente | valide | refuse
 		// état recherche emploi
@@ -293,36 +290,6 @@ export const retenu = pgTable(
 	})
 );
 
-// Tests IA / banque de questions
-export const test = pgTable('test', {
-	id: serial('id').primaryKey(),
-	question: text('question').notNull(),
-	answer: text('answer').notNull(),
-	type: smallint('type').notNull(),
-	difficulty: smallint('difficulty').notNull()
-});
-
-export const testAttempt = pgTable(
-	'test_attempt',
-	{
-		id: bigserial('id', { mode: 'number' }).primaryKey(),
-		userId: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		testId: integer('test_id')
-			.notNull()
-			.references(() => test.id, { onDelete: 'cascade' }),
-		response: text('response'),
-		score: integer('score'),
-		createdAt: timestamp('created_at').notNull().defaultNow()
-	},
-	(t) => ({
-		userIdx: index('test_attempt_user_idx').on(t.userId),
-		testIdx: index('test_attempt_test_idx').on(t.testId),
-		userTestIdx: index('test_attempt_user_test_creation_idx').on(t.userId, t.testId, t.createdAt)
-	})
-);
-
 export type User = typeof user.$inferSelect;
 export type Formation = typeof formation.$inferSelect;
 export type Competence = typeof competence.$inferSelect;
@@ -331,8 +298,6 @@ export type Candidat = typeof candidat.$inferSelect;
 export type Offre = typeof offre.$inferSelect;
 export type Candidature = typeof candidature.$inferSelect;
 export type Cv = typeof cv.$inferSelect;
-export type Test = typeof test.$inferSelect;
-export type TestAttempt = typeof testAttempt.$inferSelect;
 export type Envoi = typeof envoi.$inferSelect;
 export type EnvoiEtudiant = typeof envoiEtudiant.$inferSelect;
 export type Evenement = typeof evenement.$inferSelect;

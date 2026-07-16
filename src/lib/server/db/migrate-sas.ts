@@ -34,7 +34,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { readFile, copyFile, mkdir, stat } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
 import * as schema from './schema';
-import { user, candidat, cv, formation, staffFormation, test, testAttempt } from './schema';
+import { user, candidat, cv, formation, staffFormation } from './schema';
 
 const COMMIT = process.argv.includes('--commit');
 const DUMP_FILE = process.env.DUMP_FILE ?? 'migrate/dump.sql';
@@ -174,8 +174,6 @@ async function main() {
 	const formations = parseInsert(sql, 'Formations'); // [id, code, name]
 	const users = parseInsert(sql, 'Users');
 	const staff = parseInsert(sql, 'StaffSettings'); // [staff_user_id, formation_id]
-	const tests = parseInsert(sql, 'Tests'); // [id, question, answer, type, difficulty]
-	const attempts = parseInsert(sql, 'TestAttempts'); // [id, user_id, test_id, response, score, creation]
 
 	const staffIds = new Set(users.filter((u) => bool(u[U.is_admin])).map((u) => Number(u[U.id])));
 	const candidatRows = users.filter((u) => !staffIds.has(Number(u[U.id])));
@@ -185,8 +183,6 @@ async function main() {
 	console.log(`  Formations     : ${formations.length}`);
 	console.log(`  Users          : ${users.length}  (candidats: ${candidatRows.length}, cre: ${creRows.length})`);
 	console.log(`  StaffSettings  : ${staff.length}`);
-	console.log(`  Tests          : ${tests.length}`);
-	console.log(`  TestAttempts   : ${attempts.length}`);
 	console.log(`  Mode           : ${COMMIT ? 'COMMIT (écriture)' : 'DRY-RUN (aucune écriture)'}`);
 	console.log(`  UPLOAD_ROOT    : ${UPLOAD_ROOT}`);
 	console.log('');
@@ -219,9 +215,7 @@ async function main() {
 		filesCopied: 0,
 		filesMissing: [] as string[],
 		existingSkipped: [] as string[],
-		cvRowsCreated: 0,
-		testsCreated: 0,
-		attemptsCreated: 0
+		cvRowsCreated: 0
 	};
 
 	// Anciens IDs déjà présents en base (email collision) → on n'y touche pas.
@@ -435,59 +429,6 @@ async function main() {
 		report.cvRowsCreated++;
 	}
 
-	// ── Tests + TestAttempts ───────────────────────────────────────────────────
-	// Seulement si la table test est vide (évite doublons / conflits d'ID).
-	const oldTestToNew: Record<number, number> = {};
-	const existingTests = await db.select().from(test);
-	if (existingTests.length === 0) {
-		console.log('Migration des tests…');
-		if (COMMIT) {
-			const ins = await db
-				.insert(test)
-				.values(
-					tests.map((t) => ({
-						question: String(t[1]),
-						answer: String(t[2]),
-						type: Number(t[3]),
-						difficulty: Number(t[4])
-					}))
-				)
-				.returning();
-			tests.forEach((t, idx) => (oldTestToNew[Number(t[0])] = ins[idx].id));
-		}
-		report.testsCreated = tests.length;
-
-		// Attempts : seulement si test_attempt vide.
-		const existingAttempts = await db.select().from(testAttempt).limit(1);
-		if (existingAttempts.length === 0) {
-			console.log('Migration des tentatives de test…');
-			if (COMMIT) {
-				const rows = attempts
-					.map((a) => {
-						const uid = oldUserToNew[Number(a[1])];
-						const tid = oldTestToNew[Number(a[2])];
-						if (!uid || tid == null) return null;
-						return {
-							userId: uid,
-							testId: tid,
-							response: a[3] == null ? null : String(a[3]),
-							score: a[4] == null ? null : Number(a[4]),
-							createdAt: new Date(String(a[5]))
-						};
-					})
-					.filter((r): r is NonNullable<typeof r> => r !== null);
-				if (rows.length) await db.insert(testAttempt).values(rows);
-				report.attemptsCreated = rows.length;
-			} else {
-				report.attemptsCreated = attempts.length;
-			}
-		} else {
-			console.log('  test_attempt non vide → tentatives ignorées.');
-		}
-	} else {
-		console.log('  Table test non vide → tests + tentatives ignorés.');
-	}
-
 	// ── Rapport ────────────────────────────────────────────────────────────────
 	console.log('\n══════════════ RAPPORT ══════════════');
 	console.log(`Formations créées      : ${report.formationsCreated}`);
@@ -497,8 +438,6 @@ async function main() {
 	console.log(`Liens staff_formation  : ${report.staffLinks}`);
 	console.log(`Fichiers copiés        : ${report.filesCopied}`);
 	console.log(`CV (table cv) créés    : ${report.cvRowsCreated}`);
-	console.log(`Tests créés            : ${report.testsCreated}`);
-	console.log(`Tentatives créées      : ${report.attemptsCreated}`);
 	if (report.filesMissing.length) {
 		console.log(`Fichiers INTROUVABLES  : ${report.filesMissing.length}`);
 		for (const f of report.filesMissing) console.log(`   - ${f}`);
