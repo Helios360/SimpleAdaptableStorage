@@ -24,6 +24,14 @@
 	--c-border: #e2e8f0;
 	--c-border-mid: #cbd5e1;
 
+	/* Barre supérieure — claire en thème clair */
+	--c-topbar-bg: #ffffff;
+	--c-topbar-text: #0f172a;
+	--c-topbar-muted: #64748b;
+	--c-topbar-border: #e2e8f0;
+	--c-topbar-sep: #e2e8f0;
+	--c-topbar-hover: rgba(15, 23, 42, 0.06);
+
 	--font-display: 'Inter', system-ui, sans-serif;
 	--font-body: 'Inter', system-ui, sans-serif;
 
@@ -55,6 +63,14 @@
 	--c-muted: #94a3b8;
 	--c-border: #1f2a44;
 	--c-border-mid: #334155;
+
+	/* Barre supérieure — navy en thème sombre */
+	--c-topbar-bg: #0b1628;
+	--c-topbar-text: #ffffff;
+	--c-topbar-muted: rgba(255, 255, 255, 0.6);
+	--c-topbar-border: rgba(255, 255, 255, 0.08);
+	--c-topbar-sep: rgba(255, 255, 255, 0.18);
+	--c-topbar-hover: rgba(255, 255, 255, 0.08);
 
 	color-scheme: dark;
 }

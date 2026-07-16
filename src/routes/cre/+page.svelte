@@ -74,12 +74,9 @@
 <CandidatDetail candidat={detail} open={!!detail} onclose={() => (detail = null)} />
 
 <style>
-	.cs-cre {
-		max-width: 1000px;
-	}
 	.cs-cre__stats {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
 		gap: 14px;
 		margin-bottom: 20px;
 	}

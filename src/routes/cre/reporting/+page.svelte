@@ -27,8 +27,6 @@
 </script>
 
 <div class="cs-report">
-	<h1 class="cs-report__title">Reporting</h1>
-
 	<div class="cs-report__stats">
 		<Card padding="18px"><div class="cs-report__stat-val">{s.total}</div><div class="cs-report__stat-lab">Étudiants</div></Card>
 		<Card padding="18px"><div class="cs-report__stat-val">{s.testsDone}</div><div class="cs-report__stat-lab">Tests faits</div></Card>
@@ -78,7 +76,6 @@
 
 <style>
 	.cs-report {
-		max-width: 900px;
 		display: flex;
 		flex-direction: column;
 		gap: 18px;

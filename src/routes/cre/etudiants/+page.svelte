@@ -982,7 +982,6 @@
 
 <style>
 	.cs-etu {
-		max-width: 1100px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;

@@ -36,7 +36,7 @@
 			{#if needsTest}
 				<div class="cs-pend__cta">
 					<a class="cs-btn cs-btn--primary cs-btn--md cs-btn--full" href="/candidat/tests">
-						🧠 Passer le test IA
+						<u>🧠 Passer le test IA</u>
 					</a>
 				</div>
 			{/if}

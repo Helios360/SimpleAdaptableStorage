@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { theme } from '$lib/stores/theme.svelte';
+	import { page } from '$app/stores';
+	import { enhance } from '$app/forms';
 	import Logo from './Logo.svelte';
+	import type { NavItem } from './Sidebar.svelte';
 
 	interface Notif {
 		icon: string;
@@ -13,22 +16,51 @@
 		isMobile: boolean;
 		notifications?: Notif[];
 		onclearnotifs?: () => void;
+		nav?: NavItem[];
 	}
 
-	let { title, onmenuclick, isMobile, notifications = [], onclearnotifs }: Props = $props();
+	let { title, onmenuclick, isMobile, notifications = [], onclearnotifs, nav }: Props = $props();
 	let open = $state(false);
 	const t = theme();
+
+	function isActive(href: string): boolean {
+		const path = $page.url.pathname;
+		let best = '';
+		for (const it of nav ?? []) {
+			if (path === it.href || (it.href !== '/' && path.startsWith(it.href + '/'))) {
+				if (it.href.length > best.length) best = it.href;
+			}
+		}
+		return best === href;
+	}
 </script>
 
 <div class="cs-top" class:cs-top--mobile={isMobile}>
-	{#if isMobile}
+	{#if isMobile && !nav}
 		<button class="cs-top__menu" aria-label="Menu" onclick={onmenuclick}>☰</button>
 	{/if}
 	<a href="/" class="cs-top__brand" aria-label="Accueil">
-		<Logo size={32} variant="light" showText={!isMobile} />
+		<Logo size={32} variant={t.value === 'dark' ? 'light' : 'dark'} showText={!isMobile} />
 	</a>
 	<span class="cs-top__sep" aria-hidden="true"></span>
-	<span class="cs-top__title">{title}</span>
+	{#if nav}
+		<nav class="cs-top__nav" aria-label="Navigation">
+			{#each nav as item}
+				{@const active = isActive(item.href)}
+				<a
+					href={item.href}
+					class="cs-top__nav-link"
+					class:cs-top__nav-link--active={active}
+					aria-current={active ? 'page' : undefined}
+				>
+					<span class="cs-top__nav-icon">{item.icon}</span>
+					{#if !isMobile}{item.label}{/if}
+				</a>
+			{/each}
+		</nav>
+	{:else}
+		<span class="cs-top__title">{title}</span>
+	{/if}
 	<button
 		class="cs-top__theme"
 		aria-label={t.value === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'}
@@ -70,19 +102,28 @@
 			</div>
 		{/if}
 	</div>
+	{#if nav}
+		<form method="POST" action="/logout" use:enhance class="cs-top__logout-form">
+			<button type="submit" class="cs-top__logout" aria-label="Déconnexion" title="Déconnexion">
+				⤴{#if !isMobile}<span>Déconnexion</span>{/if}
+			</button>
+		</form>
+	{/if}
 </div>
 
 <style>
 	.cs-top {
-		background: var(--c-navy);
+		background: var(--c-topbar-bg);
 		padding: 14px 32px;
+		margin:20px 30px;
 		display: flex;
 		align-items: center;
 		gap: 12px;
 		position: sticky;
-		top: 0;
 		z-index: 800;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 14px;
+		border: 1px solid var(--c-topbar-border);
+		transition: background 0.2s, border-color 0.2s;
 	}
 	.cs-top--mobile {
 		padding: 14px 18px;
@@ -90,7 +131,7 @@
 	.cs-top__menu {
 		background: none;
 		border: none;
-		color: #fff;
+		color: var(--c-topbar-text);
 		font-size: 22px;
 		cursor: pointer;
 		line-height: 1;
@@ -104,19 +145,78 @@
 	.cs-top__sep {
 		width: 1px;
 		align-self: stretch;
-		background: rgba(255, 255, 255, 0.18);
+		background: var(--c-topbar-sep);
 		margin: 0 4px;
 	}
 	.cs-top__title {
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 16px;
-		color: #fff;
+		color: var(--c-topbar-text);
 		flex: 1;
 		min-width: 0;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	.cs-top__nav {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.cs-top__nav::-webkit-scrollbar {
+		display: none;
+	}
+	.cs-top__nav-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 14px;
+		border-radius: 9px;
+		border: 1px solid transparent;
+		color: var(--c-topbar-muted);
+		font-size: 13px;
+		font-weight: 500;
+		white-space: nowrap;
+		text-decoration: none;
+		transition: all 0.12s;
+	}
+	.cs-top__nav-link:hover {
+		color: var(--c-topbar-text);
+		background: var(--c-topbar-hover);
+	}
+	.cs-top__nav-link--active {
+		background: rgba(26, 86, 219, 0.25);
+		border-color: rgba(26, 86, 219, 0.4);
+		color: var(--c-topbar-text);
+		font-weight: 600;
+	}
+	.cs-top__nav-icon {
+		font-size: 15px;
+	}
+	.cs-top__logout-form {
+		display: flex;
+	}
+	.cs-top__logout {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 9px;
+		background: none;
+		border: none;
+		color: var(--c-topbar-muted);
+		font-size: 13px;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: color 0.12s;
+	}
+	.cs-top__logout:hover {
+		color: var(--c-topbar-text);
 	}
 	.cs-top__theme {
 		background: none;
@@ -124,13 +224,13 @@
 		cursor: pointer;
 		font-size: 18px;
 		line-height: 1;
-		color: #fff;
+		color: var(--c-topbar-text);
 		padding: 4px;
 		border-radius: 8px;
 		transition: background 0.15s;
 	}
 	.cs-top__theme:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--c-topbar-hover);
 	}
 	.cs-top__bell {
 		position: relative;
@@ -141,7 +241,7 @@
 		cursor: pointer;
 		font-size: 18px;
 		position: relative;
-		color: #fff;
+		color: var(--c-topbar-text);
 	}
 	.cs-top__bell-count {
 		position: absolute;

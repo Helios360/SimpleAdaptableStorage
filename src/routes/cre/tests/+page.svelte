@@ -150,7 +150,6 @@
 
 <style>
 	.cs-tcre {
-		max-width: 680px;
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
