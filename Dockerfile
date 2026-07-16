@@ -3,6 +3,15 @@ WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile || bun install
 
+# Dev stage: full toolchain + Vite dev server with hot reload. Source is
+# bind-mounted at runtime by docker-compose.dev.yml (node_modules stays baked in).
+FROM deps AS dev
+WORKDIR /app
+COPY . .
+ENV NODE_ENV=development
+EXPOSE 3000
+CMD ["sh", "-c", "bun run db:migrate && bun run dev --host 0.0.0.0 --port 3000"]
+
 FROM deps AS build
 COPY . .
 RUN bun run build

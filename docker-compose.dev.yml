@@ -1,0 +1,64 @@
+# Development stack: app (Vite dev server, hot reload) + integrated PostgreSQL.
+#   docker compose -f docker-compose.dev.yml up --build
+# Postgres is exposed on localhost:5432 so you can also run the app on the host.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      target: dev
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "3000:3000"
+    volumes:
+      # Bind-mount source for hot reload; keep container's node_modules/build.
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Web DB client — open http://localhost:3001 to browse the database.
+  dbgate:
+    image: dbgate/dbgate:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      CONNECTIONS: pg
+      LABEL_pg: CloudStudent (dev)
+      SERVER_pg: postgres
+      PORT_pg: 5432
+      USER_pg: ${POSTGRES_USER}
+      PASSWORD_pg: ${POSTGRES_PASSWORD}
+      ENGINE_pg: postgres@dbgate-plugin-postgres
+    volumes:
+      - dbgate:/root/.dbgate
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  dbgate:
