@@ -11,13 +11,11 @@
 		'/cre/etudiants': 'Étudiants',
 		'/cre/cvtheque': 'CVthèque',
 		'/cre/tests': 'Tests IA',
-		'/cre/envoi': 'Envoi groupé',
-		'/cre/messages': 'Réponses clients',
-		'/cre/fiches': 'Fiches de poste'
+		'/cre/reporting': 'Reporting'
 	};
 	let title = $derived(titles[$page.url.pathname] ?? 'CloudStudent');
 </script>
 
-<AppShell user={data.user} nav={CRE_NAV} {title}>
+<AppShell user={data.user} nav={CRE_NAV} {title} headerNav>
 	{@render children()}
 </AppShell>

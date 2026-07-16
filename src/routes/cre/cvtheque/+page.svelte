@@ -49,11 +49,6 @@
 			selected.size === candidats.length ? new Set() : new Set(candidats.map((c) => c.id));
 	}
 
-	function sendSelected() {
-		const ids = [...selected].join(',');
-		goto(`/cre/envoi?students=${ids}`);
-	}
-
 	function resetFilters() {
 		q = '';
 		minScore = '';
@@ -63,14 +58,6 @@
 </script>
 
 <div class="cs-cvth">
-	{#if selected.size > 0}
-		<div class="cs-cvth__head">
-			<Button icon="📤" onclick={sendSelected}>
-				Préparer un envoi · {selected.size} profil(s)
-			</Button>
-		</div>
-	{/if}
-
 	<div class="cs-cvth__filters">
 		<input
 			class="cs-cvth__search"
@@ -140,12 +127,6 @@
 <style>
 	.cs-cvth {
 		max-width: 900px;
-	}
-	.cs-cvth__head {
-		display: flex;
-		justify-content: flex-end;
-		align-items: center;
-		margin-bottom: 16px;
 	}
 	.cs-cvth__filters {
 		display: flex;
