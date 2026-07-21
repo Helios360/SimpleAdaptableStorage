@@ -6,7 +6,7 @@
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
 	import { invalidateAll, goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { initials, debounce } from '$lib/utils';
+	import { initials, debounce, postForm, buildQuery } from '$lib/utils';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { C } from '$lib/tokens';
 	import type { PageData, LayoutData } from './$types';
@@ -23,18 +23,13 @@
 	let minScore = $state(data.filters.minScore);
 
 	function applyFilters() {
-		const params = new URLSearchParams();
-		if (q.trim()) params.set('q', q.trim());
-		if (minScore) params.set('minScore', minScore);
-		const qs = params.toString();
+		const qs = buildQuery({ q, minScore });
 		goto(qs ? `?${qs}` : $page.url.pathname, { keepFocus: true, noScroll: true });
 	}
 	const applyDebounced = debounce(applyFilters, 300);
 
 	async function toggle(candidatId: number) {
-		const fd = new FormData();
-		fd.set('candidatId', String(candidatId));
-		await fetch('?/toggle', { method: 'POST', body: fd });
+		await postForm('?/toggle', { candidatId });
 		await invalidateAll();
 		pushToast(retenus.has(candidatId) ? 'Profil retiré' : 'Profil retenu ⭐', retenus.has(candidatId) ? 'info' : 'success');
 	}

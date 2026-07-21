@@ -6,7 +6,7 @@
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { debounce } from '$lib/utils';
+	import { debounce, buildQuery } from '$lib/utils';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
 	import type { CandidatView } from '$lib/components/CandidatDetail.svelte';
@@ -23,11 +23,7 @@
 	let formationId = $state(data.filters.formationId);
 
 	function applyFilters() {
-		const params = new URLSearchParams();
-		if (q.trim()) params.set('q', q.trim());
-		if (minScore) params.set('minScore', minScore);
-		if (formationId) params.set('formationId', formationId);
-		const qs = params.toString();
+		const qs = buildQuery({ q, minScore, formationId });
 		goto(qs ? `?${qs}` : $page.url.pathname, { keepFocus: true, noScroll: true });
 	}
 	const applyDebounced = debounce(applyFilters, 300);

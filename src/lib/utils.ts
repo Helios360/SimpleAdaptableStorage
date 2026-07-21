@@ -37,6 +37,26 @@ export function debounce<T extends (...args: never[]) => void>(fn: T, delay = 30
 	}) as T;
 }
 
+/** POST a set of fields as multipart FormData to a SvelteKit action or endpoint. */
+export function postForm(
+	action: string,
+	fields: Record<string, string | number | Blob> = {}
+): Promise<Response> {
+	const fd = new FormData();
+	for (const [k, v] of Object.entries(fields)) fd.set(k, v instanceof Blob ? v : String(v));
+	return fetch(action, { method: 'POST', body: fd });
+}
+
+/** Build a querystring from filter fields, dropping empty/nullish values. */
+export function buildQuery(fields: Record<string, string | number | null | undefined>): string {
+	const sp = new URLSearchParams();
+	for (const [k, v] of Object.entries(fields)) {
+		const s = v == null ? '' : String(v).trim();
+		if (s) sp.set(k, s);
+	}
+	return sp.toString();
+}
+
 export function ageFromBirth(birth: string | null | undefined): number | null {
 	if (!birth) return null;
 	const d = new Date(birth);

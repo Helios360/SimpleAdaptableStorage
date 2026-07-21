@@ -11,6 +11,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { pushToast } from '$lib/stores/toast.svelte';
+	import { postForm } from '$lib/utils';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
 
@@ -41,9 +42,7 @@
 	let suggestFallback = $state(false);
 
 	async function activateCv(id: number) {
-		const fd = new FormData();
-		fd.set('id', String(id));
-		await fetch('?/cvActivate', { method: 'POST', body: fd });
+		await postForm('?/cvActivate', { id });
 		await invalidateAll();
 		pushToast('CV actif ✓', 'success');
 	}
@@ -121,12 +120,8 @@
 			return;
 		}
 		docBusy[slot] = true;
-		const fd = new FormData();
-		fd.set('candidatId', String(candidatId));
-		fd.set('slot', slot);
-		fd.set('file', file);
 		try {
-			const res = await fetch('?/docUpload', { method: 'POST', body: fd });
+			const res = await postForm('?/docUpload', { candidatId, slot, file });
 			if (!res.ok) throw new Error('upload failed');
 			if (inp) inp.value = '';
 			await invalidateAll();
@@ -140,11 +135,8 @@
 
 	async function removeDoc(slot: DocSlot, label: string) {
 		docBusy[slot] = true;
-		const fd = new FormData();
-		fd.set('candidatId', String(candidatId));
-		fd.set('slot', slot);
 		try {
-			const res = await fetch('?/docRemove', { method: 'POST', body: fd });
+			const res = await postForm('?/docRemove', { candidatId, slot });
 			if (!res.ok) throw new Error('remove failed');
 			await invalidateAll();
 			pushToast(`${label} supprimé`, 'info');
@@ -423,9 +415,7 @@
 	message="Cette action est irréversible."
 	onconfirm={async () => {
 		if (!cvDelTarget) return;
-		const fd = new FormData();
-		fd.set('id', String(cvDelTarget.id));
-		await fetch('?/cvRemove', { method: 'POST', body: fd });
+		await postForm('?/cvRemove', { id: cvDelTarget.id });
 		await invalidateAll();
 		pushToast('CV supprimé', 'info');
 		cvDelTarget = null;
@@ -448,7 +438,7 @@
 	title="Supprimer la vidéo ?"
 	message="Cette action est irréversible."
 	onconfirm={async () => {
-		await fetch('?/pitchRemove', { method: 'POST', body: new FormData() });
+		await postForm('?/pitchRemove');
 		await invalidateAll();
 		pushToast('Vidéo supprimée', 'info');
 		videoDelConfirm = false;
