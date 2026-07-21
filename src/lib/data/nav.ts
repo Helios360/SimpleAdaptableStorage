@@ -15,7 +15,8 @@ export const CRE_NAV: NavItem[] = [
 	// CVthèque fusionnée dans la fiche Étudiants (aperçu intégré) — réversible : décommenter pour réafficher
 	// { href: '/cre/cvtheque', icon: '📚', label: 'CVthèque' },
 	{ href: '/cre/tests', icon: '🧠', label: 'Tests IA' },
-	{ href: '/cre/reporting', icon: '📊', label: 'Reporting' }
+	{ href: '/cre/reporting', icon: '📊', label: 'Reporting' },
+	{ href: '/cre/parametres', icon: '⚙️', label: 'Paramètres' }
 ];
 
 export const RECRUTEUR_NAV: NavItem[] = [

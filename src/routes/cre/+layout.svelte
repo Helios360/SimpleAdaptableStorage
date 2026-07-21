@@ -11,7 +11,8 @@
 		'/cre/etudiants': 'Étudiants',
 		'/cre/cvtheque': 'CVthèque',
 		'/cre/tests': 'Tests IA',
-		'/cre/reporting': 'Reporting'
+		'/cre/reporting': 'Reporting',
+		'/cre/parametres': 'Paramètres'
 	};
 	let title = $derived(titles[$page.url.pathname] ?? 'CloudStudent');
 </script>
