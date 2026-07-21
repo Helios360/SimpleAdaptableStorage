@@ -124,6 +124,7 @@
 		border-radius: 14px;
 		border: 1px solid var(--c-topbar-border);
 		transition: background 0.2s, border-color 0.2s;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 	}
 	.cs-top--mobile {
 		padding: 14px 18px;
