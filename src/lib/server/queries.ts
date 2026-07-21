@@ -12,7 +12,10 @@ import {
 	formation,
 	staffFormation,
 	competence,
-	formationCompetence
+	formationCompetence,
+	placement,
+	promo,
+	school
 } from './db/schema';
 import { geocode } from './geocode';
 
@@ -51,6 +54,10 @@ export interface CandidatRow {
 	pitch: boolean;
 	statut: string;
 	rechercheStatut: string;
+	// Placement le plus récent (null si l'étudiant n'a jamais été placé). Sert à
+	// l'onglet « Placés » : affichage + édition du statut OPCO directement en liste.
+	placementId: number | null;
+	statutOpco: string | null;
 	createdAt: string;
 	cvs: CvRef[];
 	hasCvDoc: boolean;
@@ -136,6 +143,14 @@ const BASE_COLS = {
 	pitch: candidat.pitch,
 	statut: candidat.statut,
 	rechercheStatut: candidat.rechercheStatut,
+	// Placement le plus récent, via sous-requêtes corrélées (un candidat peut avoir
+	// plusieurs placements ; on retient le dernier créé, cohérent avec la fiche détail).
+	placementId: sql<
+		number | null
+	>`(SELECT p.id FROM ${placement} p WHERE p.candidat_id = ${candidat.id} ORDER BY p.created_at DESC LIMIT 1)`,
+	statutOpco: sql<
+		string | null
+	>`(SELECT p.statut_opco FROM ${placement} p WHERE p.candidat_id = ${candidat.id} ORDER BY p.created_at DESC LIMIT 1)`,
 	createdAt: candidat.createdAt,
 	cvPath: candidat.cvPath,
 	idDocPath: candidat.idDocPath,
@@ -168,6 +183,8 @@ type BaseRow = {
 	pitch: boolean;
 	statut: string;
 	rechercheStatut: string;
+	placementId: number | null;
+	statutOpco: string | null;
 	createdAt: Date;
 	cvPath: string | null;
 	idDocPath: string | null;
@@ -207,6 +224,8 @@ function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
 		pitch: r.pitch,
 		statut: r.statut,
 		rechercheStatut: r.rechercheStatut,
+		placementId: r.placementId,
+		statutOpco: r.statutOpco,
 		createdAt: r.createdAt.toISOString(),
 		cvs,
 		hasCvDoc: !!r.cvPath,
@@ -241,6 +260,19 @@ export async function getCandidatRowForUser(userId: string): Promise<CandidatRow
 		.innerJoin(user, eq(candidat.userId, user.id))
 		.leftJoin(formation, eq(candidat.formationId, formation.id))
 		.where(eq(candidat.userId, userId))
+		.limit(1)) as BaseRow[];
+	if (!base.length) return null;
+	const cvsBy = await attachCvs(base);
+	return toRow(base[0], cvsBy[base[0].id] ?? []);
+}
+
+export async function getCandidatRowById(id: number): Promise<CandidatRow | null> {
+	const base = (await db
+		.select(BASE_COLS)
+		.from(candidat)
+		.innerJoin(user, eq(candidat.userId, user.id))
+		.leftJoin(formation, eq(candidat.formationId, formation.id))
+		.where(eq(candidat.id, id))
 		.limit(1)) as BaseRow[];
 	if (!base.length) return null;
 	const cvsBy = await attachCvs(base);
@@ -426,6 +458,90 @@ export const HIDDEN_FORMATION_CODES = ['BTS OL'];
 export async function listFormations() {
 	const rows = await db.select().from(formation).orderBy(asc(formation.id));
 	return rows.filter((f) => !HIDDEN_FORMATION_CODES.includes(f.code));
+}
+
+// ─── Paramètres (formations / promos / admins) ───────────────────────────────
+
+// Formations + nombre d'étudiants rattachés : sert la page Paramètres (affichage
+// et garde-fou de suppression, la FK candidat.formation_id étant en ON DELETE
+// restrict). Inclut les formations masquées volontairement pour rester gérables.
+export async function listFormationsWithCounts() {
+	return db
+		.select({
+			id: formation.id,
+			code: formation.code,
+			name: formation.name,
+			schoolId: formation.schoolId,
+			schoolName: school.name,
+			studentCount: sql<number>`count(${candidat.id})::int`
+		})
+		.from(formation)
+		.leftJoin(candidat, eq(candidat.formationId, formation.id))
+		.leftJoin(school, eq(formation.schoolId, school.id))
+		.groupBy(formation.id, school.name)
+		.orderBy(asc(formation.id));
+}
+
+// Promos gérées depuis la page Paramètres, plus récentes d'abord.
+export async function listPromos() {
+	return db
+		.select({
+			id: promo.id,
+			label: promo.label,
+			year: promo.year,
+			formationId: promo.formationId,
+			formationName: formation.name,
+			schoolId: promo.schoolId,
+			schoolName: school.name
+		})
+		.from(promo)
+		.leftJoin(formation, eq(promo.formationId, formation.id))
+		.leftJoin(school, eq(promo.schoolId, school.id))
+		.orderBy(desc(promo.year), asc(promo.label));
+}
+
+// Écoles du référentiel + nombre de membres rattachés (page Paramètres).
+export async function listSchools() {
+	return db
+		.select({
+			id: school.id,
+			name: school.name,
+			type: school.type,
+			reglementUrl: school.reglementUrl,
+			memberCount: sql<number>`count(${user.id})::int`
+		})
+		.from(school)
+		.leftJoin(user, eq(user.schoolId, school.id))
+		.groupBy(school.id)
+		.orderBy(asc(school.name));
+}
+
+// Nom d'une école (affichage du tableau de bord candidat).
+export async function schoolNameById(id: number): Promise<string | null> {
+	const rows = await db
+		.select({ name: school.name })
+		.from(school)
+		.where(eq(school.id, id))
+		.limit(1);
+	return rows[0]?.name ?? null;
+}
+
+// Autres membres de l'école (rôle « cre ») visibles depuis la page Paramètres.
+export async function listAdmins() {
+	return db
+		.select({
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			schoolId: user.schoolId,
+			schoolName: school.name,
+			avatar: user.avatar,
+			createdAt: user.createdAt
+		})
+		.from(user)
+		.leftJoin(school, eq(user.schoolId, school.id))
+		.where(eq(user.role, 'cre'))
+		.orderBy(asc(user.name));
 }
 
 // Référentiel complet des compétences (libellés), trié alphabétiquement.

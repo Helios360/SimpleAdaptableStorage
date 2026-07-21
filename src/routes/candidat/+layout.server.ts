@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { requireRole, loadCandidatForUser } from '$lib/server/guards';
+import { schoolNameById } from '$lib/server/queries';
 
 // Seule URL accessible aux candidats non encore validés : la page de test IA.
 // Le test est indépendant de la validation : il ne la bloque pas et reste
@@ -17,5 +18,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		throw redirect(303, '/register/pending');
 	}
 
-	return { user: locals.user, candidat };
+	const schoolId = (locals.user as { schoolId?: number | null }).schoolId ?? null;
+	const schoolName = schoolId ? await schoolNameById(schoolId) : null;
+	return { user: locals.user, candidat, schoolName };
 };

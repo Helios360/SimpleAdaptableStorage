@@ -12,6 +12,99 @@ import {
 	index
 } from 'drizzle-orm/pg-core';
 
+// ─── Formes JSONB des fiches ─────────────────────────────────────────────────
+// Les fiches (étudiant / entreprise) sont stockées en JSONB plutôt qu'en tables
+// dédiées : ce sont des « dumps » de formulaire affichés en bloc, rarement
+// filtrés champ par champ, et le périmètre est amené à évoluer. Les dates sont
+// des chaînes ISO. Voir fiche_infos (candidat) et fiche_entreprise (placement).
+
+export interface FicheEtudiantData {
+	// état civil
+	nomNaissance?: string | null;
+	civilite?: string | null; // femme | homme | na
+	paysNaissance?: string | null;
+	communeNaissance?: string | null;
+	cpNaissance?: string | null;
+	adresseRue?: string | null;
+	nir?: string | null;
+	nationalite?: string | null; // francaise | ue | hors_ue
+	majeur?: boolean | null;
+	// représentant légal (si mineur)
+	repNom?: string | null;
+	repPrenom?: string | null;
+	repMail?: string | null;
+	repTel?: string | null;
+	repAdresse?: string | null;
+	// situations particulières
+	sportifHautNiveau?: boolean;
+	rqth?: boolean;
+	// parcours
+	situationAvantContrat?: string | null; // code 1–12
+	dernierDiplomePrepare?: string | null; // code
+	intituleDiplomePrepare?: string | null;
+	diplomeLePlusEleve?: string | null; // code
+	derniereAnneeSuivie?: string | null; // code
+	dejaAlternance?: boolean;
+	numeroDeca?: string | null;
+	// documents administratifs (chemins storage)
+	titreSejourPath?: string | null;
+	carteVitalePath?: string | null;
+	diplomePath?: string | null;
+	photoIdPath?: string | null;
+	reglementInterieurPath?: string | null;
+	attestationSportifPath?: string | null;
+	attestationRqthPath?: string | null;
+	ancienCerfaPath?: string | null;
+	submittedAt?: string | null; // ISO
+	updatedAt?: string | null; // ISO
+}
+
+export interface FicheEntrepriseData {
+	typeContrat?: string | null; // apprentissage | professionnalisation
+	// entreprise
+	raisonSociale?: string | null;
+	adresseSiege?: string | null;
+	adresseExecution?: string | null;
+	siretExecution?: string | null;
+	typeEmployeur?: string | null;
+	tel?: string | null;
+	formeJuridique?: string | null;
+	siretSiege?: string | null;
+	codeApeNaf?: string | null;
+	codeIdcc?: string | null;
+	nbSalaries?: number | null;
+	caisseRetraite?: string | null;
+	prevoyance?: string | null;
+	opco?: string | null;
+	chefNom?: string | null;
+	chefMail?: string | null;
+	chefTel?: string | null;
+	rhNom?: string | null;
+	rhMail?: string | null;
+	rhTel?: string | null;
+	assuranceChomagePublic?: string | null;
+	mandatOpco?: boolean;
+	// contribution obligatoire (facturation)
+	factuAdresse?: string | null;
+	factuMail?: string | null;
+	// tuteur
+	tuteurNom?: string | null;
+	tuteurPrenom?: string | null;
+	tuteurTel?: string | null;
+	tuteurDateNaissance?: string | null;
+	tuteurMail?: string | null;
+	tuteurFonction?: string | null;
+	tuteurExperience?: number | null;
+	tuteurDiplome?: string | null;
+	tuteurNbAlternants?: number | null;
+	// contrat
+	salaireBrut?: string | null;
+	smicSmc?: string | null;
+	dateDebut?: string | null;
+	submittedAt?: string | null; // ISO
+	updatedAt?: string | null; // ISO
+}
+
 // ─── better-auth tables ──────────────────────────────────────────────────────
 
 export const user = pgTable('user', {
@@ -25,7 +118,9 @@ export const user = pgTable('user', {
 	// CloudStudent additions
 	role: text('role').notNull().default('candidat'), // candidat | cre | recruteur
 	avatar: text('avatar'),
-	school: text('school'),
+	// École de rattachement (référentiel géré en Paramètres). Remplace l'ancien
+	// libellé libre `school`. Voir table `school`.
+	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
 	company: text('company')
 });
 
@@ -71,10 +166,25 @@ export const verification = pgTable('verification', {
 
 // ─── domain tables ──────────────────────────────────────────────────────────
 
+// École / organisme (Cloud Campus, Skalys…). Référentiel géré en Paramètres et
+// rattaché aux utilisateurs, formations, promos, offres et envois. Le `type`
+// pilote les items de checklist conditionnels (voir src/lib/checklist.ts) ; il
+// est dérivé du nom à la création (schoolType).
+export const school = pgTable('school', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	type: text('type').notNull().default('autre'), // cloud_campus | skalys | autre
+	// Règlement intérieur de l'école : lien envoyé à l'étudiant lors de la passation.
+	// Stocké ici (plutôt qu'en dur) pour pouvoir héberger le fichier directement plus tard.
+	reglementUrl: text('reglement_url'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 export const formation = pgTable('formation', {
 	id: serial('id').primaryKey(),
 	code: text('code').notNull().unique(),
-	name: text('name').notNull()
+	name: text('name').notNull(),
+	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' })
 });
 
 // Catalogue de compétences (référentiel), rattachables à des formations.
@@ -99,6 +209,18 @@ export const formationCompetence = pgTable(
 		pk: primaryKey({ columns: [t.formationId, t.competenceId] })
 	})
 );
+
+// Promotion (cohorte) gérée depuis la page Paramètres. Entité autonome : les
+// étudiants continuent d'utiliser candidat.year ; le rattachement à une promo
+// pourra être câblé plus tard. formationId optionnel (ex. « BTS SIO 2025 »).
+export const promo = pgTable('promo', {
+	id: serial('id').primaryKey(),
+	label: text('label').notNull().unique(),
+	year: integer('year'),
+	formationId: integer('formation_id').references(() => formation.id, { onDelete: 'set null' }),
+	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
 
 export const candidat = pgTable(
 	'candidat',
@@ -130,6 +252,11 @@ export const candidat = pgTable(
 		// tags & compétences (libellés libres + listes prédéfinies)
 		tags: jsonb('tags').$type<string[]>().notNull().default([]),
 		skills: jsonb('skills').$type<string[]>().notNull().default([]),
+		// Fiche d'informations (Google Form) — 1:1 avec le candidat, en JSONB.
+		ficheInfos: jsonb('fiche_infos').$type<FicheEtudiantData>(),
+		// Checklist « dossier » (formulaires, Cerfa, contribution…) — map clé→coché,
+		// en JSONB. Voir src/lib/checklist.ts pour les items et le tronc conditionnel.
+		checklist: jsonb('checklist').$type<Record<string, boolean>>().notNull().default({}),
 		// flags mobilité
 		permis: boolean('permis').notNull().default(false),
 		vehicule: boolean('vehicule').notNull().default(false),
@@ -201,7 +328,7 @@ export const offre = pgTable('offre', {
 	// publication : true = publiée, false = brouillon
 	active: boolean('active').notNull().default(true),
 	// rattachement CRE / école (null pour les offres seed historiques)
-	school: text('school'),
+	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
 	creId: text('cre_id').references(() => user.id, { onDelete: 'set null' }),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
@@ -217,48 +344,14 @@ export const envoi = pgTable(
 		message: text('message'),
 		opens: integer('opens').notNull().default(0),
 		statut: text('statut').notNull().default('envoye'), // envoye | ouvert
-		school: text('school'),
+		schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
 		creId: text('cre_id').references(() => user.id, { onDelete: 'set null' }),
 		lastOpenAt: timestamp('last_open_at'),
 		createdAt: timestamp('created_at').notNull().defaultNow()
 	},
 	(t) => ({
 		creIdx: index('envoi_cre_idx').on(t.creId),
-		schoolIdx: index('envoi_school_idx').on(t.school)
-	})
-);
-
-// Étudiants inclus dans un envoi (table de jonction)
-export const envoiEtudiant = pgTable(
-	'envoi_etudiant',
-	{
-		envoiId: integer('envoi_id')
-			.notNull()
-			.references(() => envoi.id, { onDelete: 'cascade' }),
-		candidatId: integer('candidat_id')
-			.notNull()
-			.references(() => candidat.id, { onDelete: 'cascade' })
-	},
-	(t) => ({
-		pk: primaryKey({ columns: [t.envoiId, t.candidatId] })
-	})
-);
-
-// Événements de l'école (ateliers, forums, coaching…)
-export const evenement = pgTable(
-	'evenement',
-	{
-		id: serial('id').primaryKey(),
-		titre: text('titre').notNull(),
-		type: text('type'),
-		date: text('date').notNull(),
-		description: text('description'),
-		online: boolean('online').notNull().default(false),
-		school: text('school'),
-		createdAt: timestamp('created_at').notNull().defaultNow()
-	},
-	(t) => ({
-		schoolIdx: index('evenement_school_idx').on(t.school)
+		schoolIdx: index('envoi_school_idx').on(t.schoolId)
 	})
 );
 
@@ -290,8 +383,80 @@ export const retenu = pgTable(
 	})
 );
 
+// ─── Placement (passation commercial → alternance) ───────────────────────────
+
+// Un placement = une passation d'un étudiant en entreprise, créée par le
+// commercial depuis le dashboard. Reprend les colonnes du suivi « candidats
+// placés ». La clé étrangère candidatId relie tout au dossier étudiant existant
+// (pas de duplication des infos déjà en base : nom, formation, email…).
+export const placement = pgTable(
+	'placement',
+	{
+		id: serial('id').primaryKey(),
+		candidatId: integer('candidat_id')
+			.notNull()
+			.references(() => candidat.id, { onDelete: 'cascade' }),
+		// commercial connecté qui a saisi la passation
+		commercialId: text('commercial_id').references(() => user.id, { onDelete: 'set null' }),
+		// « Suivi par » (nom libre, peut différer du compte qui saisit)
+		suiviPar: text('suivi_par'),
+		promo: text('promo'),
+		source: text('source'),
+		datePlacement: date('date_placement'),
+		// entreprise (minimal à la passation ; le détail complet arrive via fiche_entreprise)
+		entreprise: text('entreprise'),
+		contactNom: text('contact_nom'),
+		contactPrenom: text('contact_prenom'),
+		contactTel: text('contact_tel'),
+		// email vers lequel part le lien tokenisé de la fiche entreprise
+		contactEmail: text('contact_email'),
+		typeContrat: text('type_contrat'), // apprentissage | professionnalisation
+		// suivi OPCO (colonne « Statut » du tableau)
+		statutOpco: text('statut_opco').notNull().default('en_attente'),
+		priseEnCharge: date('prise_en_charge'),
+		dateRupture: date('date_rupture'),
+		commentaires: text('commentaires'),
+		// facturation
+		factureEmise: boolean('facture_emise').notNull().default(false),
+		factureDate: date('facture_date'),
+		factureNumero: text('facture_numero'),
+		facturePayee: boolean('facture_payee').notNull().default(false),
+		// avancement du dossier de formulaires
+		statut: text('statut').notNull().default('brouillon'), // brouillon | liens_envoyes | etudiant_ok | entreprise_ok | complet
+		// Fiche entreprise (Fiche de renseignements Cloud Campus) — 1:1, en JSONB.
+		ficheEntreprise: jsonb('fiche_entreprise').$type<FicheEntrepriseData>(),
+		createdAt: timestamp('created_at').notNull().defaultNow(),
+		updatedAt: timestamp('updated_at').notNull().defaultNow()
+	},
+	(t) => ({
+		candidatIdx: index('placement_candidat_idx').on(t.candidatId),
+		commercialIdx: index('placement_commercial_idx').on(t.commercialId)
+	})
+);
+
+// Lien tokenisé (session sans compte) vers un formulaire public. Distinct du reset
+// de mot de passe better-auth : sert aux fiches étudiant / entreprise d'un placement.
+export const formToken = pgTable(
+	'form_token',
+	{
+		token: text('token').primaryKey(),
+		placementId: integer('placement_id')
+			.notNull()
+			.references(() => placement.id, { onDelete: 'cascade' }),
+		audience: text('audience').notNull(), // etudiant | entreprise
+		expiresAt: timestamp('expires_at').notNull(),
+		submittedAt: timestamp('submitted_at'),
+		createdAt: timestamp('created_at').notNull().defaultNow()
+	},
+	(t) => ({
+		placementIdx: index('form_token_placement_idx').on(t.placementId)
+	})
+);
+
 export type User = typeof user.$inferSelect;
+export type School = typeof school.$inferSelect;
 export type Formation = typeof formation.$inferSelect;
+export type Promo = typeof promo.$inferSelect;
 export type Competence = typeof competence.$inferSelect;
 export type FormationCompetence = typeof formationCompetence.$inferSelect;
 export type Candidat = typeof candidat.$inferSelect;
@@ -299,5 +464,5 @@ export type Offre = typeof offre.$inferSelect;
 export type Candidature = typeof candidature.$inferSelect;
 export type Cv = typeof cv.$inferSelect;
 export type Envoi = typeof envoi.$inferSelect;
-export type EnvoiEtudiant = typeof envoiEtudiant.$inferSelect;
-export type Evenement = typeof evenement.$inferSelect;
+export type Placement = typeof placement.$inferSelect;
+export type FormToken = typeof formToken.$inferSelect;

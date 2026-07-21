@@ -36,7 +36,7 @@ function instance(): AuthInstance {
 			additionalFields: {
 				role: { type: 'string', required: false, defaultValue: 'candidat' },
 				avatar: { type: 'string', required: false },
-				school: { type: 'string', required: false },
+				schoolId: { type: 'number', required: false },
 				company: { type: 'string', required: false }
 			}
 		},

@@ -17,8 +17,10 @@ import {
 	formation,
 	staffFormation,
 	competence,
-	formationCompetence
+	formationCompetence,
+	school
 } from './schema';
+import { schoolType } from '../../checklist';
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -36,7 +38,7 @@ const auth = betterAuth({
 		additionalFields: {
 			role: { type: 'string', required: false, defaultValue: 'candidat' },
 			avatar: { type: 'string', required: false },
-			school: { type: 'string', required: false },
+			schoolId: { type: 'number', required: false },
 			company: { type: 'string', required: false }
 		}
 	},
@@ -62,6 +64,41 @@ if (formationsExisting.length === 0) {
 	for (const f of inserted) formationIdByCode[f.code] = f.id;
 } else {
 	for (const f of formationsExisting) formationIdByCode[f.code] = f.id;
+}
+
+// ─── Écoles (référentiel) ────────────────────────────────────────────────────
+
+const SCHOOL_NAMES = ['Cloud Campus', 'Skalys', 'IPSSI Paris'];
+
+// Règlement intérieur par école : lien envoyé à l'étudiant lors de la passation.
+const REGLEMENT_URLS: Record<string, string> = {
+	'Cloud Campus': 'https://docs.google.com/document/d/1e92FE-UOV1TYbHRSadxR1RCNri30-Nxu/edit',
+	Skalys:
+		'https://docs.google.com/document/d/10b-OVOm42EuRz-KPxTYJ6FC_peeNo3Nz/edit?usp=sharing&ouid=117813654733070312410&rtpof=true&sd=true'
+};
+
+console.log('Seeding schools…');
+const schoolIdByName: Record<string, number> = {};
+for (const s of await db.select().from(school)) schoolIdByName[s.name] = s.id;
+const missingSchools = SCHOOL_NAMES.filter((n) => schoolIdByName[n] == null);
+if (missingSchools.length) {
+	const inserted = await db
+		.insert(school)
+		.values(
+			missingSchools.map((name) => ({
+				name,
+				type: schoolType(name),
+				reglementUrl: REGLEMENT_URLS[name] ?? null
+			}))
+		)
+		.returning();
+	for (const s of inserted) schoolIdByName[s.name] = s.id;
+}
+// Garantit le lien du règlement même sur une base déjà seedée.
+for (const [name, url] of Object.entries(REGLEMENT_URLS)) {
+	if (schoolIdByName[name] != null) {
+		await db.update(school).set({ reglementUrl: url }).where(eq(school.id, schoolIdByName[name]));
+	}
 }
 
 // ─── Compétences (référentiel) liées aux formations ─────────────────────────
@@ -162,7 +199,7 @@ async function ensureUser(a: SeedAccount): Promise<string> {
 			name: a.name,
 			role: a.role,
 			avatar: a.avatar,
-			school: a.school,
+			schoolId: a.school ? schoolIdByName[a.school] : undefined,
 			company: a.company
 		} as never
 	});

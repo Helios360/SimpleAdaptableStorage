@@ -26,7 +26,7 @@
 
 <div class="cs-dash">
 	<h1 class="cs-dash__hi">Bonjour, {firstName} 👋</h1>
-	<p class="cs-dash__sub">{c?.formation ?? '—'} · {data.user.school ?? 'AJ-formation'}</p>
+	<p class="cs-dash__sub">{c?.formation ?? '—'} · {data.schoolName ?? 'AJ-formation'}</p>
 
 	<Card padding="22px">
 		<div class="cs-dash__progress-head">

@@ -1,0 +1,1 @@
+ALTER TABLE "school" ADD COLUMN "reglement_url" text;
