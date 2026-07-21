@@ -1,0 +1,197 @@
+/**
+ * Enregistrement des formulaires publics (fiche étudiant / fiche entreprise)
+ * soumis via un lien tokenisé. Gère les uploads de documents, l'écriture des
+ * fiches en JSONB (candidat.ficheInfos / placement.ficheEntreprise), le marquage
+ * du token comme soumis et l'avancement du statut du placement.
+ */
+import { fail } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
+import { db } from './db';
+import {
+	candidat,
+	placement,
+	formToken,
+	type FicheEtudiantData,
+	type FicheEntrepriseData
+} from './db/schema';
+import { saveUpload, validateUpload, deleteUpload, type FileSlot } from './uploads';
+import {
+	parseFormStr as s,
+	parseFormBool as b,
+	parseFormInt as i,
+	computePlacementStatut
+} from '$lib/placementLogic';
+
+// Les pièces jointes des fiches acceptent PDF ou image, 8 Mo max.
+const DOC_SLOT: FileSlot = {
+	allowed: ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+	maxMB: 8,
+	label: 'Document'
+};
+
+/** Sauve un fichier optionnel : conserve l'ancien chemin si aucun fichier fourni. */
+async function saveOptionalFile(
+	form: FormData,
+	field: string,
+	relDir: string,
+	basename: string,
+	existingPath: string | null | undefined
+): Promise<{ path: string | null; error?: string }> {
+	const file = form.get(field);
+	if (!(file instanceof File) || file.size === 0) return { path: existingPath ?? null };
+	const err = validateUpload(file, DOC_SLOT);
+	if (err) return { path: existingPath ?? null, error: err };
+	const path = await saveUpload(relDir, `${basename}_${Date.now()}`, file);
+	if (existingPath && existingPath !== path) await deleteUpload(existingPath);
+	return { path };
+}
+
+/** Recalcule le statut du placement selon l'état de soumission des deux fiches. */
+async function advancePlacement(placementId: number, candidatId: number) {
+	const [cand] = await db
+		.select({ fiche: candidat.ficheInfos })
+		.from(candidat)
+		.where(eq(candidat.id, candidatId))
+		.limit(1);
+	const [pl] = await db
+		.select({ fiche: placement.ficheEntreprise })
+		.from(placement)
+		.where(eq(placement.id, placementId))
+		.limit(1);
+	const statut = computePlacementStatut(!!cand?.fiche?.submittedAt, !!pl?.fiche?.submittedAt);
+	await db
+		.update(placement)
+		.set({ statut, updatedAt: new Date() })
+		.where(eq(placement.id, placementId));
+}
+
+interface TokenRow {
+	token: string;
+	placementId: number;
+	audience: string;
+}
+
+/** Enregistre la fiche d'informations étudiante dans candidat.ficheInfos (JSONB). */
+export async function saveFicheEtudiant(tok: TokenRow, form: FormData) {
+	const rows = await db
+		.select({ candidatId: placement.candidatId, userId: candidat.userId, fiche: candidat.ficheInfos })
+		.from(placement)
+		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
+		.where(eq(placement.id, tok.placementId))
+		.limit(1);
+	const ctx = rows[0];
+	if (!ctx) return fail(404, { error: 'Dossier introuvable.' });
+	const prev = ctx.fiche ?? {};
+
+	const relDir = `candidat/${ctx.userId}/fiche`;
+	const fileFields: [string, keyof FicheEtudiantData][] = [
+		['attestationSportif', 'attestationSportifPath'],
+		['attestationRqth', 'attestationRqthPath'],
+		['ancienCerfa', 'ancienCerfaPath'],
+		['titreSejour', 'titreSejourPath'],
+		['carteVitale', 'carteVitalePath'],
+		['diplome', 'diplomePath'],
+		['photoId', 'photoIdPath'],
+		['reglementInterieur', 'reglementInterieurPath']
+	];
+	const paths: Partial<FicheEtudiantData> = {};
+	for (const [field, col] of fileFields) {
+		const res = await saveOptionalFile(form, field, relDir, field, prev[col] as string | null);
+		if (res.error) return fail(400, { error: res.error });
+		(paths as Record<string, string | null>)[col] = res.path;
+	}
+
+	const data: FicheEtudiantData = {
+		nomNaissance: s(form.get('nomNaissance')),
+		civilite: s(form.get('civilite')),
+		paysNaissance: s(form.get('paysNaissance')),
+		communeNaissance: s(form.get('communeNaissance')),
+		cpNaissance: s(form.get('cpNaissance')),
+		adresseRue: s(form.get('adresseRue')),
+		nir: s(form.get('nir')),
+		nationalite: s(form.get('nationalite')),
+		majeur: b(form.get('majeur')),
+		repNom: s(form.get('repNom')),
+		repPrenom: s(form.get('repPrenom')),
+		repMail: s(form.get('repMail')),
+		repTel: s(form.get('repTel')),
+		repAdresse: s(form.get('repAdresse')),
+		sportifHautNiveau: b(form.get('sportifHautNiveau')),
+		rqth: b(form.get('rqth')),
+		situationAvantContrat: s(form.get('situationAvantContrat')),
+		dernierDiplomePrepare: s(form.get('dernierDiplomePrepare')),
+		intituleDiplomePrepare: s(form.get('intituleDiplomePrepare')),
+		diplomeLePlusEleve: s(form.get('diplomeLePlusEleve')),
+		derniereAnneeSuivie: s(form.get('derniereAnneeSuivie')),
+		dejaAlternance: b(form.get('dejaAlternance')),
+		numeroDeca: s(form.get('numeroDeca')),
+		...paths,
+		submittedAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
+	};
+
+	await db.update(candidat).set({ ficheInfos: data, updatedAt: new Date() }).where(eq(candidat.id, ctx.candidatId));
+	await db.update(formToken).set({ submittedAt: new Date() }).where(eq(formToken.token, tok.token));
+	await advancePlacement(tok.placementId, ctx.candidatId);
+	return { success: true };
+}
+
+/** Enregistre la fiche entreprise dans placement.ficheEntreprise (JSONB). */
+export async function saveFicheEntreprise(tok: TokenRow, form: FormData) {
+	const [pl] = await db
+		.select({ candidatId: placement.candidatId })
+		.from(placement)
+		.where(eq(placement.id, tok.placementId))
+		.limit(1);
+	if (!pl) return fail(404, { error: 'Dossier introuvable.' });
+
+	const data: FicheEntrepriseData = {
+		typeContrat: s(form.get('typeContrat')),
+		raisonSociale: s(form.get('raisonSociale')),
+		adresseSiege: s(form.get('adresseSiege')),
+		adresseExecution: s(form.get('adresseExecution')),
+		siretExecution: s(form.get('siretExecution')),
+		typeEmployeur: s(form.get('typeEmployeur')),
+		tel: s(form.get('tel')),
+		formeJuridique: s(form.get('formeJuridique')),
+		siretSiege: s(form.get('siretSiege')),
+		codeApeNaf: s(form.get('codeApeNaf')),
+		codeIdcc: s(form.get('codeIdcc')),
+		nbSalaries: i(form.get('nbSalaries')),
+		caisseRetraite: s(form.get('caisseRetraite')),
+		prevoyance: s(form.get('prevoyance')),
+		opco: s(form.get('opco')),
+		chefNom: s(form.get('chefNom')),
+		chefMail: s(form.get('chefMail')),
+		chefTel: s(form.get('chefTel')),
+		rhNom: s(form.get('rhNom')),
+		rhMail: s(form.get('rhMail')),
+		rhTel: s(form.get('rhTel')),
+		assuranceChomagePublic: s(form.get('assuranceChomagePublic')),
+		mandatOpco: b(form.get('mandatOpco')),
+		factuAdresse: s(form.get('factuAdresse')),
+		factuMail: s(form.get('factuMail')),
+		tuteurNom: s(form.get('tuteurNom')),
+		tuteurPrenom: s(form.get('tuteurPrenom')),
+		tuteurTel: s(form.get('tuteurTel')),
+		tuteurDateNaissance: s(form.get('tuteurDateNaissance')),
+		tuteurMail: s(form.get('tuteurMail')),
+		tuteurFonction: s(form.get('tuteurFonction')),
+		tuteurExperience: i(form.get('tuteurExperience')),
+		tuteurDiplome: s(form.get('tuteurDiplome')),
+		tuteurNbAlternants: i(form.get('tuteurNbAlternants')),
+		salaireBrut: s(form.get('salaireBrut')),
+		smicSmc: s(form.get('smicSmc')),
+		dateDebut: s(form.get('dateDebut')),
+		submittedAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
+	};
+
+	await db
+		.update(placement)
+		.set({ ficheEntreprise: data, updatedAt: new Date() })
+		.where(eq(placement.id, tok.placementId));
+	await db.update(formToken).set({ submittedAt: new Date() }).where(eq(formToken.token, tok.token));
+	await advancePlacement(tok.placementId, pl.candidatId);
+	return { success: true };
+}

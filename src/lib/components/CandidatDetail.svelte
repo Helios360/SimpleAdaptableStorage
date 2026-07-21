@@ -72,6 +72,9 @@
 		onsaved?: () => void;
 		/** Render content directly without the Modal wrapper (e.g. as a page). */
 		inline?: boolean;
+		/** With inline: drop the card chrome (bg/border/max-width) and let the
+		 *  fields spread across the full available width. */
+		flat?: boolean;
 		/** Hide the tags section + omit tags from the save payload (student mode). */
 		hideTags?: boolean;
 		/** Student-facing mode: hide fields the student shouldn't see/edit
@@ -110,6 +113,7 @@
 		footer,
 		onsaved,
 		inline = false,
+		flat = false,
 		hideTags = false,
 		studentMode = false,
 		manageCvs = true,
@@ -471,7 +475,7 @@
 		{:else}
 			<!-- ───────── Editable form ───────── -->
 			<div class="cs-detail__grid">
-				<label class="cs-detail__lbl">Email <span>(non modifiable)</span>
+				<label class="cs-detail__lbl">Email (non modifiable)
 					<div class="cs-detail__email-row">
 						<input class="cs-detail__inp cs-detail__inp--email" value={edit.email ?? ''} readonly />
 						<button
@@ -783,7 +787,7 @@
 {/snippet}
 
 {#if inline}
-	<div class="cs-detail__inline">{@render body()}</div>
+	<div class="cs-detail__inline" class:cs-detail__inline--flat={flat}>{@render body()}</div>
 {:else}
 	<Modal {open} {onclose} title={editable ? 'Éditer le profil' : 'Profil candidat'} width={editable ? 920 : 540}>
 		{@render body()}
@@ -832,6 +836,22 @@
 			padding: 16px;
 			border-radius: 10px;
 		}
+	}
+	/* Flat mode : les infos se répartissent sur toute la largeur, sans carte. */
+	.cs-detail__inline--flat {
+		max-width: none;
+		margin: 0;
+		background: none;
+		border: none;
+		border-radius: 0;
+		padding: 0;
+	}
+	.cs-detail__inline--flat .cs-detail__grid {
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	}
+	.cs-detail__inline--flat .cs-detail__section,
+	.cs-detail__inline--flat .cs-detail__grid {
+		margin-bottom: 22px;
 	}
 	.cs-detail__head {
 		display: flex;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { untrack, onMount } from 'svelte';
 	import Card from '$lib/components/Card.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Badge from '$lib/components/Badge.svelte';
@@ -8,14 +8,13 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
-	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { initials, statutLabel, scoreColor, debounce } from '$lib/utils';
+	import { OPCO_LABELS } from '$lib/placementLogic';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
-	import type { CandidatView } from '$lib/components/CandidatDetail.svelte';
 	import type { CandidatRow, SortKey } from '$lib/server/queries';
 
 	let { data }: { data: PageData } = $props();
@@ -126,20 +125,38 @@
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	let loading = $state(false);
 
+	// Onglets « Placés » / « Non placés » : la placement s'appuie sur le statut de
+	// recherche. « entreprise » = étudiant placé, tout le reste = non placé. L'onglet
+	// contraint la recherche par-dessus les filtres « Recherche » ci-dessous.
+	type TabKey = 'non_places' | 'places';
+	const TAB_RECHERCHE: Record<TabKey, string[]> = {
+		non_places: ['archive', 'recherche', 'active'],
+		places: ['entreprise']
+	};
+	let activeTab = $state<TabKey>('non_places');
+
+	function setTab(t: TabKey) {
+		if (activeTab === t) return;
+		activeTab = t;
+		// Les chips de recherche d'un onglet n'ont pas de sens dans l'autre.
+		selectedRecherche = [];
+		// Le filtre « Dossier » est masqué dans l'onglet « Placés » : on le vide pour
+		// qu'un filtre invisible ne restreigne pas les résultats en douce.
+		if (t === 'places') selectedStatut = [];
+		fetchPage(1);
+	}
+
 	let confirmTarget = $state<{ id: number; action: 'valide' | 'refuse'; name: string } | null>(
 		null
 	);
-	let detail = $state<CandidatView | null>(null);
-	// Aperçu (lecture seule, façon CVthèque) vs édition complète.
-	let previewMode = $state(false);
 
+	// Le détail d'un étudiant est une page dédiée (/cre/etudiants/[id]) — édition
+	// complète, ou aperçu lecture seule via ?view=1.
 	function openEdit(r: CandidatRow) {
-		previewMode = false;
-		detail = r as CandidatView;
+		goto(`/cre/etudiants/${r.id}`);
 	}
 	function openPreview(r: CandidatRow) {
-		previewMode = true;
-		detail = r as CandidatView;
+		goto(`/cre/etudiants/${r.id}?view=1`);
 	}
 
 	// État du modal d'ajout
@@ -224,6 +241,10 @@
 		{ value: 'active', label: 'Recherche active' },
 		{ value: 'entreprise', label: 'En entreprise' }
 	];
+	// Chips « Recherche » pertinents pour l'onglet courant.
+	const visibleRechercheChips = $derived(
+		RECHERCHE_CHIPS.filter((c) => TAB_RECHERCHE[activeTab].includes(c.value))
+	);
 	const STATUT_CHIPS = [
 		{ value: 'en_attente', label: 'En attente' },
 		{ value: 'valide', label: 'Validé' },
@@ -249,13 +270,20 @@
 			// serveur sur le libellé complet) ou comparaison de chaîne sur la ville
 			// pendant la saisie.
 			const radiusMode = placeSelected && !!radius && Number(radius) > 0;
+			// L'onglet est le filtre maître de placement. Si l'utilisateur a coché des
+			// chips « Recherche », on les intersecte avec l'onglet ; sinon on prend tous
+			// les statuts de l'onglet.
+			const tabAllowed = TAB_RECHERCHE[activeTab];
+			const rechercheStatut = selectedRecherche.length
+				? selectedRecherche.filter((s) => tabAllowed.includes(s))
+				: tabAllowed;
 			const res = await fetch('/cre/etudiants/search', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					q,
 					statut: selectedStatut,
-					rechercheStatut: selectedRecherche,
+					rechercheStatut,
 					year: selectedYears,
 					formationId: selectedFormations,
 					place: radiusMode ? selectedLabel : place,
@@ -286,6 +314,12 @@
 	}
 
 	const debouncedSearch = debounce(() => fetchPage(1), 350);
+
+	// Les données du load() ne sont pas filtrées : on applique l'onglet par défaut
+	// (« Non placés ») dès le montage.
+	onMount(() => {
+		fetchPage(1);
+	});
 
 	function setSort(key: SortKey) {
 		if (sortBy === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
@@ -372,6 +406,21 @@
 		rows = [...rows];
 	}
 
+	async function changeStatutOpco(id: number, placementId: number, value: string) {
+		const fd = new FormData();
+		fd.set('placementId', String(placementId));
+		fd.set('statutOpco', value);
+		const res = await fetch('?/setStatutOpco', { method: 'POST', body: fd });
+		if (!res.ok) {
+			pushToast('Impossible de modifier le statut OPCO.', 'error');
+			return;
+		}
+		const r = rows.find((x) => x.id === id);
+		if (r) r.statutOpco = value;
+		rows = [...rows];
+		pushToast('Statut OPCO mis à jour ✓', 'success');
+	}
+
 	function sortArrow(key: SortKey) {
 		if (sortBy !== key) return '';
 		return sortDir === 'asc' ? '▲' : '▼';
@@ -384,6 +433,27 @@
 		<Button icon="＋" onclick={() => (addOpen = true)}>
 			Ajouter un étudiant
 		</Button>
+	</div>
+
+	<div class="cs-etu__tabs" role="tablist">
+		<button
+			class="cs-etu__tab"
+			class:cs-etu__tab--active={activeTab === 'non_places'}
+			role="tab"
+			aria-selected={activeTab === 'non_places'}
+			onclick={() => setTab('non_places')}
+		>
+			Non placés
+		</button>
+		<button
+			class="cs-etu__tab"
+			class:cs-etu__tab--active={activeTab === 'places'}
+			role="tab"
+			aria-selected={activeTab === 'places'}
+			onclick={() => setTab('places')}
+		>
+			Placés
+		</button>
 	</div>
 
 	<Card padding="18px" class="cs-etu__filters-card">
@@ -440,30 +510,31 @@
 				</div>
 			</div>
 		</section>
-
+		
+		{#if activeTab !== 'places'}
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">📋 Statuts</p>
-			<div class="cs-etu__filter-row">
-				<span class="cs-etu__filter-lab">Dossier</span>
-				<div class="cs-etu__chips">
-					{#each STATUT_CHIPS as c}
-						<button
-							class="cs-etu__chip"
-							class:cs-etu__chip--active={selectedStatut.includes(c.value)}
-							onclick={() => {
-								selectedStatut = toggle(selectedStatut, c.value);
-								debouncedSearch();
-							}}
-						>
-							{c.label}
-						</button>
-					{/each}
+				<div class="cs-etu__filter-row">
+					<span class="cs-etu__filter-lab">Dossier</span>
+					<div class="cs-etu__chips">
+						{#each STATUT_CHIPS as c}
+							<button
+								class="cs-etu__chip"
+								class:cs-etu__chip--active={selectedStatut.includes(c.value)}
+								onclick={() => {
+									selectedStatut = toggle(selectedStatut, c.value);
+									debouncedSearch();
+								}}
+							>
+								{c.label}
+							</button>
+						{/each}
+					</div>
 				</div>
-			</div>
 			<div class="cs-etu__filter-row">
 				<span class="cs-etu__filter-lab">Recherche</span>
 				<div class="cs-etu__chips">
-					{#each RECHERCHE_CHIPS as c}
+					{#each visibleRechercheChips as c}
 						<button
 							class="cs-etu__chip"
 							class:cs-etu__chip--active={selectedRecherche.includes(c.value)}
@@ -478,6 +549,7 @@
 				</div>
 			</div>
 		</section>
+		{/if}
 
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">📍 Localisation</p>
@@ -714,6 +786,19 @@
 								<option value={c.value}>{c.label}</option>
 							{/each}
 						</select>
+						{#if activeTab === 'places' && r.placementId != null}
+							<select
+								class="cs-etu__select cs-etu__select--opco"
+								title="Statut OPCO"
+								value={r.statutOpco ?? 'en_attente'}
+								onchange={(e) =>
+									changeStatutOpco(r.id, r.placementId!, e.currentTarget.value)}
+							>
+								{#each Object.entries(OPCO_LABELS) as [value, label]}
+									<option {value}>OPCO · {label}</option>
+								{/each}
+							</select>
+						{/if}
 						<Badge label={statutLabel(r.statut)} color={sc.bg} textColor={sc.fg} />
 					</div>
 					<div class="cs-etu__cell cs-etu__cell--date">
@@ -778,85 +863,6 @@
 		await submitStatut(confirmTarget.id, confirmTarget.action);
 	}}
 />
-
-<CandidatDetail
-	candidat={detail}
-	open={!!detail}
-	onclose={() => {
-		detail = null;
-		previewMode = false;
-	}}
-	editable={!previewMode}
-	formations={data.formations}
-	tagSuggestions={data.defaultTags}
-	skillSuggestions={data.defaultSkills}
-	onsaved={async () => {
-		await invalidateAll();
-		await fetchPage(page);
-	}}
-	deleteLabel="Supprimer le compte"
-	deleteConfirmTitle={detail ? `Supprimer ${detail.name} ?` : 'Supprimer'}
-	deleteConfirmMessage="Le compte, le dossier et tous les fichiers seront effacés définitivement."
-	resetLabel="Envoyer un lien de reset"
-	onresetpassword={detail
-		? async () => {
-				const d = detail;
-				if (!d) return;
-				const fd = new FormData();
-				fd.set('id', String(d.id));
-				const res = await fetch('?/sendReset', { method: 'POST', body: fd });
-				if (res.ok) {
-					pushToast(`Lien de réinitialisation envoyé à ${d.email}`, 'success');
-				} else {
-					pushToast("Échec de l'envoi du lien de reset", 'error');
-				}
-			}
-		: undefined}
-	ondelete={detail
-		? async () => {
-				const d = detail;
-				if (!d) return;
-				const fd = new FormData();
-				fd.set('id', String(d.id));
-				const res = await fetch('?/deleteStudent', { method: 'POST', body: fd });
-				if (res.ok) {
-					pushToast(`${d.name} supprimé`, 'info');
-					detail = null;
-					await invalidateAll();
-					await fetchPage(page);
-				} else {
-					pushToast('Erreur lors de la suppression', 'error');
-				}
-			}
-		: undefined}
->
-	{#snippet footer()}
-		{#if detail && detail.statut === 'en_attente'}
-			{@const d = detail}
-			<div class="cs-etu__detail-actions">
-				<Button
-					fullWidth
-					onclick={async () => {
-						await submitStatut(d.id, 'valide');
-						detail = null;
-					}}
-				>
-					Valider le dossier
-				</Button>
-				<Button
-					fullWidth
-					variant="danger"
-					onclick={async () => {
-						await submitStatut(d.id, 'refuse');
-						detail = null;
-					}}
-				>
-					Refuser
-				</Button>
-			</div>
-		{/if}
-	{/snippet}
-</CandidatDetail>
 
 <Modal
 	open={addOpen}
@@ -1001,6 +1007,30 @@
 	.cs-etu__title span {
 		color: var(--c-muted);
 		font-weight: 600;
+	}
+	.cs-etu__tabs {
+		display: flex;
+		gap: 4px;
+		border-bottom: 1.5px solid var(--c-border);
+	}
+	.cs-etu__tab {
+		padding: 10px 18px;
+		border: none;
+		background: none;
+		color: var(--c-muted);
+		font-size: 14px;
+		font-weight: 600;
+		font-family: var(--font-body);
+		cursor: pointer;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1.5px;
+	}
+	.cs-etu__tab:hover {
+		color: var(--c-blue);
+	}
+	.cs-etu__tab--active {
+		color: var(--c-blue);
+		border-bottom-color: var(--c-blue);
 	}
 	:global(.cs-etu__filters-card) {
 		display: flex;
@@ -1304,6 +1334,11 @@
 		cursor: pointer;
 		font-family: var(--font-body);
 	}
+	.cs-etu__select--opco {
+		border-color: var(--c-blue);
+		color: var(--c-blue);
+		font-weight: 600;
+	}
 	.cs-etu__actions {
 		display: flex;
 		gap: 6px;
@@ -1339,11 +1374,6 @@
 		font-size: 13px;
 		color: var(--c-sub);
 		font-weight: 600;
-	}
-	.cs-etu__detail-actions {
-		margin-top:1rem;
-		display: flex;
-		gap: 10px;
 	}
 	@media (max-width: 720px) {
 		.cs-etu__list-head,
@@ -1422,9 +1452,6 @@
 		}
 		.cs-etu__inputs-row {
 			gap: 8px;
-		}
-		.cs-etu__detail-actions {
-			flex-direction: column;
 		}
 	}
 
