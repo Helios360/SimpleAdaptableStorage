@@ -151,12 +151,9 @@
 	);
 
 	// Le détail d'un étudiant est une page dédiée (/cre/etudiants/[id]) — édition
-	// complète, ou aperçu lecture seule via ?view=1.
+	// complète.
 	function openEdit(r: CandidatRow) {
 		goto(`/cre/etudiants/${r.id}`);
-	}
-	function openPreview(r: CandidatRow) {
-		goto(`/cre/etudiants/${r.id}?view=1`);
 	}
 
 	// État du modal d'ajout
@@ -549,7 +546,6 @@
 				</div>
 			</div>
 		</section>
-		{/if}
 
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">📍 Localisation</p>
@@ -724,6 +720,7 @@
 				</div>
 			</div>
 		</section>
+		{/if}
 	</Card>
 
 	<Card padding="0" class="cs-etu__list-card">
@@ -804,9 +801,6 @@
 					<div class="cs-etu__cell cs-etu__cell--date">
 						<span>{r.createdAt.slice(0, 10)}</span>
 						<div class="cs-etu__actions">
-							<Button size="sm" variant="subtle" icon="👁" onclick={() => openPreview(r)}>
-								Aperçu
-							</Button>
 							{#if r.statut === 'en_attente'}
 								<Button
 									size="sm"
@@ -924,6 +918,7 @@
 				<label class="cs-add__lab" for="add-year">Année</label>
 				<select
 					id="add-year"
+					name="year"
 					class="cs-add__select"
 					value={newYear}
 					onchange={(e) => (newYear = (e.target as HTMLSelectElement).value)}
@@ -1284,6 +1279,11 @@
 	.cs-etu__cell--date {
 		font-size: 12px;
 		color: var(--c-muted);
+	}
+	.cs-etu__cell--date > span {
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--c-text);
 	}
 	.cs-etu__avatar {
 		width: 36px;
