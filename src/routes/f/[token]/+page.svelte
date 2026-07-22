@@ -19,6 +19,7 @@
 
 	// Champs conditionnels (réactifs sur les cases à cocher).
 	let sportif = $state(data.audience === 'etudiant' ? (data.fiche?.sportifHautNiveau ?? false) : false);
+	let rqth = $state(data.audience === 'etudiant' ? (data.fiche?.rqth ?? false) : false);
 	let dejaAlternance = $state(data.audience === 'etudiant' ? (data.fiche?.dejaAlternance ?? false) : false);
 	let majeur = $state(data.audience === 'etudiant' ? (data.fiche?.majeur ?? !mineur) : true);
 
@@ -139,7 +140,7 @@
 						<input type="checkbox" name="sportifHautNiveau" value="1" bind:checked={sportif} /> Sportif de haut niveau
 					</label>
 					<label class="cs-check">
-						<input type="checkbox" name="rqth" value="1" checked={f?.rqth ?? false} /> Situation de handicap (RQTH)
+						<input type="checkbox" name="rqth" value="1" bind:checked={rqth} /> Situation de handicap (RQTH)
 					</label>
 					<label class="cs-check">
 						<input type="checkbox" name="dejaAlternance" value="1" bind:checked={dejaAlternance} /> Déjà fait de l'alternance
@@ -185,8 +186,12 @@
 					{#if sportif}
 						<FileUpload label="Attestation sportif de haut niveau" name="attestationSportif" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.attestationSportifPath ? 'Déjà déposé — remplacer' : undefined} required />
 					{/if}
-					<FileUpload label="Attestation RQTH" name="attestationRqth" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.attestationRqthPath ? 'Déjà déposé — remplacer' : undefined} required />
-					<FileUpload label="Ancien contrat d'alternance (CERFA)" name="ancienCerfa" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.ancienCerfaPath ? 'Déjà déposé — remplacer' : undefined} required />
+					{#if rqth}
+						<FileUpload label="Attestation RQTH" name="attestationRqth" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.attestationRqthPath ? 'Déjà déposé — remplacer' : undefined} required />
+					{/if}
+					{#if dejaAlternance}
+						<FileUpload label="Ancien contrat d'alternance (CERFA)" name="ancienCerfa" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.ancienCerfaPath ? 'Déjà déposé — remplacer' : undefined} required />
+					{/if}
 				</div>
 
 				{#if errorMsg}<div class="cs-form__err">⚠ {errorMsg}</div>{/if}
@@ -219,8 +224,8 @@
 				<Input label="Nom / Raison sociale" name="raisonSociale" value={f?.raisonSociale ?? data.entreprise ?? ''} required />
 				<Input label="Adresse complète du siège social" name="adresseSiege" value={f?.adresseSiege ?? ''} required />
 				<div class="cs-form__row">
-					<Input label="Adresse d'exécution (si différente)" name="adresseExecution" value={f?.adresseExecution ?? ''} required />
-					<Input label="SIRET de l'adresse d'exécution" name="siretExecution" value={f?.siretExecution ?? ''} required />
+					<Input label="Adresse d'exécution (si différente)" name="adresseExecution" value={f?.adresseExecution ?? ''} />
+					<Input label="SIRET de l'adresse d'exécution" name="siretExecution" value={f?.siretExecution ?? ''} />
 				</div>
 				<div class="cs-form__row">
 					<Input label="SIRET du siège social" name="siretSiege" value={f?.siretSiege ?? ''} required />
@@ -242,18 +247,19 @@
 					<Input label="Caisse de retraite complémentaire" name="caisseRetraite" value={f?.caisseRetraite ?? ''} required />
 					<Input label="Organisme de prévoyance" name="prevoyance" value={f?.prevoyance ?? ''} />
 				</div>
+				<p class="cs-form__sub">Chef d'entreprise</p>
 				<div class="cs-form__row">
-					<Input label="Chef d'entreprise — Nom / Prénom" name="chefNom" value={f?.chefNom ?? ''} required />
-					<Input label="Chef — Email" name="chefMail" type="email" value={f?.chefMail ?? ''} required />
+					<Input label="Nom / Prénom" name="chefNom" value={f?.chefNom ?? ''} required />
+					<Input label="Email" name="chefMail" type="email" value={f?.chefMail ?? ''} required />
 				</div>
+				<Input label="Téléphone" name="chefTel" type="tel" value={f?.chefTel ?? ''} required />
+
+				<p class="cs-form__sub">Contact RH</p>
 				<div class="cs-form__row">
-					<Input label="Chef — Téléphone" name="chefTel" type="tel" value={f?.chefTel ?? ''} required />
-					<Input label="Contact RH — Nom / Prénom" name="rhNom" value={f?.rhNom ?? ''} required />
+					<Input label="Nom / Prénom" name="rhNom" value={f?.rhNom ?? ''} required />
+					<Input label="Email" name="rhMail" type="email" value={f?.rhMail ?? ''} required />
 				</div>
-				<div class="cs-form__row">
-					<Input label="RH — Email" name="rhMail" type="email" value={f?.rhMail ?? ''} required />
-					<Input label="RH — Téléphone" name="rhTel" type="tel" value={f?.rhTel ?? ''} required />
-				</div>
+				<Input label="Téléphone" name="rhTel" type="tel" value={f?.rhTel ?? ''} required />
 				<Input label="Secteur public — adhésion assurance chômage de l'apprenti" name="assuranceChomagePublic" value={f?.assuranceChomagePublic ?? ''} required />
 				<label class="cs-check">
 					<input type="checkbox" name="mandatOpco" value="1" checked={f?.mandatOpco ?? false} /> Je donne mandat au CFA pour les démarches auprès de l'OPCO
@@ -280,7 +286,15 @@
 				</div>
 				<div class="cs-form__row">
 					<Input label="Années d'expérience professionnelle" name="tuteurExperience" type="number" value={f?.tuteurExperience != null ? String(f.tuteurExperience) : ''} required />
-					<Input label="Nb d'alternants sous tutorat" name="tuteurNbAlternants" type="number" value={f?.tuteurNbAlternants != null ? String(f.tuteurNbAlternants) : ''} required />
+					<div class="cs-field">
+						<label class="cs-label" for="tuteurNbAlternants">Nb d'alternants sous tutorat (max 2)</label>
+						<select id="tuteurNbAlternants" name="tuteurNbAlternants" class="cs-select" required value={f?.tuteurNbAlternants != null ? String(f.tuteurNbAlternants) : ''}>
+							<option value="">—</option>
+							<option value="0">0</option>
+							<option value="1">1</option>
+							<option value="2">2</option>
+						</select>
+					</div>
 				</div>
 				<Input label="Diplôme le plus élevé obtenu (tuteur)" name="tuteurDiplome" value={f?.tuteurDiplome ?? ''} required />
 
@@ -389,6 +403,15 @@
 		margin-top: 10px;
 		padding-top: 12px;
 		border-top: 1px solid var(--c-border);
+	}
+	.cs-form__sub {
+		font-family: var(--font-display);
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--c-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.4px;
+		margin-top: 4px;
 	}
 	.cs-form__row {
 		display: grid;
