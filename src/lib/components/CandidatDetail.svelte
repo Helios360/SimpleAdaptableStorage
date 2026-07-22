@@ -69,6 +69,8 @@
 		tagSuggestions?: string[];
 		skillSuggestions?: string[];
 		footer?: Snippet;
+		/** Rendu juste avant la section Tags & compétences (dans les deux modes). */
+		beforeTags?: Snippet;
 		onsaved?: () => void;
 		/** Render content directly without the Modal wrapper (e.g. as a page). */
 		inline?: boolean;
@@ -111,6 +113,7 @@
 		tagSuggestions = [],
 		skillSuggestions = [],
 		footer,
+		beforeTags,
 		onsaved,
 		inline = false,
 		flat = false,
@@ -451,6 +454,8 @@
 				</div>
 			{/if}
 
+			{#if beforeTags}{@render beforeTags()}{/if}
+
 			{#if edit.tags?.length && !hideTags}
 				<div class="cs-detail__section">
 					<p class="cs-detail__section-lab">Tags</p>
@@ -552,6 +557,8 @@
 					<input type="checkbox" bind:checked={edit.mobile} /> Déménagement possible
 				</label>
 			</div>
+
+			{#if beforeTags}{@render beforeTags()}{/if}
 
 			{#if !hideTags}
 				<div class="cs-detail__section">

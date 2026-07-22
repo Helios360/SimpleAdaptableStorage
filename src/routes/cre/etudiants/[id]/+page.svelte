@@ -9,7 +9,13 @@
 	import CandidatDetail from '$lib/components/CandidatDetail.svelte';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { initials, scoreColor, statutLabel, rechercheStatutLabel } from '$lib/utils';
-	import { OPCO_LABELS, situationLabel, diplomeLabel } from '$lib/placementLogic';
+	import {
+		OPCO_LABELS,
+		situationLabel,
+		diplomeLabel,
+		SITUATIONS,
+		DIPLOMES
+	} from '$lib/placementLogic';
 	import {
 		checklistItemsForSchool,
 		checklistProgress,
@@ -211,11 +217,135 @@
 			pushToast("Échec de l'envoi des liens", 'error');
 		}
 	}
+
+	// ─── Édition des fiches directement depuis le dossier (côté CRE) ─────────
+	// Les documents (…Path) et l'horodatage de soumission restent gérés via le
+	// flux tokenisé : ici on ne modifie que les champs scalaires.
+	type Draft = Record<string, string | number | boolean | null | undefined>;
+
+	const CIVILITE_OPTS: [string, string][] = [
+		['femme', 'Femme'],
+		['homme', 'Homme'],
+		['na', 'Non renseigné']
+	];
+	const NATIONALITE_OPTS: [string, string][] = [
+		['francaise', 'Française'],
+		['ue', 'Union européenne'],
+		['hors_ue', 'Hors UE']
+	];
+	const CONTRAT_OPTS: [string, string][] = [
+		['apprentissage', 'Apprentissage'],
+		['professionnalisation', 'Professionnalisation']
+	];
+
+	let editEtu = $state(false);
+	let etuDraft = $state<Draft>({});
+	let savingEtu = $state(false);
+
+	let editEnt = $state(false);
+	let entDraft = $state<Draft>({});
+	let savingEnt = $state(false);
+
+	function startEditEtu() {
+		etuDraft = { ...(ficheEtu ?? {}) };
+		editEtu = true;
+	}
+
+	function startEditEnt() {
+		entDraft = { ...(ficheEnt ?? {}) };
+		editEnt = true;
+	}
+
+	async function saveEtu() {
+		savingEtu = true;
+		const ok = await submitFiche('updateFicheEtudiant', 'candidatId', candidat.id, etuDraft, "Fiche d'informations mise à jour ✓");
+		if (ok) editEtu = false;
+		savingEtu = false;
+	}
+
+	async function saveEnt() {
+		if (!lastPlacement) return;
+		savingEnt = true;
+		const ok = await submitFiche('updateFicheEntreprise', 'placementId', lastPlacement.id, entDraft, 'Fiche entreprise mise à jour ✓');
+		if (ok) editEnt = false;
+		savingEnt = false;
+	}
+
+	// POST d'un brouillon vers une action serveur ; renvoie true si sauvegardé.
+	async function submitFiche(
+		action: string,
+		idField: string,
+		idValue: number,
+		draft: Draft,
+		successMsg: string
+	): Promise<boolean> {
+		const fd = new FormData();
+		fd.set(idField, String(idValue));
+		appendDraft(fd, draft);
+		try {
+			const res = await fetch(`?/${action}`, { method: 'POST', body: fd });
+			if (!res.ok) throw new Error();
+			await invalidateAll();
+			pushToast(successMsg, 'success');
+			return true;
+		} catch {
+			pushToast('Erreur lors de la sauvegarde', 'error');
+			return false;
+		}
+	}
+
+	// Sérialise un brouillon : les booléens absents valent « false » côté serveur,
+	// on n'envoie donc que ceux à true ; les valeurs vides sont omises.
+	function appendDraft(fd: FormData, draft: Draft) {
+		for (const [k, v] of Object.entries(draft)) {
+			if (typeof v === 'boolean') {
+				if (v) fd.set(k, '1');
+			} else if (v != null && String(v) !== '') {
+				fd.set(k, String(v));
+			}
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>{candidat.name} · Étudiant</title>
 </svelte:head>
+
+<!-- Champs d'édition réutilisables pour les deux fiches. -->
+{#snippet fText(draft: Draft, label: string, key: string, type: string = 'text')}
+	<label class="cs-fedit__lbl">
+		{label}
+		<input
+			class="cs-fedit__inp"
+			{type}
+			value={draft[key] ?? ''}
+			oninput={(e) => (draft[key] = e.currentTarget.value)}
+		/>
+	</label>
+{/snippet}
+{#snippet fSelect(draft: Draft, label: string, key: string, opts: [string, string][])}
+	<label class="cs-fedit__lbl">
+		{label}
+		<select
+			class="cs-fedit__inp"
+			value={draft[key] ?? ''}
+			onchange={(e) => (draft[key] = e.currentTarget.value)}
+		>
+			<option value="">—</option>
+			{#each opts as [v, l]}<option value={v}>{l}</option>{/each}
+		</select>
+	</label>
+{/snippet}
+{#snippet fBool(draft: Draft, label: string, key: string)}
+	<label class="cs-fedit__check">
+		<input
+			type="checkbox"
+			checked={!!draft[key]}
+			onchange={(e) => (draft[key] = e.currentTarget.checked)}
+		/>
+		{label}
+	</label>
+{/snippet}
 
 <div class="cs-detail-page">
 	<div class="cs-detail-page__bar">
@@ -379,6 +509,7 @@
 			formations={data.formations}
 			tagSuggestions={data.defaultTags}
 			skillSuggestions={data.defaultSkills}
+			beforeTags={ficheEtuCard}
 			onsaved={() => invalidateAll()}
 			deleteLabel="Supprimer le compte"
 			deleteConfirmTitle={`Supprimer ${candidat.name} ?`}
@@ -416,12 +547,62 @@
 			{/snippet}
 		</CandidatDetail>
 
-		{#if ficheEtu}
-			<Card padding="18px" class="cs-fiche-card">
-				<div class="cs-syn__card-head">
-					<span class="cs-syn__card-title">📋 Fiche d'informations</span>
-					{#if ficheEtu.submittedAt}<Badge label="Reçue" color={C.greenLight} textColor={C.green} />{/if}
+	{/if}
+
+	{#snippet ficheEtuCard()}
+		<Card padding="18px" class="cs-fiche-card">
+			<div class="cs-syn__card-head">
+				<span class="cs-syn__card-title">📋 Fiche d'informations</span>
+				<div class="cs-fiche__head-actions">
+					{#if ficheEtu?.submittedAt}<Badge label="Reçue" color={C.greenLight} textColor={C.green} />{/if}
+					{#if !preview}
+						{#if editEtu}
+							<Button size="sm" variant="subtle" onclick={() => (editEtu = false)}>Annuler</Button>
+							<Button size="sm" onclick={saveEtu} disabled={savingEtu}>
+								{savingEtu ? 'Enregistrement…' : 'Enregistrer'}
+							</Button>
+						{:else}
+							<Button size="sm" variant="subtle" icon="✏️" onclick={startEditEtu}>
+								{ficheEtu ? 'Modifier' : 'Compléter'}
+							</Button>
+						{/if}
+					{/if}
 				</div>
+			</div>
+
+			{#if editEtu}
+				<div class="cs-fedit__grid">
+					{@render fSelect(etuDraft, 'Civilité', 'civilite', CIVILITE_OPTS)}
+					{@render fText(etuDraft, 'Nom de naissance', 'nomNaissance')}
+					{@render fSelect(etuDraft, 'Nationalité', 'nationalite', NATIONALITE_OPTS)}
+					{@render fText(etuDraft, 'Pays de naissance', 'paysNaissance')}
+					{@render fText(etuDraft, 'Commune de naissance', 'communeNaissance')}
+					{@render fText(etuDraft, 'Code postal de naissance', 'cpNaissance')}
+					{@render fText(etuDraft, 'Adresse', 'adresseRue')}
+					{@render fText(etuDraft, 'NIR', 'nir')}
+					{@render fSelect(etuDraft, 'Situation avant contrat', 'situationAvantContrat', SITUATIONS)}
+					{@render fSelect(etuDraft, 'Dernier diplôme préparé', 'dernierDiplomePrepare', DIPLOMES)}
+					{@render fText(etuDraft, 'Intitulé du diplôme', 'intituleDiplomePrepare')}
+					{@render fSelect(etuDraft, 'Diplôme le plus élevé', 'diplomeLePlusEleve', DIPLOMES)}
+					{@render fText(etuDraft, 'Dernière année suivie', 'derniereAnneeSuivie')}
+					{@render fText(etuDraft, 'Numéro DECA', 'numeroDeca')}
+				</div>
+				<div class="cs-fedit__checks">
+					{@render fBool(etuDraft, 'Majeur', 'majeur')}
+					{@render fBool(etuDraft, 'Déjà en alternance', 'dejaAlternance')}
+					{@render fBool(etuDraft, 'Sportif haut niveau', 'sportifHautNiveau')}
+					{@render fBool(etuDraft, 'RQTH', 'rqth')}
+				</div>
+
+				<p class="cs-fiche__sub">Représentant légal (si mineur)</p>
+				<div class="cs-fedit__grid">
+					{@render fText(etuDraft, 'Nom', 'repNom')}
+					{@render fText(etuDraft, 'Prénom', 'repPrenom')}
+					{@render fText(etuDraft, 'Email', 'repMail', 'email')}
+					{@render fText(etuDraft, 'Téléphone', 'repTel', 'tel')}
+					{@render fText(etuDraft, 'Adresse', 'repAdresse')}
+				</div>
+			{:else if ficheEtu}
 				<div class="cs-pl__grid">
 					<div><span>Nom de naissance</span>{ficheEtu.nomNaissance ?? '—'}</div>
 					<div><span>Civilité</span>{ficheEtu.civilite ?? '—'}</div>
@@ -465,9 +646,14 @@
 						{/if}
 					{/each}
 				</div>
-			</Card>
-		{/if}
-	{/if}
+			{:else}
+				<p class="cs-pl__note">
+					Aucune fiche d'informations reçue. Cliquez sur « Compléter » pour la remplir
+					manuellement.
+				</p>
+			{/if}
+		</Card>
+	{/snippet}
 
 	<!-- ───────── Entreprise ───────── -->
 	{#if activeTab === 'entreprise'}
@@ -475,15 +661,27 @@
 			<Card padding="18px">
 				<div class="cs-syn__card-head">
 					<span class="cs-syn__card-title">🏢 {lastPlacement.entreprise ?? 'Entreprise'}</span>
-					{#if lastPlacement.typeContrat}
-						<Badge
-							label={lastPlacement.typeContrat === 'apprentissage'
-								? 'Apprentissage'
-								: 'Professionnalisation'}
-							color={C.blueLight}
-							textColor={C.blue}
-						/>
-					{/if}
+					<div class="cs-fiche__head-actions">
+						{#if lastPlacement.typeContrat}
+							<Badge
+								label={lastPlacement.typeContrat === 'apprentissage'
+									? 'Apprentissage'
+									: 'Professionnalisation'}
+								color={C.blueLight}
+								textColor={C.blue}
+							/>
+						{/if}
+						{#if editEnt}
+							<Button size="sm" variant="subtle" onclick={() => (editEnt = false)}>Annuler</Button>
+							<Button size="sm" onclick={saveEnt} disabled={savingEnt}>
+								{savingEnt ? 'Enregistrement…' : 'Enregistrer'}
+							</Button>
+						{:else}
+							<Button size="sm" variant="subtle" icon="✏️" onclick={startEditEnt}>
+								{ficheEnt ? 'Modifier' : 'Compléter'}
+							</Button>
+						{/if}
+					</div>
 				</div>
 				<div class="cs-pl__grid">
 					<div><span>Contact</span>{`${lastPlacement.contactPrenom ?? ''} ${lastPlacement.contactNom ?? ''}`.trim() || '—'}</div>
@@ -492,7 +690,61 @@
 					<div><span>Statut OPCO</span>{OPCO_LABELS[lastPlacement.statutOpco] ?? lastPlacement.statutOpco}</div>
 				</div>
 
-				{#if ficheEnt}
+				{#if editEnt}
+					<p class="cs-fiche__sub">Entreprise</p>
+					<div class="cs-fedit__grid">
+						{@render fSelect(entDraft, 'Type de contrat', 'typeContrat', CONTRAT_OPTS)}
+						{@render fText(entDraft, 'Raison sociale', 'raisonSociale')}
+						{@render fText(entDraft, 'Adresse siège', 'adresseSiege')}
+						{@render fText(entDraft, "Adresse d'exécution", 'adresseExecution')}
+						{@render fText(entDraft, 'SIRET siège', 'siretSiege')}
+						{@render fText(entDraft, 'SIRET exécution', 'siretExecution')}
+						{@render fText(entDraft, 'Forme juridique', 'formeJuridique')}
+						{@render fText(entDraft, 'Type employeur', 'typeEmployeur')}
+						{@render fText(entDraft, 'Code APE/NAF', 'codeApeNaf')}
+						{@render fText(entDraft, 'Code IDCC', 'codeIdcc')}
+						{@render fText(entDraft, 'Nb salariés', 'nbSalaries', 'number')}
+						{@render fText(entDraft, 'OPCO', 'opco')}
+						{@render fText(entDraft, 'Caisse retraite', 'caisseRetraite')}
+						{@render fText(entDraft, 'Prévoyance', 'prevoyance')}
+						{@render fText(entDraft, 'Téléphone', 'tel', 'tel')}
+					</div>
+					<div class="cs-fedit__checks">
+						{@render fBool(entDraft, 'Mandat OPCO', 'mandatOpco')}
+					</div>
+
+					<p class="cs-fiche__sub">Contacts</p>
+					<div class="cs-fedit__grid">
+						{@render fText(entDraft, "Chef d'entreprise — nom", 'chefNom')}
+						{@render fText(entDraft, 'Chef — email', 'chefMail', 'email')}
+						{@render fText(entDraft, 'Chef — téléphone', 'chefTel', 'tel')}
+						{@render fText(entDraft, 'Contact RH — nom', 'rhNom')}
+						{@render fText(entDraft, 'RH — email', 'rhMail', 'email')}
+						{@render fText(entDraft, 'RH — téléphone', 'rhTel', 'tel')}
+						{@render fText(entDraft, 'Facturation — adresse', 'factuAdresse')}
+						{@render fText(entDraft, 'Facturation — email', 'factuMail', 'email')}
+					</div>
+
+					<p class="cs-fiche__sub">Tuteur</p>
+					<div class="cs-fedit__grid">
+						{@render fText(entDraft, 'Nom', 'tuteurNom')}
+						{@render fText(entDraft, 'Prénom', 'tuteurPrenom')}
+						{@render fText(entDraft, 'Fonction', 'tuteurFonction')}
+						{@render fText(entDraft, 'Email', 'tuteurMail', 'email')}
+						{@render fText(entDraft, 'Téléphone', 'tuteurTel', 'tel')}
+						{@render fText(entDraft, 'Date de naissance', 'tuteurDateNaissance', 'date')}
+						{@render fText(entDraft, 'Expérience (années)', 'tuteurExperience', 'number')}
+						{@render fText(entDraft, 'Diplôme le plus élevé', 'tuteurDiplome')}
+						{@render fText(entDraft, 'Nb alternants tutorés', 'tuteurNbAlternants', 'number')}
+					</div>
+
+					<p class="cs-fiche__sub">Contrat</p>
+					<div class="cs-fedit__grid">
+						{@render fText(entDraft, 'Salaire brut mensuel', 'salaireBrut')}
+						{@render fText(entDraft, 'SMIC / SMC', 'smicSmc')}
+						{@render fText(entDraft, 'Date de début', 'dateDebut', 'date')}
+					</div>
+				{:else if ficheEnt}
 					<p class="cs-fiche__sub">Entreprise {#if ficheEnt.submittedAt}<span class="cs-fiche__ok">· fiche reçue ✓</span>{/if}</p>
 					<div class="cs-pl__grid">
 						<div><span>Raison sociale</span>{ficheEnt.raisonSociale ?? '—'}</div>
@@ -1114,6 +1366,60 @@
 	.cs-fiche__doc--off {
 		color: var(--c-muted);
 		opacity: 0.7;
+	}
+	.cs-fiche__head-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	/* ───────── Édition des fiches ───────── */
+	.cs-fedit__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 10px 16px;
+		margin-bottom: 12px;
+	}
+	.cs-fedit__lbl {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--c-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+	}
+	.cs-fedit__inp {
+		padding: 8px 10px;
+		border-radius: 8px;
+		border: 1.5px solid var(--c-border);
+		font-size: 13px;
+		font-weight: 400;
+		text-transform: none;
+		letter-spacing: 0;
+		background: var(--c-card);
+		color: var(--c-text);
+		outline: none;
+		font-family: var(--font-body);
+	}
+	.cs-fedit__inp:focus {
+		border-color: var(--c-blue);
+	}
+	.cs-fedit__checks {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 14px;
+		margin-bottom: 12px;
+		font-size: 13px;
+		color: var(--c-sub);
+	}
+	.cs-fedit__check {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		cursor: pointer;
 	}
 
 	/* ───────── Formulaire de passation ───────── */

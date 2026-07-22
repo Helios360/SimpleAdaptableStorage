@@ -71,6 +71,84 @@ interface TokenRow {
 	audience: string;
 }
 
+// ─── Lecture des champs scalaires depuis un FormData ─────────────────────────
+// Source unique partagée par la soumission tokenisée (save*) et l'édition CRE
+// (update*), pour éviter que les deux listes de champs ne divergent. Les
+// documents (…Path) et les horodatages sont gérés par les appelants.
+
+/** Champs scalaires de la fiche étudiante (hors documents & horodatages). */
+function readFicheEtudiantScalars(form: FormData): Partial<FicheEtudiantData> {
+	return {
+		nomNaissance: s(form.get('nomNaissance')),
+		civilite: s(form.get('civilite')),
+		paysNaissance: s(form.get('paysNaissance')),
+		communeNaissance: s(form.get('communeNaissance')),
+		cpNaissance: s(form.get('cpNaissance')),
+		adresseRue: s(form.get('adresseRue')),
+		nir: s(form.get('nir')),
+		nationalite: s(form.get('nationalite')),
+		majeur: b(form.get('majeur')),
+		repNom: s(form.get('repNom')),
+		repPrenom: s(form.get('repPrenom')),
+		repMail: s(form.get('repMail')),
+		repTel: s(form.get('repTel')),
+		repAdresse: s(form.get('repAdresse')),
+		sportifHautNiveau: b(form.get('sportifHautNiveau')),
+		rqth: b(form.get('rqth')),
+		situationAvantContrat: s(form.get('situationAvantContrat')),
+		dernierDiplomePrepare: s(form.get('dernierDiplomePrepare')),
+		intituleDiplomePrepare: s(form.get('intituleDiplomePrepare')),
+		diplomeLePlusEleve: s(form.get('diplomeLePlusEleve')),
+		derniereAnneeSuivie: s(form.get('derniereAnneeSuivie')),
+		dejaAlternance: b(form.get('dejaAlternance')),
+		numeroDeca: s(form.get('numeroDeca'))
+	};
+}
+
+/** Champs scalaires de la fiche entreprise (hors `assuranceChomagePublic` & horodatages). */
+function readFicheEntrepriseScalars(form: FormData): Partial<FicheEntrepriseData> {
+	// Un tuteur ne peut encadrer plus de 2 alternants : on borne la valeur reçue.
+	const nbAlternants = i(form.get('tuteurNbAlternants'));
+	return {
+		typeContrat: s(form.get('typeContrat')),
+		raisonSociale: s(form.get('raisonSociale')),
+		adresseSiege: s(form.get('adresseSiege')),
+		adresseExecution: s(form.get('adresseExecution')),
+		siretExecution: s(form.get('siretExecution')),
+		typeEmployeur: s(form.get('typeEmployeur')),
+		tel: s(form.get('tel')),
+		formeJuridique: s(form.get('formeJuridique')),
+		siretSiege: s(form.get('siretSiege')),
+		codeApeNaf: s(form.get('codeApeNaf')),
+		codeIdcc: s(form.get('codeIdcc')),
+		nbSalaries: i(form.get('nbSalaries')),
+		caisseRetraite: s(form.get('caisseRetraite')),
+		prevoyance: s(form.get('prevoyance')),
+		opco: s(form.get('opco')),
+		chefNom: s(form.get('chefNom')),
+		chefMail: s(form.get('chefMail')),
+		chefTel: s(form.get('chefTel')),
+		rhNom: s(form.get('rhNom')),
+		rhMail: s(form.get('rhMail')),
+		rhTel: s(form.get('rhTel')),
+		mandatOpco: b(form.get('mandatOpco')),
+		factuAdresse: s(form.get('factuAdresse')),
+		factuMail: s(form.get('factuMail')),
+		tuteurNom: s(form.get('tuteurNom')),
+		tuteurPrenom: s(form.get('tuteurPrenom')),
+		tuteurTel: s(form.get('tuteurTel')),
+		tuteurDateNaissance: s(form.get('tuteurDateNaissance')),
+		tuteurMail: s(form.get('tuteurMail')),
+		tuteurFonction: s(form.get('tuteurFonction')),
+		tuteurExperience: i(form.get('tuteurExperience')),
+		tuteurDiplome: s(form.get('tuteurDiplome')),
+		tuteurNbAlternants: nbAlternants == null ? null : Math.max(0, Math.min(2, nbAlternants)),
+		salaireBrut: s(form.get('salaireBrut')),
+		smicSmc: s(form.get('smicSmc')),
+		dateDebut: s(form.get('dateDebut'))
+	};
+}
+
 /** Enregistre la fiche d'informations étudiante dans candidat.ficheInfos (JSONB). */
 export async function saveFicheEtudiant(tok: TokenRow, form: FormData) {
 	const rows = await db
@@ -102,29 +180,7 @@ export async function saveFicheEtudiant(tok: TokenRow, form: FormData) {
 	}
 
 	const data: FicheEtudiantData = {
-		nomNaissance: s(form.get('nomNaissance')),
-		civilite: s(form.get('civilite')),
-		paysNaissance: s(form.get('paysNaissance')),
-		communeNaissance: s(form.get('communeNaissance')),
-		cpNaissance: s(form.get('cpNaissance')),
-		adresseRue: s(form.get('adresseRue')),
-		nir: s(form.get('nir')),
-		nationalite: s(form.get('nationalite')),
-		majeur: b(form.get('majeur')),
-		repNom: s(form.get('repNom')),
-		repPrenom: s(form.get('repPrenom')),
-		repMail: s(form.get('repMail')),
-		repTel: s(form.get('repTel')),
-		repAdresse: s(form.get('repAdresse')),
-		sportifHautNiveau: b(form.get('sportifHautNiveau')),
-		rqth: b(form.get('rqth')),
-		situationAvantContrat: s(form.get('situationAvantContrat')),
-		dernierDiplomePrepare: s(form.get('dernierDiplomePrepare')),
-		intituleDiplomePrepare: s(form.get('intituleDiplomePrepare')),
-		diplomeLePlusEleve: s(form.get('diplomeLePlusEleve')),
-		derniereAnneeSuivie: s(form.get('derniereAnneeSuivie')),
-		dejaAlternance: b(form.get('dejaAlternance')),
-		numeroDeca: s(form.get('numeroDeca')),
+		...readFicheEtudiantScalars(form),
 		...paths,
 		submittedAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString()
@@ -146,43 +202,8 @@ export async function saveFicheEntreprise(tok: TokenRow, form: FormData) {
 	if (!pl) return fail(404, { error: 'Dossier introuvable.' });
 
 	const data: FicheEntrepriseData = {
-		typeContrat: s(form.get('typeContrat')),
-		raisonSociale: s(form.get('raisonSociale')),
-		adresseSiege: s(form.get('adresseSiege')),
-		adresseExecution: s(form.get('adresseExecution')),
-		siretExecution: s(form.get('siretExecution')),
-		typeEmployeur: s(form.get('typeEmployeur')),
-		tel: s(form.get('tel')),
-		formeJuridique: s(form.get('formeJuridique')),
-		siretSiege: s(form.get('siretSiege')),
-		codeApeNaf: s(form.get('codeApeNaf')),
-		codeIdcc: s(form.get('codeIdcc')),
-		nbSalaries: i(form.get('nbSalaries')),
-		caisseRetraite: s(form.get('caisseRetraite')),
-		prevoyance: s(form.get('prevoyance')),
-		opco: s(form.get('opco')),
-		chefNom: s(form.get('chefNom')),
-		chefMail: s(form.get('chefMail')),
-		chefTel: s(form.get('chefTel')),
-		rhNom: s(form.get('rhNom')),
-		rhMail: s(form.get('rhMail')),
-		rhTel: s(form.get('rhTel')),
+		...readFicheEntrepriseScalars(form),
 		assuranceChomagePublic: s(form.get('assuranceChomagePublic')),
-		mandatOpco: b(form.get('mandatOpco')),
-		factuAdresse: s(form.get('factuAdresse')),
-		factuMail: s(form.get('factuMail')),
-		tuteurNom: s(form.get('tuteurNom')),
-		tuteurPrenom: s(form.get('tuteurPrenom')),
-		tuteurTel: s(form.get('tuteurTel')),
-		tuteurDateNaissance: s(form.get('tuteurDateNaissance')),
-		tuteurMail: s(form.get('tuteurMail')),
-		tuteurFonction: s(form.get('tuteurFonction')),
-		tuteurExperience: i(form.get('tuteurExperience')),
-		tuteurDiplome: s(form.get('tuteurDiplome')),
-		tuteurNbAlternants: i(form.get('tuteurNbAlternants')),
-		salaireBrut: s(form.get('salaireBrut')),
-		smicSmc: s(form.get('smicSmc')),
-		dateDebut: s(form.get('dateDebut')),
 		submittedAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString()
 	};
@@ -193,5 +214,56 @@ export async function saveFicheEntreprise(tok: TokenRow, form: FormData) {
 		.where(eq(placement.id, tok.placementId));
 	await db.update(formToken).set({ submittedAt: new Date() }).where(eq(formToken.token, tok.token));
 	await advancePlacement(tok.placementId, pl.candidatId);
+	return { success: true };
+}
+
+// ─── Édition côté CRE (sans token) ──────────────────────────────────────────
+// Le commercial peut corriger/compléter les deux fiches depuis le dossier. On
+// ne touche qu'aux champs scalaires : les documents (…Path) et l'horodatage de
+// soumission (submittedAt) sont conservés via l'étalement de la fiche existante.
+
+/** Met à jour les champs scalaires de la fiche étudiante (candidat.ficheInfos). */
+export async function updateFicheEtudiant(candidatId: number, form: FormData) {
+	const [row] = await db
+		.select({ fiche: candidat.ficheInfos })
+		.from(candidat)
+		.where(eq(candidat.id, candidatId))
+		.limit(1);
+	if (!row) return fail(404, { error: 'Dossier introuvable.' });
+	const prev = row.fiche ?? {};
+
+	const data: FicheEtudiantData = {
+		...prev,
+		...readFicheEtudiantScalars(form),
+		updatedAt: new Date().toISOString()
+	};
+
+	await db
+		.update(candidat)
+		.set({ ficheInfos: data, updatedAt: new Date() })
+		.where(eq(candidat.id, candidatId));
+	return { success: true };
+}
+
+/** Met à jour les champs scalaires de la fiche entreprise (placement.ficheEntreprise). */
+export async function updateFicheEntreprise(placementId: number, form: FormData) {
+	const [pl] = await db
+		.select({ candidatId: placement.candidatId, fiche: placement.ficheEntreprise })
+		.from(placement)
+		.where(eq(placement.id, placementId))
+		.limit(1);
+	if (!pl) return fail(404, { error: 'Placement introuvable.' });
+	const prev = pl.fiche ?? {};
+
+	const data: FicheEntrepriseData = {
+		...prev,
+		...readFicheEntrepriseScalars(form),
+		updatedAt: new Date().toISOString()
+	};
+
+	await db
+		.update(placement)
+		.set({ ficheEntreprise: data, updatedAt: new Date() })
+		.where(eq(placement.id, placementId));
 	return { success: true };
 }

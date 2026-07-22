@@ -1,5 +1,6 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { updateFicheEtudiant, updateFicheEntreprise } from '$lib/server/fiche';
 import {
 	getCandidatRowById,
 	listFormations,
@@ -85,5 +86,20 @@ export const actions: Actions = {
 	sendReset: candidatActions.sendReset,
 	createPlacement: placementActions.createPlacement,
 	resendPlacementLinks: placementActions.resendPlacementLinks,
-	setStatutOpco: placementActions.setStatutOpco
+	setStatutOpco: placementActions.setStatutOpco,
+	// Édition des fiches directement depuis le dossier (côté CRE, sans token).
+	updateFicheEtudiant: async ({ request, locals }) => {
+		requireRole(locals.user, 'cre');
+		const form = await request.formData();
+		const candidatId = Number(form.get('candidatId'));
+		if (!Number.isFinite(candidatId)) return fail(400, { error: 'Étudiant invalide.' });
+		return updateFicheEtudiant(candidatId, form);
+	},
+	updateFicheEntreprise: async ({ request, locals }) => {
+		requireRole(locals.user, 'cre');
+		const form = await request.formData();
+		const placementId = Number(form.get('placementId'));
+		if (!Number.isFinite(placementId)) return fail(400, { error: 'Placement invalide.' });
+		return updateFicheEntreprise(placementId, form);
+	}
 };
