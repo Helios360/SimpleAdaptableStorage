@@ -11,6 +11,7 @@
 	import { initials, scoreColor, statutLabel, rechercheStatutLabel } from '$lib/utils';
 	import {
 		OPCO_LABELS,
+		OPCO_ORGANISMES,
 		situationLabel,
 		diplomeLabel,
 		SITUATIONS,
@@ -312,14 +313,28 @@
 </svelte:head>
 
 <!-- Champs d'édition réutilisables pour les deux fiches. -->
-{#snippet fText(draft: Draft, label: string, key: string, type: string = 'text')}
+{#snippet fText(
+	draft: Draft,
+	label: string,
+	key: string,
+	type: string = 'text',
+	maxlength?: number,
+	digitsOnly: boolean = false
+)}
 	<label class="cs-fedit__lbl">
 		{label}
 		<input
 			class="cs-fedit__inp"
 			{type}
+			{maxlength}
+			inputmode={digitsOnly ? 'numeric' : undefined}
 			value={draft[key] ?? ''}
-			oninput={(e) => (draft[key] = e.currentTarget.value)}
+			oninput={(e) => {
+				let v = e.currentTarget.value;
+				if (digitsOnly) v = v.replace(/\D/g, '');
+				draft[key] = v;
+				e.currentTarget.value = v;
+			}}
 		/>
 	</label>
 {/snippet}
@@ -576,9 +591,9 @@
 					{@render fSelect(etuDraft, 'Nationalité', 'nationalite', NATIONALITE_OPTS)}
 					{@render fText(etuDraft, 'Pays de naissance', 'paysNaissance')}
 					{@render fText(etuDraft, 'Commune de naissance', 'communeNaissance')}
-					{@render fText(etuDraft, 'Code postal de naissance', 'cpNaissance')}
+					{@render fText(etuDraft, 'Code postal de naissance', 'cpNaissance', 'text', 5, true)}
 					{@render fText(etuDraft, 'Adresse', 'adresseRue')}
-					{@render fText(etuDraft, 'NIR', 'nir')}
+					{@render fText(etuDraft, 'NIR', 'nir', 'text', 15, true)}
 					{@render fSelect(etuDraft, 'Situation avant contrat', 'situationAvantContrat', SITUATIONS)}
 					{@render fSelect(etuDraft, 'Dernier diplôme préparé', 'dernierDiplomePrepare', DIPLOMES)}
 					{@render fText(etuDraft, 'Intitulé du diplôme', 'intituleDiplomePrepare')}
@@ -598,7 +613,7 @@
 					{@render fText(etuDraft, 'Nom', 'repNom')}
 					{@render fText(etuDraft, 'Prénom', 'repPrenom')}
 					{@render fText(etuDraft, 'Email', 'repMail', 'email')}
-					{@render fText(etuDraft, 'Téléphone', 'repTel', 'tel')}
+					{@render fText(etuDraft, 'Téléphone', 'repTel', 'tel', 10, true)}
 					{@render fText(etuDraft, 'Adresse', 'repAdresse')}
 				</div>
 			{:else if ficheEtu}
@@ -697,17 +712,17 @@
 						{@render fText(entDraft, 'Raison sociale', 'raisonSociale')}
 						{@render fText(entDraft, 'Adresse siège', 'adresseSiege')}
 						{@render fText(entDraft, "Adresse d'exécution", 'adresseExecution')}
-						{@render fText(entDraft, 'SIRET siège', 'siretSiege')}
-						{@render fText(entDraft, 'SIRET exécution', 'siretExecution')}
+						{@render fText(entDraft, 'SIRET siège', 'siretSiege', 'text', 14, true)}
+						{@render fText(entDraft, 'SIRET exécution', 'siretExecution', 'text', 14, true)}
 						{@render fText(entDraft, 'Forme juridique', 'formeJuridique')}
 						{@render fText(entDraft, 'Type employeur', 'typeEmployeur')}
-						{@render fText(entDraft, 'Code APE/NAF', 'codeApeNaf')}
-						{@render fText(entDraft, 'Code IDCC', 'codeIdcc')}
+						{@render fText(entDraft, 'Code APE/NAF', 'codeApeNaf', 'text', 5)}
+						{@render fText(entDraft, 'Code IDCC', 'codeIdcc', 'text', 4, true)}
 						{@render fText(entDraft, 'Nb salariés', 'nbSalaries', 'number')}
-						{@render fText(entDraft, 'OPCO', 'opco')}
+						{@render fSelect(entDraft, 'OPCO', 'opco', OPCO_ORGANISMES.map((o) => [o, o]))}
 						{@render fText(entDraft, 'Caisse retraite', 'caisseRetraite')}
 						{@render fText(entDraft, 'Prévoyance', 'prevoyance')}
-						{@render fText(entDraft, 'Téléphone', 'tel', 'tel')}
+						{@render fText(entDraft, 'Téléphone', 'tel', 'tel', 10, true)}
 					</div>
 					<div class="cs-fedit__checks">
 						{@render fBool(entDraft, 'Mandat OPCO', 'mandatOpco')}
@@ -731,7 +746,7 @@
 						{@render fText(entDraft, 'Prénom', 'tuteurPrenom')}
 						{@render fText(entDraft, 'Fonction', 'tuteurFonction')}
 						{@render fText(entDraft, 'Email', 'tuteurMail', 'email')}
-						{@render fText(entDraft, 'Téléphone', 'tuteurTel', 'tel')}
+						{@render fText(entDraft, 'Téléphone', 'tuteurTel', 'tel', 10, true)}
 						{@render fText(entDraft, 'Date de naissance', 'tuteurDateNaissance', 'date')}
 						{@render fText(entDraft, 'Expérience (années)', 'tuteurExperience', 'number')}
 						{@render fText(entDraft, 'Diplôme le plus élevé', 'tuteurDiplome')}
@@ -740,7 +755,7 @@
 
 					<p class="cs-fiche__sub">Contrat</p>
 					<div class="cs-fedit__grid">
-						{@render fText(entDraft, 'Salaire brut mensuel', 'salaireBrut')}
+						{@render fText(entDraft, 'Salaire brut mensuel', 'salaireBrut', 'text', undefined, true)}
 						{@render fText(entDraft, 'SMIC / SMC', 'smicSmc')}
 						{@render fText(entDraft, 'Date de début', 'dateDebut', 'date')}
 					</div>
@@ -933,7 +948,7 @@
 			<Input label="Contact — Prénom" name="contactPrenom" bind:value={pContactPrenom} required />
 		</div>
 		<div class="cs-pass__row">
-			<Input label="Téléphone" name="contactTel" type="tel" bind:value={pContactTel} required />
+			<Input label="Téléphone" name="contactTel" type="tel" bind:value={pContactTel} digitsOnly inputmode="numeric" maxlength={10} required />
 			<Input
 				label="Email entreprise (lien fiche)"
 				name="contactEmail"

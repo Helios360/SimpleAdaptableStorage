@@ -5,6 +5,8 @@
 		label?: string;
 		value?: string;
 		error?: string;
+		/** N'autorise que des chiffres : filtre la saisie en retirant tout caractère non numérique. */
+		digitsOnly?: boolean;
 	}
 
 	let {
@@ -16,8 +18,16 @@
 		required,
 		placeholder,
 		autofocus,
+		digitsOnly = false,
 		...rest
 	}: Props = $props();
+
+	function handleInput() {
+		if (digitsOnly) {
+			const cleaned = value.replace(/\D/g, '');
+			if (cleaned !== value) value = cleaned;
+		}
+	}
 </script>
 
 <div class="cs-field">
@@ -35,6 +45,7 @@
 		{autofocus}
 		{required}
 		bind:value
+		oninput={handleInput}
 		aria-invalid={!!error}
 		aria-required={required}
 		class="cs-input {error ? 'cs-input--error' : ''}"

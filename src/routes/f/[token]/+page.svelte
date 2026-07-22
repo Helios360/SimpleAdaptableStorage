@@ -3,7 +3,7 @@
 	import Input from '$lib/components/Input.svelte';
 	import FileUpload from '$lib/components/FileUpload.svelte';
 	import { pushToast } from '$lib/stores/toast.svelte';
-	import { SITUATIONS, DIPLOMES } from '$lib/placementLogic';
+	import { SITUATIONS, DIPLOMES, OPCO_ORGANISMES } from '$lib/placementLogic';
 	import { ageFromBirth } from '$lib/utils';
 	import type { PageData } from './$types';
 
@@ -102,11 +102,11 @@
 					<Input label="Commune de naissance" name="communeNaissance" value={f?.communeNaissance ?? ''} required />
 				</div>
 				<div class="cs-form__row">
-					<Input label="Code postal de naissance" name="cpNaissance" value={f?.cpNaissance ?? ''} required />
+					<Input label="Code postal de naissance" name="cpNaissance" value={f?.cpNaissance ?? ''} digitsOnly inputmode="numeric" maxlength={5} required />
 					<Input label="Adresse postale (rue)" name="adresseRue" value={f?.adresseRue ?? ''} required />
 				</div>
 				<div class="cs-form__row">
-					<Input label="Numéro de sécurité sociale (NIR)" name="nir" value={f?.nir ?? ''} required />
+					<Input label="Numéro de sécurité sociale (NIR)" name="nir" value={f?.nir ?? ''} digitsOnly inputmode="numeric" maxlength={15} required />
 					<div class="cs-field">
 						<label class="cs-label" for="nationalite">Nationalité</label>
 						<select id="nationalite" name="nationalite" class="cs-select" required value={f?.nationalite ?? ''}>
@@ -129,7 +129,7 @@
 					</div>
 					<div class="cs-form__row">
 						<Input label="Email" name="repMail" type="email" value={f?.repMail ?? ''} required />
-						<Input label="Téléphone" name="repTel" type="tel" value={f?.repTel ?? ''} required />
+						<Input label="Téléphone" name="repTel" type="tel" value={f?.repTel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
 					</div>
 					<Input label="Adresse postale" name="repAdresse" value={f?.repAdresse ?? ''} required />
 				{/if}
@@ -225,23 +225,29 @@
 				<Input label="Adresse complète du siège social" name="adresseSiege" value={f?.adresseSiege ?? ''} required />
 				<div class="cs-form__row">
 					<Input label="Adresse d'exécution (si différente)" name="adresseExecution" value={f?.adresseExecution ?? ''} />
-					<Input label="SIRET de l'adresse d'exécution" name="siretExecution" value={f?.siretExecution ?? ''} />
+					<Input label="SIRET de l'adresse d'exécution" name="siretExecution" value={f?.siretExecution ?? ''} digitsOnly inputmode="numeric" maxlength={14} />
 				</div>
 				<div class="cs-form__row">
-					<Input label="SIRET du siège social" name="siretSiege" value={f?.siretSiege ?? ''} required />
-					<Input label="Code APE / NAF" name="codeApeNaf" value={f?.codeApeNaf ?? ''} required />
+					<Input label="SIRET du siège social" name="siretSiege" value={f?.siretSiege ?? ''} digitsOnly inputmode="numeric" maxlength={14} required />
+					<Input label="Code APE / NAF" name="codeApeNaf" value={f?.codeApeNaf ?? ''} maxlength={5} required />
 				</div>
 				<div class="cs-form__row">
 					<Input label="Type d'employeur" name="typeEmployeur" value={f?.typeEmployeur ?? ''} required />
 					<Input label="Forme juridique" name="formeJuridique" value={f?.formeJuridique ?? ''} required />
 				</div>
 				<div class="cs-form__row">
-					<Input label="Téléphone" name="tel" type="tel" value={f?.tel ?? ''} required />
-					<Input label="Code IDCC" name="codeIdcc" value={f?.codeIdcc ?? ''} required />
+					<Input label="Téléphone" name="tel" type="tel" value={f?.tel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
+					<Input label="Code IDCC" name="codeIdcc" value={f?.codeIdcc ?? ''} digitsOnly inputmode="numeric" maxlength={4} required />
 				</div>
 				<div class="cs-form__row">
 					<Input label="Nombre de salariés" name="nbSalaries" type="number" value={f?.nbSalaries != null ? String(f.nbSalaries) : ''} required />
-					<Input label="Nom de votre OPCO" name="opco" value={f?.opco ?? ''} required />
+					<div class="cs-field">
+						<label class="cs-label" for="opco">Nom de votre OPCO<span class="cs-req">*</span></label>
+						<select id="opco" name="opco" class="cs-select" required value={f?.opco ?? ''}>
+							<option value="">—</option>
+							{#each OPCO_ORGANISMES as o}<option value={o}>{o}</option>{/each}
+						</select>
+					</div>
 				</div>
 				<div class="cs-form__row">
 					<Input label="Caisse de retraite complémentaire" name="caisseRetraite" value={f?.caisseRetraite ?? ''} required />
@@ -252,15 +258,15 @@
 					<Input label="Nom / Prénom" name="chefNom" value={f?.chefNom ?? ''} required />
 					<Input label="Email" name="chefMail" type="email" value={f?.chefMail ?? ''} required />
 				</div>
-				<Input label="Téléphone" name="chefTel" type="tel" value={f?.chefTel ?? ''} required />
+				<Input label="Téléphone" name="chefTel" type="tel" value={f?.chefTel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
 
 				<p class="cs-form__sub">Contact RH</p>
 				<div class="cs-form__row">
 					<Input label="Nom / Prénom" name="rhNom" value={f?.rhNom ?? ''} required />
 					<Input label="Email" name="rhMail" type="email" value={f?.rhMail ?? ''} required />
 				</div>
-				<Input label="Téléphone" name="rhTel" type="tel" value={f?.rhTel ?? ''} required />
-				<Input label="Secteur public — adhésion assurance chômage de l'apprenti" name="assuranceChomagePublic" value={f?.assuranceChomagePublic ?? ''} required />
+				<Input label="Téléphone" name="rhTel" type="tel" value={f?.rhTel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
+				<Input label="Secteur public — adhésion assurance chômage de l'apprenti" name="assuranceChomagePublic" value={f?.assuranceChomagePublic ?? ''} />
 				<label class="cs-check">
 					<input type="checkbox" name="mandatOpco" value="1" checked={f?.mandatOpco ?? false} /> Je donne mandat au CFA pour les démarches auprès de l'OPCO
 				</label>
@@ -277,7 +283,7 @@
 					<Input label="Prénom" name="tuteurPrenom" value={f?.tuteurPrenom ?? ''} required />
 				</div>
 				<div class="cs-form__row">
-					<Input label="Téléphone" name="tuteurTel" type="tel" value={f?.tuteurTel ?? ''} required />
+					<Input label="Téléphone" name="tuteurTel" type="tel" value={f?.tuteurTel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
 					<Input label="Date de naissance" name="tuteurDateNaissance" type="date" value={f?.tuteurDateNaissance ?? ''} required />
 				</div>
 				<div class="cs-form__row">
@@ -300,7 +306,7 @@
 
 				<p class="cs-form__section">Contrat</p>
 				<div class="cs-form__row">
-					<Input label="Salaire brut mensuel" name="salaireBrut" value={f?.salaireBrut ?? ''} required />
+					<Input label="Salaire brut mensuel" name="salaireBrut" value={f?.salaireBrut ?? ''} digitsOnly inputmode="numeric" required />
 					<Input label="SMIC ou SMC" name="smicSmc" value={f?.smicSmc ?? ''} required />
 				</div>
 				<Input label="Date de début de contrat" name="dateDebut" type="date" value={f?.dateDebut ?? ''} required />

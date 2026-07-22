@@ -58,6 +58,24 @@ export const VALID_STATUT_OPCO = new Set([
 	'sfp'
 ]);
 
+/**
+ * Les 11 opérateurs de compétences (OPCO) agréés.
+ * Source : centre-inffo.fr — présentation des 11 OPCO.
+ */
+export const OPCO_ORGANISMES: string[] = [
+	'AFDAS',
+	'AKTO',
+	'ATLAS',
+	'Constructys',
+	'OCAPIAT',
+	'OPCO 2i',
+	'OPCO EP',
+	'OPCO Mobilités',
+	'OPCO Santé',
+	'Uniformation',
+	"L'Opcommerce"
+];
+
 export const OPCO_LABELS: Record<string, string> = {
 	en_attente: 'En attente',
 	en_cours: 'En cours',
