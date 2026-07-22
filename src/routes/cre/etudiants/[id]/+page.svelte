@@ -569,7 +569,6 @@
 					{/if}
 				</div>
 			</div>
-
 			{#if editEtu}
 				<div class="cs-fedit__grid">
 					{@render fSelect(etuDraft, 'Civilité', 'civilite', CIVILITE_OPTS)}
@@ -653,6 +652,7 @@
 				</p>
 			{/if}
 		</Card>
+		<br>
 	{/snippet}
 
 	<!-- ───────── Entreprise ───────── -->
