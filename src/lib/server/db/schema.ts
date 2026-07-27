@@ -426,7 +426,11 @@ export const placement = pgTable(
 		commercialId: text('commercial_id').references(() => user.id, { onDelete: 'set null' }),
 		// « Suivi par » (nom libre, peut différer du compte qui saisit)
 		suiviPar: text('suivi_par'),
+		// Promo du référentiel. Le libellé reste stocké en clair : il survit à la
+		// suppression de la promo et sert à l'affichage, tandis que promoId donne
+		// accès à la date de rentrée et au calendrier (mails de passation).
 		promo: text('promo'),
+		promoId: integer('promo_id').references(() => promo.id, { onDelete: 'set null' }),
 		source: text('source'),
 		datePlacement: date('date_placement'),
 		// entreprise (minimal à la passation ; le détail complet arrive via fiche_entreprise)

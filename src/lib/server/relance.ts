@@ -14,7 +14,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { formToken, placement, candidat, user, formation } from './db/schema';
+import { formToken, placement, candidat, user, formation, promo } from './db/schema';
 import { sendMail } from './mailer';
 import {
 	studentLinkEmail,
@@ -62,7 +62,10 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 			lname: candidat.lname,
 			studentEmail: user.email,
 			formationName: formation.name,
-			creName: cre.name
+			creName: cre.name,
+			promoId: promo.id,
+			dateRentree: promo.dateRentree,
+			calendrierPath: promo.calendrierPath
 		})
 		.from(formToken)
 		.innerJoin(placement, eq(placement.id, formToken.placementId))
@@ -70,6 +73,7 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 		.innerJoin(user, eq(user.id, candidat.userId))
 		.leftJoin(formation, eq(formation.id, candidat.formationId))
 		.leftJoin(cre, eq(cre.id, placement.commercialId))
+		.leftJoin(promo, eq(promo.id, placement.promoId))
 		.where(and(isNull(formToken.submittedAt), gt(formToken.expiresAt, now)));
 
 	const report: RelanceReport = { checked: 0, sent: 0, recipients: [], failed: 0 };
@@ -94,6 +98,9 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 						formation: r.formationName,
 						entreprise: r.entreprise,
 						cre: r.creName,
+						dateRentree: r.dateRentree,
+						promoId: r.promoId,
+						calendrier: !!r.calendrierPath,
 						relance: true
 					})
 				: companyLinkEmail(r.entreprise ?? '', url, true);

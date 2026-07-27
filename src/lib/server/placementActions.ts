@@ -55,6 +55,13 @@ async function createPlacement({ request, locals }: RequestEvent) {
 		return fail(400, { error: 'Type de contrat invalide.' });
 	}
 
+	// La promo vient du référentiel : l'id donne accès à la date de rentrée et au
+	// calendrier dans le mail, le libellé reste stocké pour l'affichage.
+	const promoId = Number(form.get('promoId'));
+	if (!Number.isInteger(promoId) || promoId <= 0) {
+		return fail(400, { error: 'Promo invalide.' });
+	}
+
 	const [row] = await db
 		.insert(placement)
 		.values({
@@ -62,6 +69,7 @@ async function createPlacement({ request, locals }: RequestEvent) {
 			commercialId: locals.user.id,
 			suiviPar: values.suiviPar,
 			promo: values.promo,
+			promoId,
 			source: values.source,
 			datePlacement: values.datePlacement,
 			entreprise: values.entreprise,

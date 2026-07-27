@@ -120,6 +120,13 @@
       "when": 1785158032968,
       "tag": "0016_spooky_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785162238699,
+      "tag": "0017_safe_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }

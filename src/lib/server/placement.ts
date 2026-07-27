@@ -8,9 +8,9 @@ import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from './db';
-import { formToken, placement, candidat, user, school, formation } from './db/schema';
+import { formToken, placement, candidat, user, school, formation, promo } from './db/schema';
 import { sendMail, appUrl } from './mailer';
-import { renderMailBody, splitFullName } from '$lib/mailTemplate';
+import { renderMailBody, splitFullName, formatDateFr } from '$lib/mailTemplate';
 
 export type FormAudience = 'etudiant' | 'entreprise';
 
@@ -143,6 +143,12 @@ export interface StudentMailContext {
 	entreprise?: string | null;
 	/** Nom complet du CRE ayant réalisé la passation (placement.commercialId). */
 	cre?: string | null;
+	/** Date de rentrée de la promo, ISO `YYYY-MM-DD`. */
+	dateRentree?: string | null;
+	/** Id de la promo, pour construire le lien vers son calendrier. */
+	promoId?: number | null;
+	/** Vrai si la promo a un calendrier déposé (sinon pas de lien à proposer). */
+	calendrier?: boolean;
 	relance?: boolean;
 }
 
@@ -169,8 +175,13 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 				entreprise: ctx.entreprise,
 				prenom_cre: cre.prenom,
 				nom_cre: cre.nom,
+				date_rentree: formatDateFr(ctx.dateRentree),
 				lien: ctx.url,
-				reglement: ecole.reglementLink
+				reglement: ecole.reglementLink,
+				calendrier:
+					ctx.calendrier && ctx.promoId != null
+						? `${appUrl()}/files/promo/${ctx.promoId}/calendrier`
+						: null
 			})
 		);
 	}
@@ -247,13 +258,17 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 			lname: candidat.lname,
 			studentEmail: user.email,
 			formationName: formation.name,
-			creName: cre.name
+			creName: cre.name,
+			promoId: promo.id,
+			dateRentree: promo.dateRentree,
+			calendrierPath: promo.calendrierPath
 		})
 		.from(placement)
 		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
 		.innerJoin(user, eq(user.id, candidat.userId))
 		.leftJoin(formation, eq(formation.id, candidat.formationId))
 		.leftJoin(cre, eq(cre.id, placement.commercialId))
+		.leftJoin(promo, eq(promo.id, placement.promoId))
 		.where(eq(placement.id, placementId))
 		.limit(1);
 	const p = rows[0];
@@ -274,7 +289,10 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 				ecole,
 				formation: p.formationName,
 				entreprise: p.entreprise,
-				cre: p.creName
+				cre: p.creName,
+				dateRentree: p.dateRentree,
+				promoId: p.promoId,
+				calendrier: !!p.calendrierPath
 			})
 		});
 		notified.etudiant = p.studentEmail;

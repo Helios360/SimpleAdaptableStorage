@@ -4,9 +4,14 @@ import { db } from '$lib/server/db';
 import { promo } from '$lib/server/db/schema';
 import { streamFile } from '$lib/server/uploads';
 
-/** Calendrier d'une promo (PDF déposé en Paramètres), pour tout utilisateur connecté. */
-export const GET: RequestHandler = async ({ params, locals, url, request }) => {
-	if (!locals.user) throw error(401, 'Non autorisé');
+/**
+ * Calendrier d'une promo (PDF déposé en Paramètres). Accessible sans session :
+ * le lien part dans le mail de passation, que l'étudiant ouvre depuis sa boîte
+ * sans être connecté (tout le parcours fiche est tokenisé, sans login). Document
+ * institutionnel et non nominatif — contrairement aux pièces du dossier, qui
+ * restent servies par des routes authentifiées.
+ */
+export const GET: RequestHandler = async ({ params, url, request }) => {
 	const id = Number(params.id);
 	if (!Number.isFinite(id)) throw error(400, 'Promo invalide');
 

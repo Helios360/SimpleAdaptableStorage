@@ -5,6 +5,7 @@ import {
 	templateToHtml,
 	renderMailBody,
 	splitFullName,
+	formatDateFr,
 	MAIL_VARIABLE_KEYS
 } from './mailTemplate';
 
@@ -86,6 +87,32 @@ describe('variables CRE', () => {
 	});
 	it('vide les variables CRE quand la passation n’a plus de commercial', () => {
 		expect(renderMailTemplate('[{{prenom_cre}}]', { prenom_cre: '' })).toBe('[]');
+	});
+});
+
+describe('formatDateFr', () => {
+	it('convertit une date ISO en JJ/MM/AAAA', () => {
+		expect(formatDateFr('2025-09-15')).toBe('15/09/2025');
+	});
+	it('rend une chaîne vide si la date manque ou est malformée', () => {
+		expect(formatDateFr(null)).toBe('');
+		expect(formatDateFr('15/09/2025')).toBe('');
+	});
+});
+
+describe('variables promo', () => {
+	it('substitue la date de rentrée', () => {
+		expect(renderMailTemplate('le {{date_rentree}}', { date_rentree: '15/09/2025' })).toBe(
+			'le 15/09/2025'
+		);
+	});
+	it('rend le calendrier en lien cliquable', () => {
+		expect(renderMailTemplate('{{calendrier}}', { calendrier: 'https://x.fr/files/promo/3/calendrier' })).toBe(
+			'<a href="https://x.fr/files/promo/3/calendrier">https://x.fr/files/promo/3/calendrier</a>'
+		);
+	});
+	it('vide le calendrier quand aucun PDF n’est déposé', () => {
+		expect(renderMailTemplate('[{{calendrier}}]', { calendrier: null })).toBe('[]');
 	});
 });
 

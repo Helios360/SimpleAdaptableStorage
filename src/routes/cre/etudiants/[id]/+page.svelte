@@ -173,7 +173,10 @@
 		}
 		const fd = new FormData();
 		fd.set('candidatId', String(candidat.id));
-		fd.set('promo', pPromo);
+		// Le select porte l'id de la promo ; le libellé part avec, il reste stocké
+		// en clair pour survivre à une suppression du référentiel.
+		fd.set('promoId', pPromo);
+		fd.set('promo', data.promos.find((pr) => String(pr.id) === pPromo)?.label ?? '');
 		fd.set('source', pSource);
 		fd.set('suiviPar', pSuiviPar);
 		fd.set('datePlacement', pDate);
@@ -1040,7 +1043,7 @@
 				<select id="pass-promo" class="cs-pass__select" bind:value={pPromo} required>
 					<option value="" disabled>— Choisir —</option>
 					{#each data.promos as pr}
-						<option value={pr.label}>{pr.label}</option>
+						<option value={String(pr.id)}>{pr.label}</option>
 					{/each}
 				</select>
 			</div>
