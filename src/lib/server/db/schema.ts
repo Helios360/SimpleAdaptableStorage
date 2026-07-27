@@ -21,11 +21,15 @@ import {
 export interface FicheEtudiantData {
 	// état civil
 	nomNaissance?: string | null;
+	nomUsage?: string | null;
 	civilite?: string | null; // femme | homme | na
 	paysNaissance?: string | null;
 	communeNaissance?: string | null;
 	cpNaissance?: string | null;
-	adresseRue?: string | null;
+	// adresse de résidence
+	adresseRue?: string | null; // numéro et voie
+	adresseCp?: string | null;
+	adresseVille?: string | null;
 	nir?: string | null;
 	nationalite?: string | null; // francaise | ue | hors_ue
 	majeur?: boolean | null;

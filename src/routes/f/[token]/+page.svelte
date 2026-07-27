@@ -87,8 +87,11 @@
 				<p class="cs-form__section">État civil</p>
 				<div class="cs-form__row">
 					<Input label="Nom de naissance" name="nomNaissance" value={f?.nomNaissance ?? ''} required />
+					<Input label="Nom d'usage" name="nomUsage" value={f?.nomUsage ?? ''} hint="Si différent du nom de naissance" />
+				</div>
+				<div class="cs-form__row">
 					<div class="cs-field">
-						<label class="cs-label" for="civilite">Civilité</label>
+						<label class="cs-label" for="civilite">Civilité<span class="cs-req">*</span></label>
 						<select id="civilite" name="civilite" class="cs-select" required value={f?.civilite ?? ''}>
 							<option value="">—</option>
 							<option value="femme">Femme</option>
@@ -96,19 +99,21 @@
 							<option value="na">N/A</option>
 						</select>
 					</div>
-				</div>
-				<div class="cs-form__row">
 					<Input label="Pays de naissance" name="paysNaissance" value={f?.paysNaissance ?? ''} required />
-					<Input label="Commune de naissance" name="communeNaissance" value={f?.communeNaissance ?? ''} required />
 				</div>
 				<div class="cs-form__row">
+					<Input label="Commune de naissance" name="communeNaissance" value={f?.communeNaissance ?? ''} required />
 					<Input label="Code postal de naissance" name="cpNaissance" value={f?.cpNaissance ?? ''} digitsOnly inputmode="numeric" maxlength={5} required />
-					<Input label="Adresse postale (rue)" name="adresseRue" value={f?.adresseRue ?? ''} required />
+				</div>
+				<Input label="Adresse postale (numéro et voie)" name="adresseRue" value={f?.adresseRue ?? ''} required />
+				<div class="cs-form__row">
+					<Input label="Code postal" name="adresseCp" value={f?.adresseCp ?? ''} digitsOnly inputmode="numeric" maxlength={5} required />
+					<Input label="Ville" name="adresseVille" value={f?.adresseVille ?? ''} required />
 				</div>
 				<div class="cs-form__row">
 					<Input label="Numéro de sécurité sociale (NIR)" name="nir" value={f?.nir ?? ''} digitsOnly inputmode="numeric" maxlength={15} required />
 					<div class="cs-field">
-						<label class="cs-label" for="nationalite">Nationalité</label>
+						<label class="cs-label" for="nationalite">Nationalité<span class="cs-req">*</span></label>
 						<select id="nationalite" name="nationalite" class="cs-select" required value={f?.nationalite ?? ''}>
 							<option value="">—</option>
 							<option value="francaise">Française</option>

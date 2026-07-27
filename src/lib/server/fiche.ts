@@ -80,11 +80,14 @@ interface TokenRow {
 function readFicheEtudiantScalars(form: FormData): Partial<FicheEtudiantData> {
 	return {
 		nomNaissance: s(form.get('nomNaissance')),
+		nomUsage: s(form.get('nomUsage')),
 		civilite: s(form.get('civilite')),
 		paysNaissance: s(form.get('paysNaissance')),
 		communeNaissance: s(form.get('communeNaissance')),
 		cpNaissance: s(form.get('cpNaissance')),
 		adresseRue: s(form.get('adresseRue')),
+		adresseCp: s(form.get('adresseCp')),
+		adresseVille: s(form.get('adresseVille')),
 		nir: s(form.get('nir')),
 		nationalite: s(form.get('nationalite')),
 		majeur: b(form.get('majeur')),

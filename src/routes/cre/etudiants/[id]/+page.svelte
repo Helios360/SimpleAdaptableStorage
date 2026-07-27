@@ -588,11 +588,14 @@
 				<div class="cs-fedit__grid">
 					{@render fSelect(etuDraft, 'Civilité', 'civilite', CIVILITE_OPTS)}
 					{@render fText(etuDraft, 'Nom de naissance', 'nomNaissance')}
+					{@render fText(etuDraft, "Nom d'usage", 'nomUsage')}
 					{@render fSelect(etuDraft, 'Nationalité', 'nationalite', NATIONALITE_OPTS)}
 					{@render fText(etuDraft, 'Pays de naissance', 'paysNaissance')}
 					{@render fText(etuDraft, 'Commune de naissance', 'communeNaissance')}
 					{@render fText(etuDraft, 'Code postal de naissance', 'cpNaissance', 'text', 5, true)}
-					{@render fText(etuDraft, 'Adresse', 'adresseRue')}
+					{@render fText(etuDraft, 'Adresse (numéro et voie)', 'adresseRue')}
+					{@render fText(etuDraft, 'Code postal', 'adresseCp', 'text', 5, true)}
+					{@render fText(etuDraft, 'Ville', 'adresseVille')}
 					{@render fText(etuDraft, 'NIR', 'nir', 'text', 15, true)}
 					{@render fSelect(etuDraft, 'Situation avant contrat', 'situationAvantContrat', SITUATIONS)}
 					{@render fSelect(etuDraft, 'Dernier diplôme préparé', 'dernierDiplomePrepare', DIPLOMES)}
@@ -619,9 +622,10 @@
 			{:else if ficheEtu}
 				<div class="cs-pl__grid">
 					<div><span>Nom de naissance</span>{ficheEtu.nomNaissance ?? '—'}</div>
+					<div><span>Nom d'usage</span>{ficheEtu.nomUsage ?? '—'}</div>
 					<div><span>Civilité</span>{ficheEtu.civilite ?? '—'}</div>
 					<div><span>Naissance</span>{`${ficheEtu.communeNaissance ?? ''} ${ficheEtu.cpNaissance ?? ''} ${ficheEtu.paysNaissance ?? ''}`.trim() || '—'}</div>
-					<div><span>Adresse</span>{ficheEtu.adresseRue ?? '—'}</div>
+					<div><span>Adresse</span>{`${ficheEtu.adresseRue ?? ''} ${ficheEtu.adresseCp ?? ''} ${ficheEtu.adresseVille ?? ''}`.trim() || '—'}</div>
 					<div><span>NIR</span>{ficheEtu.nir ?? '—'}</div>
 					<div><span>Nationalité</span>{ficheEtu.nationalite ?? '—'}</div>
 					<div><span>Majeur</span>{ficheEtu.majeur === false ? 'Non (mineur)' : 'Oui'}</div>

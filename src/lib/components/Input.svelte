@@ -5,6 +5,8 @@
 		label?: string;
 		value?: string;
 		error?: string;
+		/** Texte d'aide affiché sous le champ. */
+		hint?: string;
 		/** N'autorise que des chiffres : filtre la saisie en retirant tout caractère non numérique. */
 		digitsOnly?: boolean;
 	}
@@ -13,6 +15,7 @@
 		label,
 		value = $bindable(''),
 		error,
+		hint,
 		name,
 		type = 'text',
 		required,
@@ -51,5 +54,6 @@
 		class="cs-input {error ? 'cs-input--error' : ''}"
 		{...rest}
 	/>
+	{#if hint}<span class="cs-field-hint">{hint}</span>{/if}
 	{#if error}<span class="cs-field-error">⚠ {error}</span>{/if}
 </div>
