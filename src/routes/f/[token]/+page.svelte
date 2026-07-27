@@ -153,33 +153,39 @@
 				</div>
 				<div class="cs-form__row">
 					<div class="cs-field">
-						<label class="cs-label" for="situation">Situation avant contrat</label>
-						<select id="situation" name="situationAvantContrat" class="cs-select" value={f?.situationAvantContrat ?? ''}>
+						<label class="cs-label" for="situation">Situation avant contrat<span class="cs-req">*</span></label>
+						<select id="situation" name="situationAvantContrat" class="cs-select" required value={f?.situationAvantContrat ?? ''}>
 							<option value="">—</option>
 							{#each SITUATIONS as [v, l]}<option value={v}>{v} — {l}</option>{/each}
 						</select>
 					</div>
 					{#if dejaAlternance}
-						<Input label="Numéro DECA (si ancien contrat)" name="numeroDeca" value={f?.numeroDeca ?? ''} />
+						<Input
+							label="Numéro DECA (ancien contrat)"
+							name="numeroDeca"
+							value={f?.numeroDeca ?? ''}
+							hint="Vous pouvez récupérer votre numéro DECA auprès de votre ancienne école et/ou entreprise."
+							required
+						/>
 					{/if}
 				</div>
 				<div class="cs-form__row">
 					<div class="cs-field">
-						<label class="cs-label" for="diplPrep">Dernier diplôme préparé</label>
-						<select id="diplPrep" name="dernierDiplomePrepare" class="cs-select" value={f?.dernierDiplomePrepare ?? ''}>
+						<label class="cs-label" for="diplPrep">Dernier diplôme préparé<span class="cs-req">*</span></label>
+						<select id="diplPrep" name="dernierDiplomePrepare" class="cs-select" required value={f?.dernierDiplomePrepare ?? ''}>
 							<option value="">—</option>
 							{#each DIPLOMES as [v, l]}<option value={v}>{v} — {l}</option>{/each}
 						</select>
 					</div>
 					<div class="cs-field">
-						<label class="cs-label" for="diplEleve">Diplôme le plus élevé obtenu</label>
-						<select id="diplEleve" name="diplomeLePlusEleve" class="cs-select" value={f?.diplomeLePlusEleve ?? ''}>
+						<label class="cs-label" for="diplEleve">Diplôme le plus élevé obtenu<span class="cs-req">*</span></label>
+						<select id="diplEleve" name="diplomeLePlusEleve" class="cs-select" required value={f?.diplomeLePlusEleve ?? ''}>
 							<option value="">—</option>
 							{#each DIPLOMES as [v, l]}<option value={v}>{v} — {l}</option>{/each}
 						</select>
 					</div>
 				</div>
-				<Input label="Intitulé précis du dernier diplôme préparé" name="intituleDiplomePrepare" value={f?.intituleDiplomePrepare ?? ''} />
+				<Input label="Intitulé précis du dernier diplôme préparé" name="intituleDiplomePrepare" value={f?.intituleDiplomePrepare ?? ''} required />
 
 				<p class="cs-form__section">Documents (PDF ou image, 8 Mo max)</p>
 				<div class="cs-form__docs">
