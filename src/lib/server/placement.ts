@@ -6,9 +6,11 @@
  */
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from './db';
-import { formToken, placement, candidat, user, school } from './db/schema';
+import { formToken, placement, candidat, user, school, formation } from './db/schema';
 import { sendMail, appUrl } from './mailer';
+import { renderMailBody } from '$lib/mailTemplate';
 
 export type FormAudience = 'etudiant' | 'entreprise';
 
@@ -54,30 +56,133 @@ export async function resolveFormToken(token: string): Promise<TokenRow | null> 
 	return row as TokenRow;
 }
 
-// Les mêmes corps de mail servent à l'envoi initial et aux relances automatiques
-// (voir src/lib/server/relance.ts) : seule l'accroche change, pour que le
-// destinataire comprenne qu'il s'agit d'un rappel sur un lien déjà reçu.
+// ─── École de rattachement (règlement intérieur + modèle de mail) ────────────
 
-export function studentLinkEmail(
-	name: string,
-	url: string,
-	reglementUrl: string | null,
-	relance = false
-): string {
-	// Le règlement intérieur dépend de l'école de l'étudiant (lien stocké sur school).
-	const reglementBlock = reglementUrl
-		? `<p>Merci également de prendre connaissance du règlement intérieur de votre
-		école : <a href="${reglementUrl}">${reglementUrl}</a></p>`
+/** Ce que l'école apporte au mail envoyé à l'étudiant. */
+export interface EcoleContext {
+	id: number | null;
+	name: string | null;
+	/** Lien vers le règlement intérieur : URL saisie, ou PDF hébergé. */
+	reglementLink: string | null;
+	/** Modèle de mail propre à l'école ; null = modèle par défaut. */
+	mailTemplate: string | null;
+}
+
+const EMPTY_ECOLE: EcoleContext = { id: null, name: null, reglementLink: null, mailTemplate: null };
+
+function reglementLink(
+	id: number | null,
+	url: string | null,
+	path: string | null
+): string | null {
+	if (url) return url;
+	if (path && id != null) return `${appUrl()}/files/ecole/${id}/reglement`;
+	return null;
+}
+
+/**
+ * École d'un étudiant : celle de sa formation en priorité (c'est la formation
+ * qui porte le rattachement pédagogique, cf. formation.schoolId), à défaut celle
+ * de son compte. De là viennent le règlement intérieur et le modèle de mail.
+ */
+export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext> {
+	const sf = alias(school, 'school_formation');
+	const su = alias(school, 'school_user');
+	const [row] = await db
+		.select({
+			fId: sf.id,
+			fName: sf.name,
+			fUrl: sf.reglementUrl,
+			fPath: sf.reglementPath,
+			fTpl: sf.mailTemplate,
+			uId: su.id,
+			uName: su.name,
+			uUrl: su.reglementUrl,
+			uPath: su.reglementPath,
+			uTpl: su.mailTemplate
+		})
+		.from(candidat)
+		.innerJoin(user, eq(user.id, candidat.userId))
+		.leftJoin(formation, eq(formation.id, candidat.formationId))
+		.leftJoin(sf, eq(sf.id, formation.schoolId))
+		.leftJoin(su, eq(su.id, user.schoolId))
+		.where(eq(candidat.id, candidatId))
+		.limit(1);
+	if (!row) return EMPTY_ECOLE;
+
+	if (row.fId != null) {
+		return {
+			id: row.fId,
+			name: row.fName,
+			reglementLink: reglementLink(row.fId, row.fUrl, row.fPath),
+			mailTemplate: row.fTpl
+		};
+	}
+	if (row.uId != null) {
+		return {
+			id: row.uId,
+			name: row.uName,
+			reglementLink: reglementLink(row.uId, row.uUrl, row.uPath),
+			mailTemplate: row.uTpl
+		};
+	}
+	return EMPTY_ECOLE;
+}
+
+// ─── Corps des mails ────────────────────────────────────────────────────────
+// Les mêmes corps servent à l'envoi initial et aux relances automatiques (voir
+// src/lib/server/relance.ts) : seule l'accroche change, pour que le destinataire
+// comprenne qu'il s'agit d'un rappel sur un lien déjà reçu.
+
+export interface StudentMailContext {
+	prenom: string;
+	nom: string;
+	url: string;
+	ecole?: EcoleContext;
+	formation?: string | null;
+	entreprise?: string | null;
+	relance?: boolean;
+}
+
+/**
+ * Mail d'envoi de la fiche étudiant. Si l'école a défini un modèle, il fait foi
+ * (variables {{prenom}}, {{lien}}… substituées) ; sinon on retombe sur le
+ * modèle par défaut de l'application.
+ */
+export function studentLinkEmail(ctx: StudentMailContext): string {
+	const ecole = ctx.ecole ?? EMPTY_ECOLE;
+	const rappel = ctx.relance
+		? `<p><strong>Rappel :</strong> nous n'avons pas encore reçu votre fiche d'informations.</p>`
 		: '';
-	const intro = relance
+
+	if (ecole.mailTemplate) {
+		return (
+			rappel +
+			renderMailBody(ecole.mailTemplate, {
+				prenom: ctx.prenom,
+				nom: ctx.nom,
+				ecole: ecole.name,
+				formation: ctx.formation,
+				entreprise: ctx.entreprise,
+				lien: ctx.url,
+				reglement: ecole.reglementLink
+			})
+		);
+	}
+
+	const reglementBlock = ecole.reglementLink
+		? `<p>Merci également de prendre connaissance du règlement intérieur de votre
+		école : <a href="${ecole.reglementLink}">${ecole.reglementLink}</a></p>`
+		: '';
+	const intro = ctx.relance
 		? `<p>Nous n'avons pas encore reçu votre fiche d'informations. Merci de la
 		compléter dès que possible pour ne pas retarder votre dossier :</p>`
 		: `<p>Afin de finaliser votre dossier d'alternance, merci de compléter votre
 		fiche d'informations en cliquant sur le lien ci-dessous :</p>`;
 	return `
-		<p>Bonjour ${name},</p>
+		<p>Bonjour ${`${ctx.prenom} ${ctx.nom}`.trim()},</p>
 		${intro}
-		<p><a href="${url}">${url}</a></p>
+		<p><a href="${ctx.url}">${ctx.url}</a></p>
 		${reglementBlock}
 		<p>Ce lien est personnel et valable 7 jours.</p>
 		<p>— L'équipe pédagogique</p>`;
@@ -133,12 +238,12 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 			fname: candidat.fname,
 			lname: candidat.lname,
 			studentEmail: user.email,
-			reglementUrl: school.reglementUrl
+			formationName: formation.name
 		})
 		.from(placement)
 		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
 		.innerJoin(user, eq(user.id, candidat.userId))
-		.leftJoin(school, eq(school.id, user.schoolId))
+		.leftJoin(formation, eq(formation.id, candidat.formationId))
 		.where(eq(placement.id, placementId))
 		.limit(1);
 	const p = rows[0];
@@ -148,10 +253,18 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 
 	if (p.studentEmail) {
 		const url = await createFormToken(placementId, 'etudiant');
+		const ecole = await ecoleForCandidat(p.candidatId);
 		await sendMail({
 			to: p.studentEmail,
 			subject: linkSubject('etudiant'),
-			html: studentLinkEmail(`${p.fname} ${p.lname}`.trim(), url, p.reglementUrl ?? null)
+			html: studentLinkEmail({
+				prenom: p.fname,
+				nom: p.lname,
+				url,
+				ecole,
+				formation: p.formationName,
+				entreprise: p.entreprise
+			})
 		});
 		notified.etudiant = p.studentEmail;
 	}

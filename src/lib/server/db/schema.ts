@@ -179,8 +179,14 @@ export const school = pgTable('school', {
 	name: text('name').notNull().unique(),
 	type: text('type').notNull().default('autre'), // cloud_campus | skalys | autre
 	// Règlement intérieur de l'école : lien envoyé à l'étudiant lors de la passation.
-	// Stocké ici (plutôt qu'en dur) pour pouvoir héberger le fichier directement plus tard.
+	// Deux formes possibles, l'URL primant sur le PDF hébergé (reglementPath, déposé
+	// depuis Paramètres et servi par /files/ecole/[id]/reglement).
 	reglementUrl: text('reglement_url'),
+	reglementPath: text('reglement_path'),
+	// Modèle du mail d'envoi de la fiche étudiant, propre à l'école. Les variables
+	// {{prenom}}, {{lien}}… sont substituées à l'envoi (voir src/lib/mailTemplate.ts).
+	// Vide = modèle par défaut de l'application.
+	mailTemplate: text('mail_template'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -188,7 +194,10 @@ export const formation = pgTable('formation', {
 	id: serial('id').primaryKey(),
 	code: text('code').notNull().unique(),
 	name: text('name').notNull(),
-	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' })
+	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
+	// Référentiel de la formation (PDF déposé en Paramètres), servi par
+	// /files/formation/[id]/referentiel.
+	referentielPath: text('referentiel_path')
 });
 
 // Catalogue de compétences (référentiel), rattachables à des formations.
@@ -223,6 +232,9 @@ export const promo = pgTable('promo', {
 	year: integer('year'),
 	formationId: integer('formation_id').references(() => formation.id, { onDelete: 'set null' }),
 	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
+	// Calendrier de la promo (PDF déposé en Paramètres), servi par
+	// /files/promo/[id]/calendrier.
+	calendrierPath: text('calendrier_path'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 

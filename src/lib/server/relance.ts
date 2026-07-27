@@ -13,13 +13,14 @@
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
-import { formToken, placement, candidat, user, school } from './db/schema';
+import { formToken, placement, candidat, user, formation } from './db/schema';
 import { sendMail } from './mailer';
 import {
 	studentLinkEmail,
 	companyLinkEmail,
 	linkSubject,
 	formUrl,
+	ecoleForCandidat,
 	type FormAudience
 } from './placement';
 import { isRelanceDue, keepLatestPerAudience, RELANCE_DELAY_MS } from '$lib/relanceLogic';
@@ -51,18 +52,19 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 			submittedAt: formToken.submittedAt,
 			lastRelanceAt: formToken.lastRelanceAt,
 			relanceCount: formToken.relanceCount,
+			candidatId: placement.candidatId,
 			entreprise: placement.entreprise,
 			contactEmail: placement.contactEmail,
 			fname: candidat.fname,
 			lname: candidat.lname,
 			studentEmail: user.email,
-			reglementUrl: school.reglementUrl
+			formationName: formation.name
 		})
 		.from(formToken)
 		.innerJoin(placement, eq(placement.id, formToken.placementId))
 		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
 		.innerJoin(user, eq(user.id, candidat.userId))
-		.leftJoin(school, eq(school.id, user.schoolId))
+		.leftJoin(formation, eq(formation.id, candidat.formationId))
 		.where(and(isNull(formToken.submittedAt), gt(formToken.expiresAt, now)));
 
 	const report: RelanceReport = { checked: 0, sent: 0, recipients: [], failed: 0 };
@@ -78,7 +80,16 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 		const url = formUrl(r.token);
 		const html =
 			audience === 'etudiant'
-				? studentLinkEmail(`${r.fname} ${r.lname}`.trim(), url, r.reglementUrl ?? null, true)
+				? studentLinkEmail({
+						prenom: r.fname,
+						nom: r.lname,
+						url,
+						// Le modèle de mail et le règlement viennent de l'école (via la formation).
+						ecole: await ecoleForCandidat(r.candidatId),
+						formation: r.formationName,
+						entreprise: r.entreprise,
+						relance: true
+					})
 				: companyLinkEmail(r.entreprise ?? '', url, true);
 
 		try {

@@ -55,6 +55,10 @@ export const PITCH_SLOT: FileSlot = {
 	label: 'Vidéo pitch'
 };
 
+/** Documents pédagogiques et administratifs déposés en Paramètres : PDF only
+ *  (référentiel de formation, calendrier de promo, règlement intérieur). */
+export const PDF_SLOT: FileSlot = { allowed: ['pdf'], maxMB: 20, label: 'Document PDF' };
+
 export function validateUpload(file: File | null, slot: FileSlot): string | null {
 	if (!file || !(file instanceof File) || file.size === 0) return `${slot.label} manquant.`;
 	const ext = extOf(file.name);
@@ -85,6 +89,28 @@ export async function saveUpload(
 	const buf = Buffer.from(await file.arrayBuffer());
 	await writeFile(abs, buf);
 	return `${relDir.replace(/\\/g, '/')}/${safe}`;
+}
+
+/**
+ * Champ fichier optionnel d'un formulaire : enregistre le nouveau fichier et
+ * supprime l'ancien, ou conserve le chemin existant si rien n'a été envoyé. Le
+ * nom porte un horodatage pour ne jamais servir une version en cache.
+ */
+export async function saveOptionalUpload(
+	form: FormData,
+	field: string,
+	slot: FileSlot,
+	relDir: string,
+	basename: string,
+	existingPath?: string | null
+): Promise<{ path: string | null; error?: string }> {
+	const file = form.get(field);
+	if (!(file instanceof File) || file.size === 0) return { path: existingPath ?? null };
+	const err = validateUpload(file, slot);
+	if (err) return { path: existingPath ?? null, error: err };
+	const path = await saveUpload(relDir, `${basename}_${Date.now()}`, file);
+	if (existingPath && existingPath !== path) await deleteUpload(existingPath);
+	return { path };
 }
 
 /**

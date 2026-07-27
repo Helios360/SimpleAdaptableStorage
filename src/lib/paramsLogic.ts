@@ -78,11 +78,22 @@ export function validatePromo(
 export interface SchoolInput {
 	name: string;
 	reglementUrl: string | null;
+	/** Modèle du mail d'envoi de la fiche étudiant ; null = modèle par défaut. */
+	mailTemplate: string | null;
 }
 
-export function validateSchool(nameRaw: unknown, reglementUrlRaw?: unknown): Validated<SchoolInput> {
+export function validateSchool(
+	nameRaw: unknown,
+	reglementUrlRaw?: unknown,
+	mailTemplateRaw?: unknown
+): Validated<SchoolInput> {
 	const name = cleanStr(nameRaw);
 	if (!name) return { ok: false, error: "Le nom de l'école est requis." };
 	if (name.length > 80) return { ok: false, error: 'Le nom est trop long (80 caractères max).' };
-	return { ok: true, value: { name, reglementUrl: cleanStr(reglementUrlRaw) } };
+	const mailTemplate = cleanStr(mailTemplateRaw);
+	// Un modèle sans lien vers le formulaire enverrait un mail inutilisable.
+	if (mailTemplate && !/\{\{\s*lien\s*\}\}/.test(mailTemplate)) {
+		return { ok: false, error: 'Le modèle de mail doit contenir la variable {{lien}}.' };
+	}
+	return { ok: true, value: { name, reglementUrl: cleanStr(reglementUrlRaw), mailTemplate } };
 }

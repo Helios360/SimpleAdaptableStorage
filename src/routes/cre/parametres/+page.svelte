@@ -10,6 +10,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { initials } from '$lib/utils';
+	import { MAIL_VARIABLES } from '$lib/mailTemplate';
 	import type { PageData } from './$types';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
@@ -36,11 +37,13 @@
 	let editingSchool = $state<SchoolRow | null>(null);
 	let sName = $state('');
 	let sReglement = $state('');
+	let sMailTemplate = $state('');
 
 	function openSchool(row: SchoolRow | null) {
 		editingSchool = row;
 		sName = row?.name ?? '';
 		sReglement = row?.reglementUrl ?? '';
+		sMailTemplate = row?.mailTemplate ?? '';
 		schoolModal = true;
 	}
 
@@ -129,6 +132,24 @@
 	}
 </script>
 
+<!-- Champ « document PDF » commun aux trois modales : lien vers le document en
+     place, dépôt d'un remplaçant, et case pour le retirer. -->
+{#snippet docField(label: string, current: string | null | undefined, href: string, hint: string)}
+	<div class="cs-field">
+		<span class="cs-params__label">{label}</span>
+		{#if current}
+			<div class="cs-params__doc">
+				<a href={href} target="_blank" rel="noopener">📎 Document en place</a>
+				<label class="cs-params__rm">
+					<input type="checkbox" name="removeDoc" value="1" /> Retirer
+				</label>
+			</div>
+		{/if}
+		<input class="cs-file" type="file" name="doc" accept=".pdf" />
+		<span class="cs-params__hint">{hint}</span>
+	</div>
+{/snippet}
+
 <div class="cs-params">
 	<nav class="cs-params__tabs" aria-label="Sections des paramètres">
 		{#each tabs as t}
@@ -156,13 +177,21 @@
 			{:else}
 				<table class="cs-tbl">
 					<thead>
-						<tr><th>Nom</th><th>Type</th><th>Membres</th><th></th></tr>
+						<tr><th>Nom</th><th>Type</th><th>Règlement</th><th>Mail</th><th>Membres</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.schools as s}
 							<tr>
 								<td>{s.name}</td>
 								<td><Badge label={SCHOOL_TYPE_LABEL[s.type] ?? s.type} /></td>
+								<td class="cs-tbl__muted">
+									{#if s.reglementPath}
+										<a href={`/files/ecole/${s.id}/reglement`} target="_blank" rel="noopener">📎 PDF</a>
+									{:else if s.reglementUrl}
+										<a href={s.reglementUrl} target="_blank" rel="noopener">🔗 Lien</a>
+									{:else}—{/if}
+								</td>
+								<td class="cs-tbl__muted">{s.mailTemplate ? 'Personnalisé' : 'Par défaut'}</td>
 								<td class="cs-tbl__muted">{s.memberCount}</td>
 								<td class="cs-tbl__actions">
 									<Button variant="subtle" size="sm" onclick={() => openSchool(s)}>Modifier</Button>
@@ -188,7 +217,7 @@
 			{:else}
 				<table class="cs-tbl">
 					<thead>
-						<tr><th>Code</th><th>Nom</th><th>École</th><th>Étudiants</th><th></th></tr>
+						<tr><th>Code</th><th>Nom</th><th>École</th><th>Référentiel</th><th>Étudiants</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.formations as f}
@@ -196,6 +225,11 @@
 								<td><Badge label={f.code} /></td>
 								<td>{f.name}</td>
 								<td class="cs-tbl__muted">{f.schoolName ?? '—'}</td>
+								<td class="cs-tbl__muted">
+									{#if f.referentielPath}
+										<a href={`/files/formation/${f.id}/referentiel`} target="_blank" rel="noopener">📎 PDF</a>
+									{:else}—{/if}
+								</td>
 								<td class="cs-tbl__muted">{f.studentCount}</td>
 								<td class="cs-tbl__actions">
 									<Button variant="subtle" size="sm" onclick={() => openFormation(f)}>Modifier</Button>
@@ -227,7 +261,7 @@
 			{:else}
 				<table class="cs-tbl">
 					<thead>
-						<tr><th>Nom</th><th>Année</th><th>Formation</th><th>École</th><th></th></tr>
+						<tr><th>Nom</th><th>Année</th><th>Formation</th><th>École</th><th>Calendrier</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.promos as p}
@@ -236,6 +270,11 @@
 								<td class="cs-tbl__muted">{p.year ?? '—'}</td>
 								<td class="cs-tbl__muted">{p.formationName ?? '—'}</td>
 								<td class="cs-tbl__muted">{p.schoolName ?? '—'}</td>
+								<td class="cs-tbl__muted">
+									{#if p.calendrierPath}
+										<a href={`/files/promo/${p.id}/calendrier`} target="_blank" rel="noopener">📎 PDF</a>
+									{:else}—{/if}
+								</td>
 								<td class="cs-tbl__actions">
 									<Button variant="subtle" size="sm" onclick={() => openPromo(p)}>Modifier</Button>
 									<Button variant="ghost" size="sm" onclick={() => askDelete('promo', p)}>Supprimer</Button>
@@ -286,6 +325,7 @@
 >
 	<form
 		method="POST"
+		enctype="multipart/form-data"
 		action={editingSchool ? '?/updateSchool' : '?/createSchool'}
 		use:enhance={handle(editingSchool ? 'École modifiée.' : 'École créée.', () => (schoolModal = false))}
 	>
@@ -297,6 +337,27 @@
 			bind:value={sReglement}
 			placeholder="https://…"
 		/>
+		{@render docField(
+			'Règlement intérieur (PDF)',
+			editingSchool?.reglementPath,
+			editingSchool ? `/files/ecole/${editingSchool.id}/reglement` : '',
+			"PDF, 20 Mo max. Le PDF déposé remplace l'URL dans le mail envoyé à l'étudiant."
+		)}
+		<div class="cs-field">
+			<label class="cs-params__label" for="school-mail">Modèle de mail (fiche étudiant)</label>
+			<textarea
+				id="school-mail"
+				name="mailTemplate"
+				class="cs-textarea"
+				rows="8"
+				bind:value={sMailTemplate}
+				placeholder={'Bonjour {{prenom}},\n\nMerci de compléter votre fiche : {{lien}}\n\nRèglement intérieur : {{reglement}}\n\n— {{ecole}}'}
+			></textarea>
+			<span class="cs-params__hint">
+				Laissé vide, le modèle par défaut de l'application s'applique. Variables :
+				{#each MAIL_VARIABLES as [key, desc], i}<code title={desc}>&#123;&#123;{key}&#125;&#125;</code>{#if i < MAIL_VARIABLES.length - 1}, {/if}{/each}.
+			</span>
+		</div>
 		<p class="cs-params__hint">Le type (checklist) est déduit automatiquement du nom.</p>
 		<div class="cs-modal-actions">
 			<Button variant="subtle" onclick={() => (schoolModal = false)}>Annuler</Button>
@@ -313,6 +374,7 @@
 >
 	<form
 		method="POST"
+		enctype="multipart/form-data"
 		action={editingFormation ? '?/updateFormation' : '?/createFormation'}
 		use:enhance={handle(editingFormation ? 'Formation modifiée.' : 'Formation créée.', () => (formationModal = false))}
 	>
@@ -328,6 +390,12 @@
 				{/each}
 			</select>
 		</div>
+		{@render docField(
+			'Référentiel (PDF)',
+			editingFormation?.referentielPath,
+			editingFormation ? `/files/formation/${editingFormation.id}/referentiel` : '',
+			'PDF, 20 Mo max. Référentiel de compétences / programme de la formation.'
+		)}
 		<div class="cs-modal-actions">
 			<Button variant="subtle" onclick={() => (formationModal = false)}>Annuler</Button>
 			<Button type="submit">{editingFormation ? 'Enregistrer' : 'Créer'}</Button>
@@ -343,6 +411,7 @@
 >
 	<form
 		method="POST"
+		enctype="multipart/form-data"
 		action={editingPromo ? '?/updatePromo' : '?/createPromo'}
 		use:enhance={handle(editingPromo ? 'Promo modifiée.' : 'Promo créée.', () => (promoModal = false))}
 	>
@@ -367,6 +436,12 @@
 				{/each}
 			</select>
 		</div>
+		{@render docField(
+			'Calendrier (PDF)',
+			editingPromo?.calendrierPath,
+			editingPromo ? `/files/promo/${editingPromo.id}/calendrier` : '',
+			"PDF, 20 Mo max. Calendrier d'alternance de la promo."
+		)}
 		<div class="cs-modal-actions">
 			<Button variant="subtle" onclick={() => (promoModal = false)}>Annuler</Button>
 			<Button type="submit">{editingPromo ? 'Enregistrer' : 'Créer'}</Button>
@@ -545,5 +620,46 @@
 		background: var(--c-card);
 		color: var(--c-text);
 		font-size: 14px;
+	}
+	.cs-textarea {
+		width: 100%;
+		padding: 10px 12px;
+		border: 1px solid var(--c-border);
+		border-radius: 9px;
+		background: var(--c-card);
+		color: var(--c-text);
+		font-size: 13px;
+		font-family: var(--font-body);
+		line-height: 1.5;
+		resize: vertical;
+	}
+	.cs-file {
+		width: 100%;
+		font-size: 13px;
+		color: var(--c-sub);
+	}
+	.cs-params__doc {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		font-size: 13px;
+		margin-bottom: 6px;
+	}
+	.cs-params__doc a {
+		color: var(--c-blue);
+		font-weight: 600;
+	}
+	.cs-params__rm {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--c-muted);
+		font-size: 12px;
+	}
+	.cs-params__hint code {
+		font-size: 11px;
+		background: var(--c-bg);
+		border-radius: 4px;
+		padding: 1px 4px;
 	}
 </style>

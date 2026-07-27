@@ -473,6 +473,7 @@ export async function listFormationsWithCounts() {
 			name: formation.name,
 			schoolId: formation.schoolId,
 			schoolName: school.name,
+			referentielPath: formation.referentielPath,
 			studentCount: sql<number>`count(${candidat.id})::int`
 		})
 		.from(formation)
@@ -492,7 +493,8 @@ export async function listPromos() {
 			formationId: promo.formationId,
 			formationName: formation.name,
 			schoolId: promo.schoolId,
-			schoolName: school.name
+			schoolName: school.name,
+			calendrierPath: promo.calendrierPath
 		})
 		.from(promo)
 		.leftJoin(formation, eq(promo.formationId, formation.id))
@@ -508,6 +510,8 @@ export async function listSchools() {
 			name: school.name,
 			type: school.type,
 			reglementUrl: school.reglementUrl,
+			reglementPath: school.reglementPath,
+			mailTemplate: school.mailTemplate,
 			memberCount: sql<number>`count(${user.id})::int`
 		})
 		.from(school)

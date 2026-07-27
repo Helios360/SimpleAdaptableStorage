@@ -102,13 +102,13 @@ describe('validateSchool', () => {
 	it('accepts and trims a valid name', () => {
 		expect(validateSchool('  Cloud Campus ')).toEqual({
 			ok: true,
-			value: { name: 'Cloud Campus', reglementUrl: null }
+			value: { name: 'Cloud Campus', reglementUrl: null, mailTemplate: null }
 		});
 	});
 	it('captures an optional règlement URL', () => {
 		expect(validateSchool('Skalys', ' https://x ')).toEqual({
 			ok: true,
-			value: { name: 'Skalys', reglementUrl: 'https://x' }
+			value: { name: 'Skalys', reglementUrl: 'https://x', mailTemplate: null }
 		});
 	});
 	it('rejects an empty name', () => {
@@ -116,5 +116,12 @@ describe('validateSchool', () => {
 	});
 	it('rejects an overly long name', () => {
 		expect(validateSchool('X'.repeat(90)).ok).toBe(false);
+	});
+	it('accepts a mail template carrying the {{lien}} variable', () => {
+		const res = validateSchool('Skalys', null, 'Bonjour {{prenom}}, voici {{ lien }}');
+		expect(res.ok && res.value.mailTemplate).toBe('Bonjour {{prenom}}, voici {{ lien }}');
+	});
+	it('rejects a mail template without the form link', () => {
+		expect(validateSchool('Skalys', null, 'Bonjour {{prenom}}').ok).toBe(false);
 	});
 });

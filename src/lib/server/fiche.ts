@@ -14,7 +14,7 @@ import {
 	type FicheEtudiantData,
 	type FicheEntrepriseData
 } from './db/schema';
-import { saveUpload, validateUpload, deleteUpload, type FileSlot } from './uploads';
+import { saveOptionalUpload, type FileSlot } from './uploads';
 import {
 	parseFormStr as s,
 	parseFormBool as b,
@@ -28,23 +28,6 @@ const DOC_SLOT: FileSlot = {
 	maxMB: 8,
 	label: 'Document'
 };
-
-/** Sauve un fichier optionnel : conserve l'ancien chemin si aucun fichier fourni. */
-async function saveOptionalFile(
-	form: FormData,
-	field: string,
-	relDir: string,
-	basename: string,
-	existingPath: string | null | undefined
-): Promise<{ path: string | null; error?: string }> {
-	const file = form.get(field);
-	if (!(file instanceof File) || file.size === 0) return { path: existingPath ?? null };
-	const err = validateUpload(file, DOC_SLOT);
-	if (err) return { path: existingPath ?? null, error: err };
-	const path = await saveUpload(relDir, `${basename}_${Date.now()}`, file);
-	if (existingPath && existingPath !== path) await deleteUpload(existingPath);
-	return { path };
-}
 
 /** Recalcule le statut du placement selon l'état de soumission des deux fiches. */
 async function advancePlacement(placementId: number, candidatId: number) {
@@ -177,7 +160,14 @@ export async function saveFicheEtudiant(tok: TokenRow, form: FormData) {
 	];
 	const paths: Partial<FicheEtudiantData> = {};
 	for (const [field, col] of fileFields) {
-		const res = await saveOptionalFile(form, field, relDir, field, prev[col] as string | null);
+		const res = await saveOptionalUpload(
+			form,
+			field,
+			DOC_SLOT,
+			relDir,
+			field,
+			prev[col] as string | null
+		);
 		if (res.error) return fail(400, { error: res.error });
 		(paths as Record<string, string | null>)[col] = res.path;
 	}
