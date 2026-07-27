@@ -556,15 +556,15 @@
 			</Card>
 
 			<!-- Note interne : une par étudiant, lisible et modifiable par tous les CRE. -->
-			<Card padding="18px" class="cs-syn__note-card">
+			<Card padding="18px">
 				<div class="cs-syn__card-head">
 					<span class="cs-syn__card-title">🗒️ Note de suivi</span>
-					<span class="cs-syn__muted">Visible par toute l'équipe · jamais par l'étudiant</span>
+					<span class="cs-syn__muted">Équipe CRE</span>
 				</div>
 				<textarea
 					class="cs-note__inp"
-					rows="5"
-					placeholder="Contexte, points d'attention, échanges avec l'entreprise…"
+					rows="4"
+					placeholder="Contexte, points d'attention, échanges avec l'entreprise… (visible par toute l'équipe, jamais par l'étudiant)"
 					bind:value={note}
 					readonly={preview}
 				></textarea>
@@ -1548,10 +1548,6 @@
 	}
 
 	/* ───────── Note de suivi ───────── */
-	/* La note occupe toute la largeur sous les trois mini fiches. */
-	:global(.cs-syn__note-card) {
-		grid-column: 1 / -1;
-	}
 	.cs-note__inp {
 		width: 100%;
 		padding: 10px 12px;
