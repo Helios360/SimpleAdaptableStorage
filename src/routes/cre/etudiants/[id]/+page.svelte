@@ -556,7 +556,7 @@
 			</Card>
 
 			<!-- Note interne : une par étudiant, lisible et modifiable par tous les CRE. -->
-			<Card padding="18px">
+			<Card padding="18px" class="cs-syn__note-card">
 				<div class="cs-syn__card-head">
 					<span class="cs-syn__card-title">🗒️ Note de suivi</span>
 					<span class="cs-syn__muted">Équipe CRE</span>
@@ -1174,7 +1174,9 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 		gap: 14px;
-		align-items: start;
+		/* stretch (défaut) : toutes les cartes d'une ligne prennent la hauteur de
+		   la plus haute, plutôt que de s'ajuster à leur contenu. */
+		align-items: stretch;
 	}
 	.cs-syn__card-head {
 		display: flex;
@@ -1548,7 +1550,15 @@
 	}
 
 	/* ───────── Note de suivi ───────── */
+	/* La carte étant étirée à la hauteur de la ligne, le champ occupe la place
+	   restante plutôt que de laisser un vide sous lui. */
+	:global(.cs-syn__note-card) {
+		display: flex;
+		flex-direction: column;
+	}
 	.cs-note__inp {
+		flex: 1;
+		min-height: 90px;
 		width: 100%;
 		padding: 10px 12px;
 		border: 1.5px solid var(--c-border);

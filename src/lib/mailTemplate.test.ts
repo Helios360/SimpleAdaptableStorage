@@ -4,6 +4,7 @@ import {
 	renderMailTemplate,
 	templateToHtml,
 	renderMailBody,
+	splitFullName,
 	MAIL_VARIABLE_KEYS
 } from './mailTemplate';
 
@@ -55,6 +56,36 @@ describe('renderMailBody', () => {
 	});
 	it('ne réinterprète pas le balisage venu des valeurs', () => {
 		expect(renderMailBody('{{nom}}', { nom: '<b>x</b>' })).toBe('<p>&lt;b&gt;x&lt;/b&gt;</p>');
+	});
+});
+
+describe('splitFullName', () => {
+	it('sépare prénom et nom', () => {
+		expect(splitFullName('Ada Lovelace')).toEqual({ prenom: 'Ada', nom: 'Lovelace' });
+	});
+	it('rattache un nom composé au nom', () => {
+		expect(splitFullName('  Jean  Pierre de La Tour ')).toEqual({
+			prenom: 'Jean',
+			nom: 'Pierre de La Tour'
+		});
+	});
+	it('accepte un prénom seul', () => {
+		expect(splitFullName('Ada')).toEqual({ prenom: 'Ada', nom: '' });
+	});
+	it('tolère une valeur absente', () => {
+		expect(splitFullName(null)).toEqual({ prenom: '', nom: '' });
+		expect(splitFullName('   ')).toEqual({ prenom: '', nom: '' });
+	});
+});
+
+describe('variables CRE', () => {
+	it('substitue le prénom et le nom du CRE', () => {
+		expect(
+			renderMailTemplate('{{prenom_cre}} {{nom_cre}}', { prenom_cre: 'Ada', nom_cre: 'Lovelace' })
+		).toBe('Ada Lovelace');
+	});
+	it('vide les variables CRE quand la passation n’a plus de commercial', () => {
+		expect(renderMailTemplate('[{{prenom_cre}}]', { prenom_cre: '' })).toBe('[]');
 	});
 });
 

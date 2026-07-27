@@ -10,7 +10,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db } from './db';
 import { formToken, placement, candidat, user, school, formation } from './db/schema';
 import { sendMail, appUrl } from './mailer';
-import { renderMailBody } from '$lib/mailTemplate';
+import { renderMailBody, splitFullName } from '$lib/mailTemplate';
 
 export type FormAudience = 'etudiant' | 'entreprise';
 
@@ -141,6 +141,8 @@ export interface StudentMailContext {
 	ecole?: EcoleContext;
 	formation?: string | null;
 	entreprise?: string | null;
+	/** Nom complet du CRE ayant réalisé la passation (placement.commercialId). */
+	cre?: string | null;
 	relance?: boolean;
 }
 
@@ -156,6 +158,7 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 		: '';
 
 	if (ecole.mailTemplate) {
+		const cre = splitFullName(ctx.cre);
 		return (
 			rappel +
 			renderMailBody(ecole.mailTemplate, {
@@ -164,6 +167,8 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 				ecole: ecole.name,
 				formation: ctx.formation,
 				entreprise: ctx.entreprise,
+				prenom_cre: cre.prenom,
+				nom_cre: cre.nom,
 				lien: ctx.url,
 				reglement: ecole.reglementLink
 			})
@@ -230,6 +235,9 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 	etudiant?: string;
 	entreprise?: string;
 }> {
+	// Le CRE ayant réalisé la passation alimente {{prenom_cre}} / {{nom_cre}} ;
+	// son compte peut avoir été supprimé depuis (commercialId passe à null).
+	const cre = alias(user, 'user_cre');
 	const rows = await db
 		.select({
 			candidatId: placement.candidatId,
@@ -238,12 +246,14 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 			fname: candidat.fname,
 			lname: candidat.lname,
 			studentEmail: user.email,
-			formationName: formation.name
+			formationName: formation.name,
+			creName: cre.name
 		})
 		.from(placement)
 		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
 		.innerJoin(user, eq(user.id, candidat.userId))
 		.leftJoin(formation, eq(formation.id, candidat.formationId))
+		.leftJoin(cre, eq(cre.id, placement.commercialId))
 		.where(eq(placement.id, placementId))
 		.limit(1);
 	const p = rows[0];
@@ -263,7 +273,8 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 				url,
 				ecole,
 				formation: p.formationName,
-				entreprise: p.entreprise
+				entreprise: p.entreprise,
+				cre: p.creName
 			})
 		});
 		notified.etudiant = p.studentEmail;

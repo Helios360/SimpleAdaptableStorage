@@ -11,6 +11,7 @@
  * l'horodatage portés par le token empêchent tout double envoi.
  */
 import { and, eq, gt, isNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { env } from '$env/dynamic/private';
 import { db } from './db';
 import { formToken, placement, candidat, user, formation } from './db/schema';
@@ -42,6 +43,8 @@ export interface RelanceReport {
  * pas les suivants et ne consomme pas le quota de relances.
  */
 export async function runRelances(now: Date = new Date()): Promise<RelanceReport> {
+	// Même CRE que sur l'envoi initial : un rappel garde le signataire du premier mail.
+	const cre = alias(user, 'user_cre');
 	const rows = await db
 		.select({
 			token: formToken.token,
@@ -58,13 +61,15 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 			fname: candidat.fname,
 			lname: candidat.lname,
 			studentEmail: user.email,
-			formationName: formation.name
+			formationName: formation.name,
+			creName: cre.name
 		})
 		.from(formToken)
 		.innerJoin(placement, eq(placement.id, formToken.placementId))
 		.innerJoin(candidat, eq(candidat.id, placement.candidatId))
 		.innerJoin(user, eq(user.id, candidat.userId))
 		.leftJoin(formation, eq(formation.id, candidat.formationId))
+		.leftJoin(cre, eq(cre.id, placement.commercialId))
 		.where(and(isNull(formToken.submittedAt), gt(formToken.expiresAt, now)));
 
 	const report: RelanceReport = { checked: 0, sent: 0, recipients: [], failed: 0 };
@@ -88,6 +93,7 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 						ecole: await ecoleForCandidat(r.candidatId),
 						formation: r.formationName,
 						entreprise: r.entreprise,
+						cre: r.creName,
 						relance: true
 					})
 				: companyLinkEmail(r.entreprise ?? '', url, true);

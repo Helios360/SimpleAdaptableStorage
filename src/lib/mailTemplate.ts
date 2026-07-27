@@ -12,11 +12,27 @@ export const MAIL_VARIABLES: [string, string][] = [
 	['ecole', "Nom de l'école"],
 	['formation', "Formation de l'étudiant"],
 	['entreprise', "Entreprise du placement (vide si inconnue)"],
+	['prenom_cre', 'Prénom du CRE qui a réalisé la passation'],
+	['nom_cre', 'Nom du CRE qui a réalisé la passation'],
 	['lien', 'Lien vers le formulaire (obligatoire)'],
 	['reglement', "Lien vers le règlement intérieur de l'école"]
 ];
 
 export const MAIL_VARIABLE_KEYS: ReadonlySet<string> = new Set(MAIL_VARIABLES.map(([k]) => k));
+
+/**
+ * Découpe un nom complet en prénom + nom. Les comptes membres n'ont qu'un champ
+ * `name` : on prend le premier mot comme prénom et le reste comme nom, ce qui
+ * couvre la saisie usuelle « Prénom Nom » sans se tromper sur les noms composés.
+ */
+export function splitFullName(full: string | null | undefined): {
+	prenom: string;
+	nom: string;
+} {
+	const parts = (full ?? '').trim().split(/\s+/).filter(Boolean);
+	if (parts.length === 0) return { prenom: '', nom: '' };
+	return { prenom: parts[0], nom: parts.slice(1).join(' ') };
+}
 
 /** Échappe le texte substitué : les valeurs viennent de la base, pas du modèle. */
 export function escapeHtml(value: string): string {
