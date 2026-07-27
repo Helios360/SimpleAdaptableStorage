@@ -4,12 +4,14 @@
 		name: string;
 		accept: string;
 		hint?: string;
+		/** Précision permanente sur la pièce attendue (recto/verso, nb de pages…). */
+		note?: string;
 		required?: boolean;
 		maxSizeMB?: number;
 		error?: string;
 	}
 
-	let { label, name, accept, hint, required = false, maxSizeMB, error }: Props = $props();
+	let { label, name, accept, hint, note, required = false, maxSizeMB, error }: Props = $props();
 
 	let fileName = $state<string | null>(null);
 	let input: HTMLInputElement | undefined = $state();
@@ -48,6 +50,7 @@
 			<span class="cs-label">
 				{label}{#if required}<span class="cs-req">*</span>{/if}
 			</span>
+			{#if note}<span class="cs-file__note">{note}</span>{/if}
 			<span class="cs-file__name">
 				{fileName ?? hint ?? 'Choisir un fichier'}
 			</span>
@@ -112,6 +115,12 @@
 		flex-direction: column;
 		min-width: 0;
 		flex: 1;
+	}
+	.cs-file__note {
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--c-blue);
+		white-space: normal;
 	}
 	.cs-file__name {
 		font-size: 12px;

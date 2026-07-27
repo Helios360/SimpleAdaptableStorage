@@ -189,8 +189,8 @@
 
 				<p class="cs-form__section">Documents (PDF ou image, 8 Mo max)</p>
 				<div class="cs-form__docs">
-					<FileUpload label="Carte d'identité ou titre de séjour" name="titreSejour" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.titreSejourPath ? 'Déjà déposé — remplacer' : undefined} required />
-					<FileUpload label="Carte vitale" name="carteVitale" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.carteVitalePath ? 'Déjà déposé — remplacer' : undefined} required />
+					<FileUpload label="Carte d'identité ou titre de séjour" name="titreSejour" note="Recto ET verso" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.titreSejourPath ? 'Déjà déposé — remplacer' : undefined} required />
+					<FileUpload label="Carte vitale" name="carteVitale" note="Recto ET verso" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.carteVitalePath ? 'Déjà déposé — remplacer' : undefined} required />
 					<FileUpload label="Dernier diplôme / relevé de notes" name="diplome" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.diplomePath ? 'Déjà déposé — remplacer' : undefined} required />
 					<FileUpload label="Photo d'identité" name="photoId" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.photoIdPath ? 'Déjà déposé — remplacer' : undefined} required />
 					<FileUpload label="Règlement intérieur signé" name="reglementInterieur" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.reglementInterieurPath ? 'Déjà déposé — remplacer' : undefined} required />
@@ -201,7 +201,7 @@
 						<FileUpload label="Attestation RQTH" name="attestationRqth" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.attestationRqthPath ? 'Déjà déposé — remplacer' : undefined} required />
 					{/if}
 					{#if dejaAlternance}
-						<FileUpload label="Ancien contrat d'alternance (CERFA)" name="ancienCerfa" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.ancienCerfaPath ? 'Déjà déposé — remplacer' : undefined} required />
+						<FileUpload label="Ancien contrat d'alternance (CERFA)" name="ancienCerfa" note="Les deux pages" accept=".pdf,.png,.jpg,.jpeg,.webp" maxSizeMB={8} hint={f?.ancienCerfaPath ? 'Déjà déposé — remplacer' : undefined} required />
 					{/if}
 				</div>
 
