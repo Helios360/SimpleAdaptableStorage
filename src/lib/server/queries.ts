@@ -490,6 +490,7 @@ export async function listPromos() {
 			id: promo.id,
 			label: promo.label,
 			year: promo.year,
+			dateRentree: promo.dateRentree,
 			formationId: promo.formationId,
 			formationName: formation.name,
 			schoolId: promo.schoolId,

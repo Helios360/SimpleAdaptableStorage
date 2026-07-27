@@ -69,6 +69,7 @@
 	let editingPromo = $state<PromoRow | null>(null);
 	let pLabel = $state('');
 	let pYear = $state('');
+	let pDateRentree = $state('');
 	let pFormationId = $state('');
 	let pSchoolId = $state('');
 
@@ -76,6 +77,7 @@
 		editingPromo = row;
 		pLabel = row?.label ?? '';
 		pYear = row?.year != null ? String(row.year) : '';
+		pDateRentree = row?.dateRentree ?? '';
 		pFormationId = row?.formationId != null ? String(row.formationId) : '';
 		pSchoolId = row?.schoolId != null ? String(row.schoolId) : '';
 		promoModal = true;
@@ -261,13 +263,16 @@
 			{:else}
 				<table class="cs-tbl">
 					<thead>
-						<tr><th>Nom</th><th>Année</th><th>Formation</th><th>École</th><th>Calendrier</th><th></th></tr>
+						<tr><th>Nom</th><th>Année</th><th>Rentrée</th><th>Formation</th><th>École</th><th>Calendrier</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.promos as p}
 							<tr>
 								<td>{p.label}</td>
 								<td class="cs-tbl__muted">{p.year ?? '—'}</td>
+								<td class="cs-tbl__muted">
+									{p.dateRentree ? new Date(p.dateRentree).toLocaleDateString('fr-FR') : '—'}
+								</td>
 								<td class="cs-tbl__muted">{p.formationName ?? '—'}</td>
 								<td class="cs-tbl__muted">{p.schoolName ?? '—'}</td>
 								<td class="cs-tbl__muted">
@@ -418,6 +423,7 @@
 		{#if editingPromo}<input type="hidden" name="id" value={editingPromo.id} />{/if}
 		<Input label="Nom" name="label" bind:value={pLabel} required placeholder="BTS SIO 2025" />
 		<Input label="Année" name="year" type="number" bind:value={pYear} placeholder="2025" />
+		<Input label="Date de rentrée" name="dateRentree" type="date" bind:value={pDateRentree} required />
 		<div class="cs-field">
 			<label for="promo-school" class="cs-params__label">École (optionnel)</label>
 			<select id="promo-school" name="schoolId" bind:value={pSchoolId} class="cs-select">

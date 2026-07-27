@@ -125,6 +125,7 @@ async function createPromo({ request, locals }: RequestEvent) {
 	const v = validatePromo(
 		form.get('label'),
 		form.get('year'),
+		form.get('dateRentree'),
 		form.get('formationId'),
 		form.get('schoolId')
 	);
@@ -151,6 +152,7 @@ async function updatePromo({ request, locals }: RequestEvent) {
 	const v = validatePromo(
 		form.get('label'),
 		form.get('year'),
+		form.get('dateRentree'),
 		form.get('formationId'),
 		form.get('schoolId')
 	);

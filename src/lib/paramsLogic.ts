@@ -18,6 +18,15 @@ export function parsePromoYear(raw: unknown): number | null {
 	return n;
 }
 
+/** Date ISO `YYYY-MM-DD` telle que renvoyée par `<input type="date">` ; null sinon. */
+export function parseIsoDate(raw: unknown): string | null {
+	const t = cleanStr(raw);
+	if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+	// Le format seul ne suffit pas : 2025-02-31 le respecte sans exister.
+	const d = new Date(`${t}T00:00:00Z`);
+	return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== t ? null : t;
+}
+
 /** Id optionnel provenant d'un `<select>` ; null si vide/invalide. */
 export function parseOptionalId(raw: unknown): number | null {
 	if (raw == null || raw === '' || raw === 'null') return null;
@@ -49,6 +58,8 @@ export function validateFormation(
 export interface PromoInput {
 	label: string;
 	year: number | null;
+	/** Date de rentrée, ISO `YYYY-MM-DD`. */
+	dateRentree: string;
 	formationId: number | null;
 	schoolId: number | null;
 }
@@ -56,6 +67,7 @@ export interface PromoInput {
 export function validatePromo(
 	labelRaw: unknown,
 	yearRaw: unknown,
+	dateRentreeRaw: unknown,
 	formationIdRaw: unknown,
 	schoolIdRaw: unknown
 ): Validated<PromoInput> {
@@ -64,11 +76,14 @@ export function validatePromo(
 	if (yearRaw != null && yearRaw !== '' && parsePromoYear(yearRaw) === null) {
 		return { ok: false, error: 'Année invalide (attendu entre 2000 et 2100).' };
 	}
+	const dateRentree = parseIsoDate(dateRentreeRaw);
+	if (!dateRentree) return { ok: false, error: 'La date de rentrée est requise (JJ/MM/AAAA).' };
 	return {
 		ok: true,
 		value: {
 			label,
 			year: parsePromoYear(yearRaw),
+			dateRentree,
 			formationId: parseOptionalId(formationIdRaw),
 			schoolId: parseOptionalId(schoolIdRaw)
 		}

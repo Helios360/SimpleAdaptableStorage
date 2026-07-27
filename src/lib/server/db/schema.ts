@@ -230,6 +230,9 @@ export const promo = pgTable('promo', {
 	id: serial('id').primaryKey(),
 	label: text('label').notNull().unique(),
 	year: integer('year'),
+	// Date de rentrée (ISO YYYY-MM-DD). Requise à la saisie, mais la colonne reste
+	// nullable : les promos créées avant son ajout n'en ont pas.
+	dateRentree: date('date_rentree'),
 	formationId: integer('formation_id').references(() => formation.id, { onDelete: 'set null' }),
 	schoolId: integer('school_id').references(() => school.id, { onDelete: 'set null' }),
 	// Calendrier de la promo (PDF déposé en Paramètres), servi par

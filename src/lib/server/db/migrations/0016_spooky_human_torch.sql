@@ -1,0 +1,1 @@
+ALTER TABLE "promo" ADD COLUMN "date_rentree" date;

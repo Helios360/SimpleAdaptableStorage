@@ -77,24 +77,43 @@ describe('validateFormation', () => {
 
 describe('validatePromo', () => {
 	it('accepts label with optional year + formation + school', () => {
-		const r = validatePromo(' Promo A ', '2025', '4', '1');
+		const r = validatePromo(' Promo A ', '2025', '2025-09-15', '4', '1');
 		expect(r).toEqual({
 			ok: true,
-			value: { label: 'Promo A', year: 2025, formationId: 4, schoolId: 1 }
+			value: {
+				label: 'Promo A',
+				year: 2025,
+				dateRentree: '2025-09-15',
+				formationId: 4,
+				schoolId: 1
+			}
 		});
 	});
-	it('accepts label alone (rest optional)', () => {
-		const r = validatePromo('Promo B', '', '', '');
+	it('accepts label + rentrée alone (rest optional)', () => {
+		const r = validatePromo('Promo B', '', '2025-09-01', '', '');
 		expect(r).toEqual({
 			ok: true,
-			value: { label: 'Promo B', year: null, formationId: null, schoolId: null }
+			value: {
+				label: 'Promo B',
+				year: null,
+				dateRentree: '2025-09-01',
+				formationId: null,
+				schoolId: null
+			}
 		});
 	});
 	it('rejects a missing label', () => {
-		expect(validatePromo('   ', '2025', '', '').ok).toBe(false);
+		expect(validatePromo('   ', '2025', '2025-09-01', '', '').ok).toBe(false);
 	});
 	it('rejects an invalid year', () => {
-		expect(validatePromo('Promo C', '1000', '', '').ok).toBe(false);
+		expect(validatePromo('Promo C', '1000', '2025-09-01', '', '').ok).toBe(false);
+	});
+	it('rejects a missing rentrée date', () => {
+		expect(validatePromo('Promo D', '2025', '', '', '').ok).toBe(false);
+	});
+	it('rejects a malformed or non-existent rentrée date', () => {
+		expect(validatePromo('Promo E', '2025', '15/09/2025', '', '').ok).toBe(false);
+		expect(validatePromo('Promo F', '2025', '2025-02-31', '', '').ok).toBe(false);
 	});
 });
 
