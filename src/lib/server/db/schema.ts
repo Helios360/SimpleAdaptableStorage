@@ -450,6 +450,10 @@ export const formToken = pgTable(
 		audience: text('audience').notNull(), // etudiant | entreprise
 		expiresAt: timestamp('expires_at').notNull(),
 		submittedAt: timestamp('submitted_at'),
+		// Relance automatique : dernière relance envoyée et compteur, pour ne pas
+		// re-notifier plus souvent que le délai (voir src/lib/relanceLogic.ts).
+		lastRelanceAt: timestamp('last_relance_at'),
+		relanceCount: integer('relance_count').notNull().default(0),
 		createdAt: timestamp('created_at').notNull().defaultNow()
 	},
 	(t) => ({

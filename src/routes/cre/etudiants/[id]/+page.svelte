@@ -218,6 +218,14 @@
 		pushToast('Statut OPCO mis à jour ✓', 'success');
 	}
 
+	/** Date courte « 12 mars 2026 » (les dates du suivi des liens arrivent en Date). */
+	function fmtDate(d: Date | string | null | undefined): string {
+		if (!d) return '—';
+		const date = d instanceof Date ? d : new Date(d);
+		if (Number.isNaN(date.getTime())) return '—';
+		return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+	}
+
 	async function resendLinks(placementId: number) {
 		const fd = new FormData();
 		fd.set('placementId', String(placementId));
@@ -920,6 +928,28 @@
 								<div><span>Contact</span>{`${p.contactPrenom ?? ''} ${p.contactNom ?? ''}`.trim() || '—'}</div>
 								<div><span>Email entreprise</span>{p.contactEmail ?? '—'}</div>
 							</div>
+							<!-- Suivi des liens : réception et relances automatiques (72 h). -->
+							<div class="cs-pl__liens">
+								{#each data.relances[p.id] ?? [] as l (l.audience)}
+									<span class="cs-pl__lien">
+										<strong>{l.audience === 'etudiant' ? 'Fiche étudiant' : 'Fiche entreprise'}</strong>
+										{#if l.submittedAt}
+											<span class="cs-pl__lien-ok">reçue le {fmtDate(l.submittedAt)}</span>
+										{:else}
+											<span class="cs-pl__lien-wait">en attente</span>
+											{#if l.relanceCount > 0}
+												· {l.relanceCount} relance{l.relanceCount > 1 ? 's' : ''} (dernière le
+												{fmtDate(l.lastRelanceAt)})
+											{/if}
+											{#if l.nextRelanceAt}
+												· prochaine relance le {fmtDate(l.nextRelanceAt)}
+											{:else}
+												· relances épuisées
+											{/if}
+										{/if}
+									</span>
+								{/each}
+							</div>
 							<div class="cs-pl__item-actions">
 								<span class="cs-pl__flow">Dossier : {p.statut.replace('_', ' ')}</span>
 								<Button size="sm" variant="subtle" onclick={() => resendLinks(p.id)}>
@@ -1377,6 +1407,29 @@
 		font-size: 12px;
 		color: var(--c-muted);
 		text-transform: capitalize;
+	}
+	.cs-pl__liens {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		margin: 10px 0 4px;
+	}
+	.cs-pl__lien {
+		font-size: 12px;
+		color: var(--c-muted);
+	}
+	.cs-pl__lien strong {
+		color: var(--c-sub);
+		font-weight: 600;
+		margin-right: 4px;
+	}
+	.cs-pl__lien-ok {
+		color: var(--c-green);
+		font-weight: 600;
+	}
+	.cs-pl__lien-wait {
+		color: var(--c-orange);
+		font-weight: 600;
 	}
 
 	/* ───────── Fiches soumises (lecture seule) ───────── */

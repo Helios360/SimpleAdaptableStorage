@@ -24,7 +24,7 @@ export async function createFormToken(
 	const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 	await db.insert(formToken).values({ token, placementId, audience, expiresAt });
-	return `${appUrl()}/f/${token}`;
+	return formUrl(token);
 }
 
 interface TokenRow {
@@ -54,33 +54,66 @@ export async function resolveFormToken(token: string): Promise<TokenRow | null> 
 	return row as TokenRow;
 }
 
-function studentLinkEmail(name: string, url: string, reglementUrl: string | null): string {
+// Les mêmes corps de mail servent à l'envoi initial et aux relances automatiques
+// (voir src/lib/server/relance.ts) : seule l'accroche change, pour que le
+// destinataire comprenne qu'il s'agit d'un rappel sur un lien déjà reçu.
+
+export function studentLinkEmail(
+	name: string,
+	url: string,
+	reglementUrl: string | null,
+	relance = false
+): string {
 	// Le règlement intérieur dépend de l'école de l'étudiant (lien stocké sur school).
 	const reglementBlock = reglementUrl
 		? `<p>Merci également de prendre connaissance du règlement intérieur de votre
 		école : <a href="${reglementUrl}">${reglementUrl}</a></p>`
 		: '';
+	const intro = relance
+		? `<p>Nous n'avons pas encore reçu votre fiche d'informations. Merci de la
+		compléter dès que possible pour ne pas retarder votre dossier :</p>`
+		: `<p>Afin de finaliser votre dossier d'alternance, merci de compléter votre
+		fiche d'informations en cliquant sur le lien ci-dessous :</p>`;
 	return `
 		<p>Bonjour ${name},</p>
-		<p>Afin de finaliser votre dossier d'alternance, merci de compléter votre
-		fiche d'informations en cliquant sur le lien ci-dessous :</p>
+		${intro}
 		<p><a href="${url}">${url}</a></p>
 		${reglementBlock}
 		<p>Ce lien est personnel et valable 7 jours.</p>
 		<p>— L'équipe pédagogique</p>`;
 }
 
-function companyLinkEmail(entreprise: string, url: string): string {
+export function companyLinkEmail(entreprise: string, url: string, relance = false): string {
+	const intro = relance
+		? `<p>Sauf erreur de notre part, la fiche de renseignements${
+				entreprise ? ` concernant ${entreprise}` : ''
+			} ne nous est pas encore parvenue. Merci de la compléter via le lien
+		ci-dessous :</p>`
+		: `<p>Dans le cadre de la mise en place d'un contrat d'alternance${
+				entreprise ? ` avec ${entreprise}` : ''
+			}, merci de compléter la fiche de renseignements entreprise via le lien
+		ci-dessous :</p>`;
 	return `
 		<p>Bonjour,</p>
-		<p>Dans le cadre de la mise en place d'un contrat d'alternance${
-			entreprise ? ` avec ${entreprise}` : ''
-		}, merci de compléter la fiche de renseignements entreprise via le lien
-		ci-dessous :</p>
+		${intro}
 		<p><a href="${url}">${url}</a></p>
 		<p>En retour, nous vous ferons parvenir la convention de formation et le CERFA.</p>
 		<p>Ce lien est valable 7 jours.</p>
 		<p>— Cloud Campus</p>`;
+}
+
+/** Objet du mail selon l'audience, préfixé « Rappel » pour une relance. */
+export function linkSubject(audience: FormAudience, relance = false): string {
+	const base =
+		audience === 'etudiant'
+			? 'Votre fiche d’informations — dossier alternance'
+			: 'Fiche de renseignements entreprise — contrat d’alternance';
+	return relance ? `Rappel — ${base}` : base;
+}
+
+/** URL publique d'un formulaire à partir de son token. */
+export function formUrl(token: string): string {
+	return `${appUrl()}/f/${token}`;
 }
 
 /**
@@ -117,7 +150,7 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 		const url = await createFormToken(placementId, 'etudiant');
 		await sendMail({
 			to: p.studentEmail,
-			subject: 'Votre fiche d’informations — dossier alternance',
+			subject: linkSubject('etudiant'),
 			html: studentLinkEmail(`${p.fname} ${p.lname}`.trim(), url, p.reglementUrl ?? null)
 		});
 		notified.etudiant = p.studentEmail;
@@ -127,7 +160,7 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 		const url = await createFormToken(placementId, 'entreprise');
 		await sendMail({
 			to: p.contactEmail,
-			subject: 'Fiche de renseignements entreprise — contrat d’alternance',
+			subject: linkSubject('entreprise'),
 			html: companyLinkEmail(p.entreprise ?? '', url)
 		});
 		notified.entreprise = p.contactEmail;

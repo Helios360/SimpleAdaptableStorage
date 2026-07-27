@@ -13,9 +13,50 @@ import { requireRole } from '$lib/server/guards';
 import { candidatActions } from '$lib/server/candidatActions';
 import { placementActions } from '$lib/server/placementActions';
 import { db } from '$lib/server/db';
-import { candidat as candidatTable, placement, user, school } from '$lib/server/db/schema';
-import { asc, desc, eq } from 'drizzle-orm';
+import { candidat as candidatTable, formToken, placement, user, school } from '$lib/server/db/schema';
+import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { sanitizeChecklist, type SchoolType } from '$lib/checklist';
+import { keepLatestPerAudience, nextRelanceAt } from '$lib/relanceLogic';
+
+/** Suivi des liens de formulaire d'un placement : reçu, relancé, prochaine relance. */
+export interface SuiviLien {
+	audience: string;
+	submittedAt: Date | null;
+	expiresAt: Date;
+	relanceCount: number;
+	lastRelanceAt: Date | null;
+	nextRelanceAt: Date | null;
+}
+
+/** Dernier lien émis par audience, pour chaque placement (clé = id du placement). */
+async function suiviLiens(placementIds: number[]): Promise<Record<number, SuiviLien[]>> {
+	if (!placementIds.length) return {};
+	const rows = await db
+		.select({
+			placementId: formToken.placementId,
+			audience: formToken.audience,
+			createdAt: formToken.createdAt,
+			expiresAt: formToken.expiresAt,
+			submittedAt: formToken.submittedAt,
+			lastRelanceAt: formToken.lastRelanceAt,
+			relanceCount: formToken.relanceCount
+		})
+		.from(formToken)
+		.where(inArray(formToken.placementId, placementIds));
+
+	const out: Record<number, SuiviLien[]> = {};
+	for (const r of keepLatestPerAudience(rows)) {
+		(out[r.placementId] ??= []).push({
+			audience: r.audience,
+			submittedAt: r.submittedAt,
+			expiresAt: r.expiresAt,
+			relanceCount: r.relanceCount,
+			lastRelanceAt: r.lastRelanceAt,
+			nextRelanceAt: nextRelanceAt(r)
+		});
+	}
+	return out;
+}
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	requireRole(locals.user, 'cre');
@@ -52,8 +93,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	]);
 	if (!candidat) throw error(404, 'Étudiant introuvable');
 
+	// Suivi des liens envoyés (reçu / relancé / prochaine relance automatique).
+	const relances = await suiviLiens(placements.map((p) => p.id));
+
 	return {
 		candidat,
+		relances,
 		formations,
 		defaultTags: DEFAULT_TAGS,
 		defaultSkills: competences.length ? competences : DEFAULT_SKILLS,
