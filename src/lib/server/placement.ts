@@ -62,7 +62,7 @@ export async function resolveFormToken(token: string): Promise<TokenRow | null> 
 export interface EcoleContext {
 	id: number | null;
 	name: string | null;
-	/** Lien vers le règlement intérieur : URL saisie, ou PDF hébergé. */
+	/** Lien vers le PDF du règlement intérieur hébergé par l'app. */
 	reglementLink: string | null;
 	/** Modèle de mail propre à l'école ; null = modèle par défaut. */
 	mailTemplate: string | null;
@@ -70,12 +70,7 @@ export interface EcoleContext {
 
 const EMPTY_ECOLE: EcoleContext = { id: null, name: null, reglementLink: null, mailTemplate: null };
 
-function reglementLink(
-	id: number | null,
-	url: string | null,
-	path: string | null
-): string | null {
-	if (url) return url;
+function reglementLink(id: number | null, path: string | null): string | null {
 	if (path && id != null) return `${appUrl()}/files/ecole/${id}/reglement`;
 	return null;
 }
@@ -92,12 +87,10 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 		.select({
 			fId: sf.id,
 			fName: sf.name,
-			fUrl: sf.reglementUrl,
 			fPath: sf.reglementPath,
 			fTpl: sf.mailTemplate,
 			uId: su.id,
 			uName: su.name,
-			uUrl: su.reglementUrl,
 			uPath: su.reglementPath,
 			uTpl: su.mailTemplate
 		})
@@ -114,7 +107,7 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 		return {
 			id: row.fId,
 			name: row.fName,
-			reglementLink: reglementLink(row.fId, row.fUrl, row.fPath),
+			reglementLink: reglementLink(row.fId, row.fPath),
 			mailTemplate: row.fTpl
 		};
 	}
@@ -122,7 +115,7 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 		return {
 			id: row.uId,
 			name: row.uName,
-			reglementLink: reglementLink(row.uId, row.uUrl, row.uPath),
+			reglementLink: reglementLink(row.uId, row.uPath),
 			mailTemplate: row.uTpl
 		};
 	}

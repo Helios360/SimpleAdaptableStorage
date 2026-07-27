@@ -36,13 +36,11 @@
 	let schoolModal = $state(false);
 	let editingSchool = $state<SchoolRow | null>(null);
 	let sName = $state('');
-	let sReglement = $state('');
 	let sMailTemplate = $state('');
 
 	function openSchool(row: SchoolRow | null) {
 		editingSchool = row;
 		sName = row?.name ?? '';
-		sReglement = row?.reglementUrl ?? '';
 		sMailTemplate = row?.mailTemplate ?? '';
 		schoolModal = true;
 	}
@@ -189,8 +187,6 @@
 								<td class="cs-tbl__muted">
 									{#if s.reglementPath}
 										<a href={`/files/ecole/${s.id}/reglement`} target="_blank" rel="noopener">📎 PDF</a>
-									{:else if s.reglementUrl}
-										<a href={s.reglementUrl} target="_blank" rel="noopener">🔗 Lien</a>
 									{:else}—{/if}
 								</td>
 								<td class="cs-tbl__muted">{s.mailTemplate ? 'Personnalisé' : 'Par défaut'}</td>
@@ -336,17 +332,11 @@
 	>
 		{#if editingSchool}<input type="hidden" name="id" value={editingSchool.id} />{/if}
 		<Input label="Nom" name="name" bind:value={sName} required placeholder="Cloud Campus" />
-		<Input
-			label="Règlement intérieur (URL)"
-			name="reglementUrl"
-			bind:value={sReglement}
-			placeholder="https://…"
-		/>
 		{@render docField(
 			'Règlement intérieur (PDF)',
 			editingSchool?.reglementPath,
 			editingSchool ? `/files/ecole/${editingSchool.id}/reglement` : '',
-			"PDF, 20 Mo max. Le PDF déposé remplace l'URL dans le mail envoyé à l'étudiant."
+			"PDF, 20 Mo max. Son lien part dans le mail envoyé à l'étudiant ({{reglement}})."
 		)}
 		<div class="cs-field">
 			<label class="cs-params__label" for="school-mail">Modèle de mail (fiche étudiant)</label>

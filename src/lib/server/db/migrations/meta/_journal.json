@@ -127,6 +127,13 @@
       "when": 1785162238699,
       "tag": "0017_safe_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785164136706,
+      "tag": "0018_petite_havok",
+      "breakpoints": true
     }
   ]
 }

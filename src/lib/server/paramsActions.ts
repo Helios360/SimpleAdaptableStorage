@@ -196,7 +196,7 @@ async function deletePromo({ request, locals }: RequestEvent) {
 async function createSchool({ request, locals }: RequestEvent) {
 	requireRole(locals.user, 'cre');
 	const form = await request.formData();
-	const v = validateSchool(form.get('name'), form.get('reglementUrl'), form.get('mailTemplate'));
+	const v = validateSchool(form.get('name'), form.get('mailTemplate'));
 	if (!v.ok) return fail(400, { error: v.error });
 	let id: number;
 	try {
@@ -205,7 +205,6 @@ async function createSchool({ request, locals }: RequestEvent) {
 			.values({
 				name: v.value.name,
 				type: schoolType(v.value.name),
-				reglementUrl: v.value.reglementUrl,
 				mailTemplate: v.value.mailTemplate
 			})
 			.returning({ id: school.id });
@@ -225,7 +224,7 @@ async function updateSchool({ request, locals }: RequestEvent) {
 	const form = await request.formData();
 	const id = Number(form.get('id'));
 	if (!Number.isInteger(id)) return fail(400, { error: 'École invalide.' });
-	const v = validateSchool(form.get('name'), form.get('reglementUrl'), form.get('mailTemplate'));
+	const v = validateSchool(form.get('name'), form.get('mailTemplate'));
 	if (!v.ok) return fail(400, { error: v.error });
 	const [prev] = await db
 		.select({ reglementPath: school.reglementPath })
@@ -241,7 +240,6 @@ async function updateSchool({ request, locals }: RequestEvent) {
 			.set({
 				name: v.value.name,
 				type: schoolType(v.value.name),
-				reglementUrl: v.value.reglementUrl,
 				mailTemplate: v.value.mailTemplate,
 				reglementPath: doc.path
 			})

@@ -178,10 +178,8 @@ export const school = pgTable('school', {
 	id: serial('id').primaryKey(),
 	name: text('name').notNull().unique(),
 	type: text('type').notNull().default('autre'), // cloud_campus | skalys | autre
-	// Règlement intérieur de l'école : lien envoyé à l'étudiant lors de la passation.
-	// Deux formes possibles, l'URL primant sur le PDF hébergé (reglementPath, déposé
-	// depuis Paramètres et servi par /files/ecole/[id]/reglement).
-	reglementUrl: text('reglement_url'),
+	// Règlement intérieur de l'école, déposé en PDF depuis Paramètres et servi par
+	// /files/ecole/[id]/reglement. Son lien part à l'étudiant lors de la passation.
 	reglementPath: text('reglement_path'),
 	// Modèle du mail d'envoi de la fiche étudiant, propre à l'école. Les variables
 	// {{prenom}}, {{lien}}… sont substituées à l'envoi (voir src/lib/mailTemplate.ts).

@@ -92,14 +92,12 @@ export function validatePromo(
 
 export interface SchoolInput {
 	name: string;
-	reglementUrl: string | null;
 	/** Modèle du mail d'envoi de la fiche étudiant ; null = modèle par défaut. */
 	mailTemplate: string | null;
 }
 
 export function validateSchool(
 	nameRaw: unknown,
-	reglementUrlRaw?: unknown,
 	mailTemplateRaw?: unknown
 ): Validated<SchoolInput> {
 	const name = cleanStr(nameRaw);
@@ -110,5 +108,5 @@ export function validateSchool(
 	if (mailTemplate && !/\{\{\s*lien\s*\}\}/.test(mailTemplate)) {
 		return { ok: false, error: 'Le modèle de mail doit contenir la variable {{lien}}.' };
 	}
-	return { ok: true, value: { name, reglementUrl: cleanStr(reglementUrlRaw), mailTemplate } };
+	return { ok: true, value: { name, mailTemplate } };
 }

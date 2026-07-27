@@ -510,7 +510,6 @@ export async function listSchools() {
 			id: school.id,
 			name: school.name,
 			type: school.type,
-			reglementUrl: school.reglementUrl,
 			reglementPath: school.reglementPath,
 			mailTemplate: school.mailTemplate,
 			memberCount: sql<number>`count(${user.id})::int`

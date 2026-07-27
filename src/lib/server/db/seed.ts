@@ -70,12 +70,8 @@ if (formationsExisting.length === 0) {
 
 const SCHOOL_NAMES = ['Cloud Campus', 'Skalys', 'IPSSI Paris'];
 
-// Règlement intérieur par école : lien envoyé à l'étudiant lors de la passation.
-const REGLEMENT_URLS: Record<string, string> = {
-	'Cloud Campus': 'https://docs.google.com/document/d/1e92FE-UOV1TYbHRSadxR1RCNri30-Nxu/edit',
-	Skalys:
-		'https://docs.google.com/document/d/10b-OVOm42EuRz-KPxTYJ6FC_peeNo3Nz/edit?usp=sharing&ouid=117813654733070312410&rtpof=true&sd=true'
-};
+// Le règlement intérieur n'est plus une URL : c'est un PDF déposé par école
+// depuis Paramètres, le seed n'a donc rien à renseigner ici.
 
 console.log('Seeding schools…');
 const schoolIdByName: Record<string, number> = {};
@@ -85,22 +81,11 @@ if (missingSchools.length) {
 	const inserted = await db
 		.insert(school)
 		.values(
-			missingSchools.map((name) => ({
-				name,
-				type: schoolType(name),
-				reglementUrl: REGLEMENT_URLS[name] ?? null
-			}))
+			missingSchools.map((name) => ({ name, type: schoolType(name) }))
 		)
 		.returning();
 	for (const s of inserted) schoolIdByName[s.name] = s.id;
 }
-// Garantit le lien du règlement même sur une base déjà seedée.
-for (const [name, url] of Object.entries(REGLEMENT_URLS)) {
-	if (schoolIdByName[name] != null) {
-		await db.update(school).set({ reglementUrl: url }).where(eq(school.id, schoolIdByName[name]));
-	}
-}
-
 // ─── Compétences (référentiel) liées aux formations ─────────────────────────
 
 const COMPETENCES_BY_FORMATION: Record<string, string[]> = {
