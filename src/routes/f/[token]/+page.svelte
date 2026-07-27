@@ -5,6 +5,7 @@
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { SITUATIONS, DIPLOMES, OPCO_ORGANISMES } from '$lib/placementLogic';
 	import { ageFromBirth } from '$lib/utils';
+	import { suggestionsParAnnee, trancheForAge, formatEuros, SMIC_MENSUEL_BRUT } from '$lib/salaire';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -22,6 +23,15 @@
 	let rqth = $state(data.audience === 'etudiant' ? (data.fiche?.rqth ?? false) : false);
 	let dejaAlternance = $state(data.audience === 'etudiant' ? (data.fiche?.dejaAlternance ?? false) : false);
 	let majeur = $state(data.audience === 'etudiant' ? (data.fiche?.majeur ?? !mineur) : true);
+
+	// Côté entreprise : suggestion du salaire minimum légal selon l'âge de
+	// l'apprenti, recalculée quand le type de contrat change.
+	let typeContratEnt = $state(
+		data.audience === 'entreprise' ? (data.fiche?.typeContrat ?? data.typeContrat ?? '') : ''
+	);
+	const apprentiAge = data.audience === 'entreprise' ? data.apprentiAge : null;
+	const trancheEnt = $derived(trancheForAge(apprentiAge, typeContratEnt || 'apprentissage'));
+	const salaireRows = $derived(suggestionsParAnnee(apprentiAge, typeContratEnt || 'apprentissage'));
 
 	async function submit(e: SubmitEvent, action: string) {
 		e.preventDefault();
@@ -224,7 +234,7 @@
 			<form class="cs-form" onsubmit={(e) => submit(e, 'submitEntreprise')}>
 				<div class="cs-field">
 					<label class="cs-label" for="typeContrat">Type de contrat</label>
-					<select id="typeContrat" name="typeContrat" class="cs-select" required value={f?.typeContrat ?? data.typeContrat ?? ''}>
+					<select id="typeContrat" name="typeContrat" class="cs-select" required bind:value={typeContratEnt}>
 						<option value="">—</option>
 						<option value="apprentissage">Contrat d'apprentissage</option>
 						<option value="professionnalisation">Contrat de professionnalisation</option>
@@ -317,6 +327,27 @@
 				<Input label="Diplôme le plus élevé obtenu (tuteur)" name="tuteurDiplome" value={f?.tuteurDiplome ?? ''} required />
 
 				<p class="cs-form__section">Contrat</p>
+				{#if salaireRows.length}
+					<div class="cs-sal">
+						<p class="cs-sal__title">
+							💶 Rémunération minimale pour un alternant de {data.apprentiAge} ans
+							{#if trancheEnt} — {trancheEnt.label}{/if}
+						</p>
+						<div class="cs-sal__rows">
+							{#each salaireRows as s (s.annee)}
+								<span class="cs-sal__row">
+									{s.annee}<sup>{s.annee === 1 ? 're' : 'e'}</sup> année :
+									<strong>{formatEuros(s.montant)}</strong> ({s.pct} % du SMIC)
+								</span>
+							{/each}
+						</div>
+						<p class="cs-sal__note">
+							Montants indicatifs sur la base du SMIC ({formatEuros(Math.round(SMIC_MENSUEL_BRUT))}
+							brut/mois, 35 h) : le salaire peut être supérieur, et le minimum conventionnel de
+							branche (SMC) s'applique s'il est plus favorable.
+						</p>
+					</div>
+				{/if}
 				<div class="cs-form__row">
 					<Input label="Salaire brut mensuel" name="salaireBrut" value={f?.salaireBrut ?? ''} digitsOnly inputmode="numeric" required />
 					<Input label="SMIC ou SMC" name="smicSmc" value={f?.smicSmc ?? ''} required />
@@ -495,6 +526,32 @@
 		font-size: 13px;
 		padding: 10px 14px;
 		border-radius: 8px;
+	}
+	/* Suggestion de salaire (grille légale selon l'âge de l'apprenti). */
+	.cs-sal {
+		background: var(--c-blue-soft);
+		border: 1px solid var(--c-blue-light);
+		border-radius: 10px;
+		padding: 12px 14px;
+	}
+	.cs-sal__title {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--c-text);
+		margin-bottom: 8px;
+	}
+	.cs-sal__rows {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 18px;
+		font-size: 13px;
+		color: var(--c-sub);
+	}
+	.cs-sal__note {
+		font-size: 11px;
+		color: var(--c-muted);
+		margin-top: 8px;
+		line-height: 1.5;
 	}
 	.cs-form__actions {
 		display: flex;

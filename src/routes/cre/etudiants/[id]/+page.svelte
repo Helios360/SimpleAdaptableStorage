@@ -23,6 +23,7 @@
 		type ChecklistState,
 		type SchoolType
 	} from '$lib/checklist';
+	import { suggestionsParAnnee, trancheForAge, formatEuros, SMIC_MENSUEL_BRUT } from '$lib/salaire';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
 	import type { CandidatView } from '$lib/components/CandidatDetail.svelte';
@@ -103,6 +104,15 @@
 	// Fiches soumises via les liens tokenisés (affichées en lecture seule).
 	const ficheEtu = $derived(data.ficheEtudiant ?? null);
 	const ficheEnt = $derived(data.ficheEntreprise ?? null);
+
+	// ───────── Suggestion de salaire (grille légale × âge) ─────────
+	// Le type de contrat vient de la fiche entreprise si elle est arrivée, sinon
+	// de la passation ; à défaut on suppose un contrat d'apprentissage.
+	const typeContratSalaire = $derived(
+		ficheEnt?.typeContrat ?? lastPlacement?.typeContrat ?? 'apprentissage'
+	);
+	const trancheSalaire = $derived(trancheForAge(candidat.age, typeContratSalaire));
+	const salaires = $derived(suggestionsParAnnee(candidat.age, typeContratSalaire));
 
 	let passOpen = $state(false);
 	let passLoading = $state(false);
@@ -584,6 +594,40 @@
 					{/if}
 				</div>
 			</div>
+			<!-- Suggestion de rémunération : grille légale appliquée à l'âge de l'étudiant. -->
+			<div class="cs-sal">
+				<div class="cs-sal__head">
+					<span class="cs-sal__title">💶 Salaire minimum suggéré</span>
+					{#if candidat.age != null}
+						<span class="cs-sal__meta">
+							{candidat.age} ans{#if trancheSalaire} · {trancheSalaire.label}{/if} ·
+							{typeContratSalaire === 'professionnalisation' ? 'Professionnalisation' : 'Apprentissage'}
+						</span>
+					{/if}
+				</div>
+				{#if salaires.length}
+					<div class="cs-sal__rows">
+						{#each salaires as s (s.annee)}
+							<div class="cs-sal__row">
+								<span class="cs-sal__annee">{s.annee}<sup>{s.annee === 1 ? 're' : 'e'}</sup> année</span>
+								<span class="cs-sal__montant">{formatEuros(s.montant)}</span>
+								<span class="cs-sal__pct">{s.pct} % du SMIC</span>
+							</div>
+						{/each}
+					</div>
+					<p class="cs-sal__note">
+						Base SMIC {formatEuros(Math.round(SMIC_MENSUEL_BRUT))} brut/mois (35 h). Montants
+						indicatifs : le salaire versé peut être supérieur, et le SMC de la branche s'applique
+						s'il est plus favorable.
+					</p>
+				{:else}
+					<p class="cs-sal__note">
+						Date de naissance manquante — renseignez-la dans la fiche apprenant pour obtenir la
+						suggestion.
+					</p>
+				{/if}
+			</div>
+
 			{#if editEtu}
 				<div class="cs-fedit__grid">
 					{@render fSelect(etuDraft, 'Civilité', 'civilite', CIVILITE_OPTS)}
@@ -1391,6 +1435,68 @@
 		align-items: center;
 		gap: 8px;
 		flex-wrap: wrap;
+	}
+
+	/* ───────── Suggestion de salaire ───────── */
+	.cs-sal {
+		border: 1px solid var(--c-border);
+		border-radius: 10px;
+		background: var(--c-bg);
+		padding: 12px 14px;
+		margin-bottom: 14px;
+	}
+	.cs-sal__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		margin-bottom: 10px;
+	}
+	.cs-sal__title {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--c-text);
+	}
+	.cs-sal__meta {
+		font-size: 12px;
+		color: var(--c-muted);
+	}
+	.cs-sal__rows {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		gap: 8px;
+	}
+	.cs-sal__row {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 8px 10px;
+		border-radius: 8px;
+		background: var(--c-card);
+		border: 1px solid var(--c-border);
+	}
+	.cs-sal__annee {
+		font-size: 11px;
+		color: var(--c-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+	}
+	.cs-sal__montant {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 17px;
+		color: var(--c-blue);
+	}
+	.cs-sal__pct {
+		font-size: 11px;
+		color: var(--c-sub);
+	}
+	.cs-sal__note {
+		font-size: 11px;
+		color: var(--c-muted);
+		margin-top: 8px;
+		line-height: 1.5;
 	}
 
 	/* ───────── Édition des fiches ───────── */

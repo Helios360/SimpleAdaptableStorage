@@ -5,6 +5,7 @@ import { db } from '$lib/server/db';
 import { placement, candidat, formation } from '$lib/server/db/schema';
 import { resolveFormToken } from '$lib/server/placement';
 import { saveFicheEtudiant, saveFicheEntreprise } from '$lib/server/fiche';
+import { ageFromBirth } from '$lib/utils';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const tok = await resolveFormToken(params.token);
@@ -60,6 +61,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		submitted: !!tok.submittedAt,
 		entreprise: pl.entreprise,
 		typeContrat: pl.typeContrat,
+		// Âge de l'apprenti : sert à suggérer le salaire minimum légal en face du
+		// champ « Salaire brut mensuel » (la date de naissance n'est pas exposée).
+		apprentiAge: ageFromBirth(pl.birth),
 		contact: `${pl.contactPrenom ?? ''} ${pl.contactNom ?? ''}`.trim(),
 		apprenti: `${pl.fname} ${pl.lname}`.trim(),
 		fiche: pl.ficheEntreprise ?? null
