@@ -97,7 +97,7 @@
 				<p class="cs-form__section">État civil</p>
 				<div class="cs-form__row">
 					<Input label="Nom de naissance" name="nomNaissance" value={f?.nomNaissance ?? ''} required />
-					<Input label="Nom d'usage" name="nomUsage" value={f?.nomUsage ?? ''} hint="Si différent du nom de naissance" />
+					<Input label="Nom d'usage" name="nomUsage" value={f?.nomUsage ?? ''} hint="Reprenez le nom de naissance si vous n'avez pas de nom d'usage." required />
 				</div>
 				<div class="cs-form__row">
 					<div class="cs-field">
