@@ -17,7 +17,8 @@ export const MAIL_VARIABLES: [string, string][] = [
 	['date_rentree', 'Date de rentrée de la promo (JJ/MM/AAAA)'],
 	['lien', 'Lien vers le formulaire (obligatoire)'],
 	['reglement', "Lien vers le règlement intérieur de l'école"],
-	['calendrier', "Lien vers le calendrier d'alternance de la promo"]
+	['calendrier', "Lien vers le calendrier d'alternance de la promo"],
+	['referentiel', 'Lien vers le référentiel (plaquette) de la formation']
 ];
 
 export const MAIL_VARIABLE_KEYS: ReadonlySet<string> = new Set(MAIL_VARIABLES.map(([k]) => k));
@@ -46,7 +47,12 @@ export function escapeHtml(value: string): string {
 }
 
 /** Variables dont la valeur est une URL : rendues en lien cliquable. */
-const LINK_VARIABLES: ReadonlySet<string> = new Set(['lien', 'reglement', 'calendrier']);
+const LINK_VARIABLES: ReadonlySet<string> = new Set([
+	'lien',
+	'reglement',
+	'calendrier',
+	'referentiel'
+]);
 
 /** Date ISO `YYYY-MM-DD` en JJ/MM/AAAA ; chaîne vide si absente ou malformée. */
 export function formatDateFr(iso: string | null | undefined): string {

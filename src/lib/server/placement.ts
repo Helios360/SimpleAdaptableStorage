@@ -149,6 +149,10 @@ export interface StudentMailContext {
 	promoId?: number | null;
 	/** Vrai si la promo a un calendrier déposé (sinon pas de lien à proposer). */
 	calendrier?: boolean;
+	/** Id de la formation, pour construire le lien vers son référentiel. */
+	formationId?: number | null;
+	/** Vrai si la formation a un référentiel déposé. */
+	referentiel?: boolean;
 	relance?: boolean;
 }
 
@@ -181,6 +185,10 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 				calendrier:
 					ctx.calendrier && ctx.promoId != null
 						? `${appUrl()}/files/promo/${ctx.promoId}/calendrier`
+						: null,
+				referentiel:
+					ctx.referentiel && ctx.formationId != null
+						? `${appUrl()}/files/formation/${ctx.formationId}/referentiel`
 						: null
 			})
 		);
@@ -258,6 +266,8 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 			lname: candidat.lname,
 			studentEmail: user.email,
 			formationName: formation.name,
+			formationId: formation.id,
+			referentielPath: formation.referentielPath,
 			creName: cre.name,
 			promoId: promo.id,
 			dateRentree: promo.dateRentree,
@@ -292,7 +302,9 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 				cre: p.creName,
 				dateRentree: p.dateRentree,
 				promoId: p.promoId,
-				calendrier: !!p.calendrierPath
+				calendrier: !!p.calendrierPath,
+				formationId: p.formationId,
+				referentiel: !!p.referentielPath
 			})
 		});
 		notified.etudiant = p.studentEmail;

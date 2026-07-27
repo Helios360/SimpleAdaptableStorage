@@ -62,6 +62,8 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 			lname: candidat.lname,
 			studentEmail: user.email,
 			formationName: formation.name,
+			formationId: formation.id,
+			referentielPath: formation.referentielPath,
 			creName: cre.name,
 			promoId: promo.id,
 			dateRentree: promo.dateRentree,
@@ -101,6 +103,8 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 						dateRentree: r.dateRentree,
 						promoId: r.promoId,
 						calendrier: !!r.calendrierPath,
+						formationId: r.formationId,
+						referentiel: !!r.referentielPath,
 						relance: true
 					})
 				: companyLinkEmail(r.entreprise ?? '', url, true);

@@ -4,10 +4,13 @@ import { db } from '$lib/server/db';
 import { formation } from '$lib/server/db/schema';
 import { streamFile } from '$lib/server/uploads';
 
-/** Référentiel d'une formation (PDF déposé en Paramètres), pour tout utilisateur
- *  connecté — étudiants comme équipe pédagogique. */
-export const GET: RequestHandler = async ({ params, locals, url, request }) => {
-	if (!locals.user) throw error(401, 'Non autorisé');
+/**
+ * Référentiel (plaquette) d'une formation, PDF déposé en Paramètres. Accessible
+ * sans session : le lien part dans le mail de passation, que l'étudiant ouvre
+ * depuis sa boîte sans être connecté. Document institutionnel et non nominatif,
+ * au même titre que le règlement intérieur et le calendrier de promo.
+ */
+export const GET: RequestHandler = async ({ params, url, request }) => {
 	const id = Number(params.id);
 	if (!Number.isFinite(id)) throw error(400, 'Formation invalide');
 

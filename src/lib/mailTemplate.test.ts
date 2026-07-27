@@ -114,6 +114,13 @@ describe('variables promo', () => {
 	it('vide le calendrier quand aucun PDF n’est déposé', () => {
 		expect(renderMailTemplate('[{{calendrier}}]', { calendrier: null })).toBe('[]');
 	});
+	it('rend le référentiel en lien cliquable', () => {
+		expect(
+			renderMailTemplate('{{referentiel}}', { referentiel: 'https://x.fr/files/formation/2/referentiel' })
+		).toBe(
+			'<a href="https://x.fr/files/formation/2/referentiel">https://x.fr/files/formation/2/referentiel</a>'
+		);
+	});
 });
 
 describe('escapeHtml / MAIL_VARIABLE_KEYS', () => {
