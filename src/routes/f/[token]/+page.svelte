@@ -267,8 +267,9 @@
 				</div>
 				<Input label="Téléphone" name="rhTel" type="tel" value={f?.rhTel ?? ''} digitsOnly inputmode="numeric" maxlength={10} required />
 				<Input label="Secteur public — adhésion assurance chômage de l'apprenti" name="assuranceChomagePublic" value={f?.assuranceChomagePublic ?? ''} />
-				<label class="cs-check">
-					<input type="checkbox" name="mandatOpco" value="1" checked={f?.mandatOpco ?? false} /> Je donne mandat au CFA pour les démarches auprès de l'OPCO
+				<label class="cs-check cs-check--strong">
+					<input type="checkbox" name="mandatOpco" value="1" checked={f?.mandatOpco ?? false} />
+					<span>Je donne mandat au CFA pour les démarches auprès de l'OPCO</span>
 				</label>
 
 				<p class="cs-form__section">Contribution obligatoire (facturation)</p>
@@ -444,6 +445,27 @@
 		gap: 8px;
 		font-size: 14px;
 		color: var(--c-sub);
+		cursor: pointer;
+	}
+	/* Mandat OPCO : case à cocher mise en avant (encart coloré, texte renforcé). */
+	.cs-check--strong {
+		align-items: flex-start;
+		gap: 12px;
+		margin: 4px 0;
+		padding: 14px 16px;
+		border: 1.5px solid var(--c-blue);
+		border-radius: 10px;
+		background: var(--c-blue-soft);
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--c-text);
+		line-height: 1.4;
+	}
+	.cs-check--strong input {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+		accent-color: var(--c-blue);
 		cursor: pointer;
 	}
 	.cs-form__checks {
