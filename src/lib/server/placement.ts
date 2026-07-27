@@ -64,11 +64,19 @@ export interface EcoleContext {
 	name: string | null;
 	/** Lien vers le PDF du règlement intérieur hébergé par l'app. */
 	reglementLink: string | null;
-	/** Modèle de mail propre à l'école ; null = modèle par défaut. */
+	/** Modèle de mail « fiche étudiant » propre à l'école ; null = modèle par défaut. */
 	mailTemplate: string | null;
+	/** Modèle de mail « fiche entreprise » ; null = modèle par défaut. */
+	mailTemplateEntreprise: string | null;
 }
 
-const EMPTY_ECOLE: EcoleContext = { id: null, name: null, reglementLink: null, mailTemplate: null };
+const EMPTY_ECOLE: EcoleContext = {
+	id: null,
+	name: null,
+	reglementLink: null,
+	mailTemplate: null,
+	mailTemplateEntreprise: null
+};
 
 function reglementLink(id: number | null, path: string | null): string | null {
 	if (path && id != null) return `${appUrl()}/files/ecole/${id}/reglement`;
@@ -89,10 +97,12 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 			fName: sf.name,
 			fPath: sf.reglementPath,
 			fTpl: sf.mailTemplate,
+			fTplEnt: sf.mailTemplateEntreprise,
 			uId: su.id,
 			uName: su.name,
 			uPath: su.reglementPath,
-			uTpl: su.mailTemplate
+			uTpl: su.mailTemplate,
+			uTplEnt: su.mailTemplateEntreprise
 		})
 		.from(candidat)
 		.innerJoin(user, eq(user.id, candidat.userId))
@@ -108,7 +118,8 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 			id: row.fId,
 			name: row.fName,
 			reglementLink: reglementLink(row.fId, row.fPath),
-			mailTemplate: row.fTpl
+			mailTemplate: row.fTpl,
+			mailTemplateEntreprise: row.fTplEnt
 		};
 	}
 	if (row.uId != null) {
@@ -116,7 +127,8 @@ export async function ecoleForCandidat(candidatId: number): Promise<EcoleContext
 			id: row.uId,
 			name: row.uName,
 			reglementLink: reglementLink(row.uId, row.uPath),
-			mailTemplate: row.uTpl
+			mailTemplate: row.uTpl,
+			mailTemplateEntreprise: row.uTplEnt
 		};
 	}
 	return EMPTY_ECOLE;
@@ -205,8 +217,55 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 		<p>— L'équipe pédagogique</p>`;
 }
 
-export function companyLinkEmail(entreprise: string, url: string, relance = false): string {
-	const intro = relance
+export interface CompanyMailContext {
+	url: string;
+	entreprise?: string | null;
+	/** Contact entreprise destinataire du mail (saisi à la passation). */
+	contactPrenom?: string | null;
+	contactNom?: string | null;
+	/** Étudiant concerné par le contrat. */
+	prenom?: string | null;
+	nom?: string | null;
+	ecole?: EcoleContext;
+	formation?: string | null;
+	cre?: string | null;
+	dateRentree?: string | null;
+	relance?: boolean;
+}
+
+/**
+ * Mail d'envoi de la fiche entreprise. Comme pour la fiche étudiant, le modèle
+ * de l'école fait foi s'il est défini ; sinon on retombe sur le modèle par
+ * défaut de l'application.
+ */
+export function companyLinkEmail(ctx: CompanyMailContext): string {
+	const ecole = ctx.ecole ?? EMPTY_ECOLE;
+	const entreprise = ctx.entreprise ?? '';
+	const rappel = ctx.relance
+		? `<p><strong>Rappel :</strong> nous n'avons pas encore reçu votre fiche de renseignements.</p>`
+		: '';
+
+	if (ecole.mailTemplateEntreprise) {
+		const cre = splitFullName(ctx.cre);
+		return (
+			rappel +
+			renderMailBody(ecole.mailTemplateEntreprise, {
+				contact_prenom: ctx.contactPrenom,
+				contact_nom: ctx.contactNom,
+				prenom: ctx.prenom,
+				nom: ctx.nom,
+				entreprise,
+				ecole: ecole.name,
+				formation: ctx.formation,
+				prenom_cre: cre.prenom,
+				nom_cre: cre.nom,
+				date_rentree: formatDateFr(ctx.dateRentree),
+				lien: ctx.url
+			})
+		);
+	}
+
+	const intro = ctx.relance
 		? `<p>Sauf erreur de notre part, la fiche de renseignements${
 				entreprise ? ` concernant ${entreprise}` : ''
 			} ne nous est pas encore parvenue. Merci de la compléter via le lien
@@ -218,10 +277,10 @@ export function companyLinkEmail(entreprise: string, url: string, relance = fals
 	return `
 		<p>Bonjour,</p>
 		${intro}
-		<p><a href="${url}">${url}</a></p>
+		<p><a href="${ctx.url}">${ctx.url}</a></p>
 		<p>En retour, nous vous ferons parvenir la convention de formation et le CERFA.</p>
 		<p>Ce lien est valable 7 jours.</p>
-		<p>— Cloud Campus</p>`;
+		<p>— ${ecole.name ?? 'Cloud Campus'}</p>`;
 }
 
 /** Objet du mail selon l'audience, préfixé « Rappel » pour une relance. */
@@ -254,6 +313,8 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 		.select({
 			candidatId: placement.candidatId,
 			contactEmail: placement.contactEmail,
+			contactPrenom: placement.contactPrenom,
+			contactNom: placement.contactNom,
 			entreprise: placement.entreprise,
 			fname: candidat.fname,
 			lname: candidat.lname,
@@ -308,7 +369,18 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 		await sendMail({
 			to: p.contactEmail,
 			subject: linkSubject('entreprise'),
-			html: companyLinkEmail(p.entreprise ?? '', url)
+			html: companyLinkEmail({
+				url,
+				entreprise: p.entreprise,
+				contactPrenom: p.contactPrenom,
+				contactNom: p.contactNom,
+				prenom: p.fname,
+				nom: p.lname,
+				ecole: await ecoleForCandidat(p.candidatId),
+				formation: p.formationName,
+				cre: p.creName,
+				dateRentree: p.dateRentree
+			})
 		});
 		notified.entreprise = p.contactEmail;
 	}

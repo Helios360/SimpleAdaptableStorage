@@ -134,6 +134,13 @@
       "when": 1785164136706,
       "tag": "0018_petite_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785165552824,
+      "tag": "0019_lucky_lilandra",
+      "breakpoints": true
     }
   ]
 }

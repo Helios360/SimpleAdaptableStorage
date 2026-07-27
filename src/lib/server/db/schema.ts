@@ -181,10 +181,11 @@ export const school = pgTable('school', {
 	// Règlement intérieur de l'école, déposé en PDF depuis Paramètres et servi par
 	// /files/ecole/[id]/reglement. Son lien part à l'étudiant lors de la passation.
 	reglementPath: text('reglement_path'),
-	// Modèle du mail d'envoi de la fiche étudiant, propre à l'école. Les variables
-	// {{prenom}}, {{lien}}… sont substituées à l'envoi (voir src/lib/mailTemplate.ts).
-	// Vide = modèle par défaut de l'application.
+	// Modèles de mail propres à l'école, un par audience (fiche étudiant / fiche
+	// entreprise). Les variables {{prenom}}, {{lien}}… sont substituées à l'envoi
+	// (voir src/lib/mailTemplate.ts). Vide = modèle par défaut de l'application.
 	mailTemplate: text('mail_template'),
+	mailTemplateEntreprise: text('mail_template_entreprise'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 

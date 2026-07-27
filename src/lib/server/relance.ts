@@ -58,6 +58,8 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 			candidatId: placement.candidatId,
 			entreprise: placement.entreprise,
 			contactEmail: placement.contactEmail,
+			contactPrenom: placement.contactPrenom,
+			contactNom: placement.contactNom,
 			fname: candidat.fname,
 			lname: candidat.lname,
 			studentEmail: user.email,
@@ -107,7 +109,19 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 						referentiel: !!r.referentielPath,
 						relance: true
 					})
-				: companyLinkEmail(r.entreprise ?? '', url, true);
+				: companyLinkEmail({
+						url,
+						entreprise: r.entreprise,
+						contactPrenom: r.contactPrenom,
+						contactNom: r.contactNom,
+						prenom: r.fname,
+						nom: r.lname,
+						ecole: await ecoleForCandidat(r.candidatId),
+						formation: r.formationName,
+						cre: r.creName,
+						dateRentree: r.dateRentree,
+						relance: true
+					});
 
 		try {
 			await sendMail({ to, subject: linkSubject(audience, true), html });

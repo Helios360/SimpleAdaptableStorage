@@ -196,7 +196,11 @@ async function deletePromo({ request, locals }: RequestEvent) {
 async function createSchool({ request, locals }: RequestEvent) {
 	requireRole(locals.user, 'cre');
 	const form = await request.formData();
-	const v = validateSchool(form.get('name'), form.get('mailTemplate'));
+	const v = validateSchool(
+		form.get('name'),
+		form.get('mailTemplate'),
+		form.get('mailTemplateEntreprise')
+	);
 	if (!v.ok) return fail(400, { error: v.error });
 	let id: number;
 	try {
@@ -205,7 +209,8 @@ async function createSchool({ request, locals }: RequestEvent) {
 			.values({
 				name: v.value.name,
 				type: schoolType(v.value.name),
-				mailTemplate: v.value.mailTemplate
+				mailTemplate: v.value.mailTemplate,
+				mailTemplateEntreprise: v.value.mailTemplateEntreprise
 			})
 			.returning({ id: school.id });
 		id = row.id;
@@ -224,7 +229,11 @@ async function updateSchool({ request, locals }: RequestEvent) {
 	const form = await request.formData();
 	const id = Number(form.get('id'));
 	if (!Number.isInteger(id)) return fail(400, { error: 'École invalide.' });
-	const v = validateSchool(form.get('name'), form.get('mailTemplate'));
+	const v = validateSchool(
+		form.get('name'),
+		form.get('mailTemplate'),
+		form.get('mailTemplateEntreprise')
+	);
 	if (!v.ok) return fail(400, { error: v.error });
 	const [prev] = await db
 		.select({ reglementPath: school.reglementPath })
@@ -241,6 +250,7 @@ async function updateSchool({ request, locals }: RequestEvent) {
 				name: v.value.name,
 				type: schoolType(v.value.name),
 				mailTemplate: v.value.mailTemplate,
+				mailTemplateEntreprise: v.value.mailTemplateEntreprise,
 				reglementPath: doc.path
 			})
 			.where(eq(school.id, id));

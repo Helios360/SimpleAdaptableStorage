@@ -1,0 +1,1 @@
+ALTER TABLE "school" ADD COLUMN "mail_template_entreprise" text;

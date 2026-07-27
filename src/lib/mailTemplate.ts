@@ -5,7 +5,7 @@
  * rendre le corps du mail.
  */
 
-/** Variables acceptées dans un modèle, avec leur description (aide à la saisie). */
+/** Variables du modèle « fiche étudiant », avec leur description (aide à la saisie). */
 export const MAIL_VARIABLES: [string, string][] = [
 	['prenom', "Prénom de l'étudiant"],
 	['nom', "Nom de l'étudiant"],
@@ -21,7 +21,32 @@ export const MAIL_VARIABLES: [string, string][] = [
 	['referentiel', 'Lien vers le référentiel (plaquette) de la formation']
 ];
 
-export const MAIL_VARIABLE_KEYS: ReadonlySet<string> = new Set(MAIL_VARIABLES.map(([k]) => k));
+/**
+ * Variables du modèle « fiche entreprise ». `prenom` / `nom` désignent toujours
+ * l'étudiant (comme dans le modèle étudiant) ; le destinataire, lui, est le
+ * contact de l'entreprise, d'où `contact_prenom` / `contact_nom`.
+ */
+export const MAIL_VARIABLES_ENTREPRISE: [string, string][] = [
+	['contact_prenom', "Prénom du contact dans l'entreprise (destinataire)"],
+	['contact_nom', 'Nom du contact'],
+	['prenom', "Prénom de l'étudiant"],
+	['nom', "Nom de l'étudiant"],
+	['entreprise', "Nom de l'entreprise"],
+	['ecole', "Nom de l'école"],
+	['formation', "Formation de l'étudiant"],
+	['prenom_cre', 'Prénom du CRE qui a réalisé la passation'],
+	['nom_cre', 'Nom du CRE qui a réalisé la passation'],
+	['date_rentree', 'Date de rentrée de la promo (JJ/MM/AAAA)'],
+	['lien', 'Lien vers la fiche entreprise (obligatoire)']
+];
+
+// Un seul registre pour la substitution : une variable n'est remplacée que si
+// elle est documentée pour l'une des deux audiences. Écrire {{reglement}} dans
+// un modèle entreprise le laissera donc visible en clair dans le mail, faute de
+// valeur — signal préférable à un trou silencieux.
+export const MAIL_VARIABLE_KEYS: ReadonlySet<string> = new Set(
+	[...MAIL_VARIABLES, ...MAIL_VARIABLES_ENTREPRISE].map(([k]) => k)
+);
 
 /**
  * Découpe un nom complet en prénom + nom. Les comptes membres n'ont qu'un champ

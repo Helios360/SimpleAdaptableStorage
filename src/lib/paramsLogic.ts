@@ -94,19 +94,30 @@ export interface SchoolInput {
 	name: string;
 	/** Modèle du mail d'envoi de la fiche étudiant ; null = modèle par défaut. */
 	mailTemplate: string | null;
+	/** Modèle du mail d'envoi de la fiche entreprise ; null = modèle par défaut. */
+	mailTemplateEntreprise: string | null;
+}
+
+/** Un modèle sans lien vers le formulaire enverrait un mail inutilisable. */
+function hasLienVariable(template: string): boolean {
+	return /\{\{\s*lien\s*\}\}/.test(template);
 }
 
 export function validateSchool(
 	nameRaw: unknown,
-	mailTemplateRaw?: unknown
+	mailTemplateRaw?: unknown,
+	mailTemplateEntrepriseRaw?: unknown
 ): Validated<SchoolInput> {
 	const name = cleanStr(nameRaw);
 	if (!name) return { ok: false, error: "Le nom de l'école est requis." };
 	if (name.length > 80) return { ok: false, error: 'Le nom est trop long (80 caractères max).' };
 	const mailTemplate = cleanStr(mailTemplateRaw);
-	// Un modèle sans lien vers le formulaire enverrait un mail inutilisable.
-	if (mailTemplate && !/\{\{\s*lien\s*\}\}/.test(mailTemplate)) {
-		return { ok: false, error: 'Le modèle de mail doit contenir la variable {{lien}}.' };
+	if (mailTemplate && !hasLienVariable(mailTemplate)) {
+		return { ok: false, error: 'Le modèle de mail étudiant doit contenir la variable {{lien}}.' };
 	}
-	return { ok: true, value: { name, mailTemplate } };
+	const mailTemplateEntreprise = cleanStr(mailTemplateEntrepriseRaw);
+	if (mailTemplateEntreprise && !hasLienVariable(mailTemplateEntreprise)) {
+		return { ok: false, error: 'Le modèle de mail entreprise doit contenir la variable {{lien}}.' };
+	}
+	return { ok: true, value: { name, mailTemplate, mailTemplateEntreprise } };
 }

@@ -121,7 +121,7 @@ describe('validateSchool', () => {
 	it('accepts and trims a valid name', () => {
 		expect(validateSchool('  Cloud Campus ')).toEqual({
 			ok: true,
-			value: { name: 'Cloud Campus', mailTemplate: null }
+			value: { name: 'Cloud Campus', mailTemplate: null, mailTemplateEntreprise: null }
 		});
 	});
 	it('rejects an empty name', () => {
@@ -136,5 +136,12 @@ describe('validateSchool', () => {
 	});
 	it('rejects a mail template without the form link', () => {
 		expect(validateSchool('Skalys', 'Bonjour {{prenom}}').ok).toBe(false);
+	});
+	it('accepts an entreprise template carrying the {{lien}} variable', () => {
+		const res = validateSchool('Skalys', null, 'Bonjour {{contact_prenom}} : {{lien}}');
+		expect(res.ok && res.value.mailTemplateEntreprise).toBe('Bonjour {{contact_prenom}} : {{lien}}');
+	});
+	it('rejects an entreprise template without the form link', () => {
+		expect(validateSchool('Skalys', null, 'Bonjour {{contact_prenom}}').ok).toBe(false);
 	});
 });

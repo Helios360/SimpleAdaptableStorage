@@ -512,6 +512,7 @@ export async function listSchools() {
 			type: school.type,
 			reglementPath: school.reglementPath,
 			mailTemplate: school.mailTemplate,
+			mailTemplateEntreprise: school.mailTemplateEntreprise,
 			memberCount: sql<number>`count(${user.id})::int`
 		})
 		.from(school)

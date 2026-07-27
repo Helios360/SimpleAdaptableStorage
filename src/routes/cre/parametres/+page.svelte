@@ -10,7 +10,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { initials } from '$lib/utils';
-	import { MAIL_VARIABLES } from '$lib/mailTemplate';
+	import { MAIL_VARIABLES, MAIL_VARIABLES_ENTREPRISE } from '$lib/mailTemplate';
 	import type { PageData } from './$types';
 	import type { SubmitFunction } from '@sveltejs/kit';
 
@@ -37,11 +37,13 @@
 	let editingSchool = $state<SchoolRow | null>(null);
 	let sName = $state('');
 	let sMailTemplate = $state('');
+	let sMailTemplateEntreprise = $state('');
 
 	function openSchool(row: SchoolRow | null) {
 		editingSchool = row;
 		sName = row?.name ?? '';
 		sMailTemplate = row?.mailTemplate ?? '';
+		sMailTemplateEntreprise = row?.mailTemplateEntreprise ?? '';
 		schoolModal = true;
 	}
 
@@ -189,7 +191,9 @@
 										<a href={`/files/ecole/${s.id}/reglement`} target="_blank" rel="noopener">📎 PDF</a>
 									{:else}—{/if}
 								</td>
-								<td class="cs-tbl__muted">{s.mailTemplate ? 'Personnalisé' : 'Par défaut'}</td>
+								<td class="cs-tbl__muted">
+									étu. {s.mailTemplate ? '✓' : '—'} · ent. {s.mailTemplateEntreprise ? '✓' : '—'}
+								</td>
 								<td class="cs-tbl__muted">{s.memberCount}</td>
 								<td class="cs-tbl__actions">
 									<Button variant="subtle" size="sm" onclick={() => openSchool(s)}>Modifier</Button>
@@ -351,6 +355,21 @@
 			<span class="cs-params__hint">
 				Laissé vide, le modèle par défaut de l'application s'applique. Variables :
 				{#each MAIL_VARIABLES as [key, desc], i}<code title={desc}>&#123;&#123;{key}&#125;&#125;</code>{#if i < MAIL_VARIABLES.length - 1}, {/if}{/each}.
+			</span>
+		</div>
+		<div class="cs-field">
+			<label class="cs-params__label" for="school-mail-ent">Modèle de mail (fiche entreprise)</label>
+			<textarea
+				id="school-mail-ent"
+				name="mailTemplateEntreprise"
+				class="cs-textarea"
+				rows="8"
+				bind:value={sMailTemplateEntreprise}
+				placeholder={'Bonjour {{contact_prenom}},\n\nMerci d’accueillir {{prenom}} {{nom}} au sein de {{entreprise}}.\n\nFiche de renseignements : {{lien}}\n\n— {{prenom_cre}} {{nom_cre}}, {{ecole}}'}
+			></textarea>
+			<span class="cs-params__hint">
+				Envoyé au contact de l'entreprise. Variables :
+				{#each MAIL_VARIABLES_ENTREPRISE as [key, desc], i}<code title={desc}>&#123;&#123;{key}&#125;&#125;</code>{#if i < MAIL_VARIABLES_ENTREPRISE.length - 1}, {/if}{/each}.
 			</span>
 		</div>
 		<p class="cs-params__hint">Le type (checklist) est déduit automatiquement du nom.</p>
