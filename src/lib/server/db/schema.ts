@@ -273,6 +273,13 @@ export const candidat = pgTable(
 		// Checklist « dossier » (formulaires, Cerfa, contribution…) — map clé→coché,
 		// en JSONB. Voir src/lib/checklist.ts pour les items et le tronc conditionnel.
 		checklist: jsonb('checklist').$type<Record<string, boolean>>().notNull().default({}),
+		// Note libre sur l'étudiant, partagée par toute l'équipe CRE (une note par
+		// étudiant, éditable par n'importe quel membre : on garde l'auteur du dernier
+		// enregistrement et sa date pour savoir qui dit quoi). Jamais exposée à
+		// l'étudiant ni aux recruteurs.
+		note: text('note'),
+		noteAuthorId: text('note_author_id').references(() => user.id, { onDelete: 'set null' }),
+		noteUpdatedAt: timestamp('note_updated_at'),
 		// flags mobilité
 		permis: boolean('permis').notNull().default(false),
 		vehicule: boolean('vehicule').notNull().default(false),

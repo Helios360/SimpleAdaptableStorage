@@ -104,6 +104,36 @@ async function updateChecklist({ request, locals }: RequestEvent) {
 	return { success: true, checklist };
 }
 
+/**
+ * Note interne sur l'étudiant, partagée par toute l'équipe CRE : une seule note
+ * par dossier, le dernier auteur et sa date écrasent les précédents. Vider le
+ * champ efface la note (et son auteur), pour ne pas laisser d'attribution
+ * orpheline.
+ */
+async function saveNote({ request, locals }: RequestEvent) {
+	requireRole(locals.user, 'cre');
+	const form = await request.formData();
+	const id = Number(form.get('id'));
+	if (!Number.isFinite(id)) return fail(400, { error: 'Étudiant invalide.' });
+	const note = strOrNull(form.get('note'));
+	const noteUpdatedAt = note ? new Date() : null;
+	await db
+		.update(candidat)
+		.set({
+			note,
+			noteAuthorId: note ? locals.user.id : null,
+			noteUpdatedAt,
+			updatedAt: new Date()
+		})
+		.where(eq(candidat.id, id));
+	return {
+		success: true,
+		note,
+		noteAuthor: note ? locals.user.name : null,
+		noteUpdatedAt: noteUpdatedAt?.toISOString() ?? null
+	};
+}
+
 async function setRechercheStatut({ request, locals }: RequestEvent) {
 	requireRole(locals.user, 'cre');
 	const form = await request.formData();
@@ -361,6 +391,7 @@ async function sendReset({ request, locals }: RequestEvent) {
 export const candidatActions = {
 	setStatut,
 	updateChecklist,
+	saveNote,
 	setRechercheStatut,
 	addStudent,
 	updateCandidat,

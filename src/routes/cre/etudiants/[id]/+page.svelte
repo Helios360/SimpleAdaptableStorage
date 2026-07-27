@@ -218,6 +218,33 @@
 		pushToast('Statut OPCO mis à jour ✓', 'success');
 	}
 
+	// ───────── Note interne (partagée par toute l'équipe CRE) ─────────
+	// Une seule note par étudiant : n'importe quel CRE peut la compléter, le
+	// dossier garde l'auteur du dernier enregistrement.
+	let note = $state(data.note ?? '');
+	let savingNote = $state(false);
+	// L'attribution suit la donnée rechargée, pas une copie locale.
+	const noteAuthor = $derived(data.noteAuthor);
+	const noteUpdatedAt = $derived(data.noteUpdatedAt);
+	const noteDirty = $derived(note !== (data.note ?? ''));
+
+	async function saveNote() {
+		savingNote = true;
+		const fd = new FormData();
+		fd.set('id', String(candidat.id));
+		fd.set('note', note);
+		try {
+			const res = await fetch('?/saveNote', { method: 'POST', body: fd });
+			if (!res.ok) throw new Error();
+			await invalidateAll();
+			pushToast('Note enregistrée ✓', 'success');
+		} catch {
+			pushToast("Erreur lors de l'enregistrement de la note", 'error');
+		} finally {
+			savingNote = false;
+		}
+	}
+
 	/** Date courte « 12 mars 2026 » (les dates du suivi des liens arrivent en Date). */
 	function fmtDate(d: Date | string | null | undefined): string {
 		if (!d) return '—';
@@ -526,6 +553,36 @@
 						</li>
 					{/each}
 				</ul>
+			</Card>
+
+			<!-- Note interne : une par étudiant, lisible et modifiable par tous les CRE. -->
+			<Card padding="18px" class="cs-syn__note-card">
+				<div class="cs-syn__card-head">
+					<span class="cs-syn__card-title">🗒️ Note de suivi</span>
+					<span class="cs-syn__muted">Visible par toute l'équipe · jamais par l'étudiant</span>
+				</div>
+				<textarea
+					class="cs-note__inp"
+					rows="5"
+					placeholder="Contexte, points d'attention, échanges avec l'entreprise…"
+					bind:value={note}
+					readonly={preview}
+				></textarea>
+				<div class="cs-note__foot">
+					<span class="cs-syn__muted">
+						{#if noteAuthor}
+							Dernière modification par {noteAuthor}
+							{#if noteUpdatedAt} le {fmtDate(noteUpdatedAt)}{/if}
+						{:else}
+							Aucune note pour le moment.
+						{/if}
+					</span>
+					{#if !preview}
+						<Button size="sm" onclick={saveNote} disabled={savingNote || !noteDirty}>
+							{savingNote ? 'Enregistrement…' : 'Enregistrer'}
+						</Button>
+					{/if}
+				</div>
 			</Card>
 		</div>
 	{/if}
@@ -1488,6 +1545,40 @@
 		align-items: center;
 		gap: 8px;
 		flex-wrap: wrap;
+	}
+
+	/* ───────── Note de suivi ───────── */
+	/* La note occupe toute la largeur sous les trois mini fiches. */
+	:global(.cs-syn__note-card) {
+		grid-column: 1 / -1;
+	}
+	.cs-note__inp {
+		width: 100%;
+		padding: 10px 12px;
+		border: 1.5px solid var(--c-border);
+		border-radius: 9px;
+		background: var(--c-card);
+		color: var(--c-text);
+		font-size: 13px;
+		font-family: var(--font-body);
+		line-height: 1.6;
+		resize: vertical;
+		outline: none;
+	}
+	.cs-note__inp:focus {
+		border-color: var(--c-blue);
+	}
+	.cs-note__inp[readonly] {
+		background: var(--c-bg);
+		color: var(--c-sub);
+	}
+	.cs-note__foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		margin-top: 10px;
 	}
 
 	/* ───────── Suggestion de salaire ───────── */

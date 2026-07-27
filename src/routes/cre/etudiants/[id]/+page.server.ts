@@ -15,8 +15,12 @@ import { placementActions } from '$lib/server/placementActions';
 import { db } from '$lib/server/db';
 import { candidat as candidatTable, formToken, placement, user, school } from '$lib/server/db/schema';
 import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { sanitizeChecklist, type SchoolType } from '$lib/checklist';
 import { keepLatestPerAudience, nextRelanceAt } from '$lib/relanceLogic';
+
+// Auteur de la note : un membre CRE, distinct du compte de l'étudiant déjà joint.
+const noteAuthor = alias(user, 'note_author');
 
 /** Suivi des liens de formulaire d'un placement : reçu, relancé, prochaine relance. */
 export interface SuiviLien {
@@ -76,11 +80,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.select({
 				ficheInfos: candidatTable.ficheInfos,
 				checklist: candidatTable.checklist,
-				schoolType: school.type
+				schoolType: school.type,
+				// Note interne partagée par l'équipe CRE + auteur du dernier enregistrement.
+				note: candidatTable.note,
+				noteUpdatedAt: candidatTable.noteUpdatedAt,
+				noteAuthor: noteAuthor.name
 			})
 			.from(candidatTable)
 			.innerJoin(user, eq(candidatTable.userId, user.id))
 				.leftJoin(school, eq(user.schoolId, school.id))
+				.leftJoin(noteAuthor, eq(candidatTable.noteAuthorId, noteAuthor.id))
 			.where(eq(candidatTable.id, id))
 			.limit(1),
 		// Promos (select de la passation) et membres CRE (« Suivi par »).
@@ -110,6 +119,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Checklist « dossier » + type d'école (déduit de user.school) pour
 		// l'affichage conditionnel des items Discord / plateforme e-learning.
 		checklist: sanitizeChecklist(ficheRow[0]?.checklist),
+		// Note interne (visible et modifiable par tous les CRE, jamais par l'étudiant).
+		note: ficheRow[0]?.note ?? '',
+		noteAuthor: ficheRow[0]?.noteAuthor ?? null,
+		noteUpdatedAt: ficheRow[0]?.noteUpdatedAt ?? null,
 		schoolType: (ficheRow[0]?.schoolType as SchoolType | null) ?? 'autre',
 		// Données des selects de la fiche de passation.
 		promos,
@@ -122,6 +135,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 export const actions: Actions = {
 	setStatut: candidatActions.setStatut,
 	updateChecklist: candidatActions.updateChecklist,
+	saveNote: candidatActions.saveNote,
 	updateCandidat: candidatActions.updateCandidat,
 	adminAddCv: candidatActions.adminAddCv,
 	adminRemoveCv: candidatActions.adminRemoveCv,
