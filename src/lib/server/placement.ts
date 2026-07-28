@@ -83,6 +83,19 @@ function reglementLink(id: number | null, path: string | null): string | null {
 	return null;
 }
 
+// Pièces jointes proposées en lien dans les mails (étudiant comme entreprise) :
+// le calendrier d'alternance porté par la promo et le référentiel de la formation.
+// Pas de lien tant que le document n'a pas été déposé en Paramètres.
+function calendrierLink(promoId: number | null | undefined, present: boolean | undefined) {
+	return present && promoId != null ? `${appUrl()}/files/promo/${promoId}/calendrier` : null;
+}
+
+function referentielLink(formationId: number | null | undefined, present: boolean | undefined) {
+	return present && formationId != null
+		? `${appUrl()}/files/formation/${formationId}/referentiel`
+		: null;
+}
+
 /**
  * École d'un étudiant : celle de sa formation en priorité (c'est la formation
  * qui porte le rattachement pédagogique, cf. formation.schoolId), à défaut celle
@@ -187,14 +200,8 @@ export function studentLinkEmail(ctx: StudentMailContext): string {
 				date_rentree: formatDateFr(ctx.dateRentree),
 				lien: ctx.url,
 				reglement: ecole.reglementLink,
-				calendrier:
-					ctx.calendrier && ctx.promoId != null
-						? `${appUrl()}/files/promo/${ctx.promoId}/calendrier`
-						: null,
-				referentiel:
-					ctx.referentiel && ctx.formationId != null
-						? `${appUrl()}/files/formation/${ctx.formationId}/referentiel`
-						: null
+				calendrier: calendrierLink(ctx.promoId, ctx.calendrier),
+				referentiel: referentielLink(ctx.formationId, ctx.referentiel)
 			})
 		);
 	}
@@ -230,6 +237,14 @@ export interface CompanyMailContext {
 	formation?: string | null;
 	cre?: string | null;
 	dateRentree?: string | null;
+	/** Id de la promo, pour construire le lien vers son calendrier. */
+	promoId?: number | null;
+	/** Vrai si la promo a un calendrier déposé (sinon pas de lien à proposer). */
+	calendrier?: boolean;
+	/** Id de la formation, pour construire le lien vers son référentiel. */
+	formationId?: number | null;
+	/** Vrai si la formation a un référentiel déposé. */
+	referentiel?: boolean;
 	relance?: boolean;
 }
 
@@ -260,7 +275,9 @@ export function companyLinkEmail(ctx: CompanyMailContext): string {
 				prenom_cre: cre.prenom,
 				nom_cre: cre.nom,
 				date_rentree: formatDateFr(ctx.dateRentree),
-				lien: ctx.url
+				lien: ctx.url,
+				calendrier: calendrierLink(ctx.promoId, ctx.calendrier),
+				referentiel: referentielLink(ctx.formationId, ctx.referentiel)
 			})
 		);
 	}
@@ -379,7 +396,11 @@ export async function sendPlacementLinks(placementId: number): Promise<{
 				ecole: await ecoleForCandidat(p.candidatId),
 				formation: p.formationName,
 				cre: p.creName,
-				dateRentree: p.dateRentree
+				dateRentree: p.dateRentree,
+				promoId: p.promoId,
+				calendrier: !!p.calendrierPath,
+				formationId: p.formationId,
+				referentiel: !!p.referentielPath
 			})
 		});
 		notified.entreprise = p.contactEmail;

@@ -37,7 +37,9 @@ export const MAIL_VARIABLES_ENTREPRISE: [string, string][] = [
 	['prenom_cre', 'Prénom du CRE qui a réalisé la passation'],
 	['nom_cre', 'Nom du CRE qui a réalisé la passation'],
 	['date_rentree', 'Date de rentrée de la promo (JJ/MM/AAAA)'],
-	['lien', 'Lien vers la fiche entreprise (obligatoire)']
+	['lien', 'Lien vers la fiche entreprise (obligatoire)'],
+	['calendrier', "Lien vers le calendrier d'alternance de la promo"],
+	['referentiel', 'Lien vers le référentiel (plaquette) de la formation']
 ];
 
 // Un seul registre pour la substitution : une variable n'est remplacée que si

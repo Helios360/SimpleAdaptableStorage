@@ -6,7 +6,8 @@ import {
 	renderMailBody,
 	splitFullName,
 	formatDateFr,
-	MAIL_VARIABLE_KEYS
+	MAIL_VARIABLE_KEYS,
+	MAIL_VARIABLES_ENTREPRISE
 } from './mailTemplate';
 
 describe('renderMailTemplate', () => {
@@ -119,6 +120,25 @@ describe('variables promo', () => {
 			renderMailTemplate('{{referentiel}}', { referentiel: 'https://x.fr/files/formation/2/referentiel' })
 		).toBe(
 			'<a href="https://x.fr/files/formation/2/referentiel">https://x.fr/files/formation/2/referentiel</a>'
+		);
+	});
+});
+
+describe('variables du modèle entreprise', () => {
+	const keys = MAIL_VARIABLES_ENTREPRISE.map(([k]) => k);
+	it('documente le calendrier et le référentiel', () => {
+		expect(keys).toContain('calendrier');
+		expect(keys).toContain('referentiel');
+	});
+	it('rend les deux en liens cliquables dans un modèle entreprise', () => {
+		expect(
+			renderMailTemplate('{{calendrier}} et {{referentiel}}', {
+				calendrier: 'https://x.fr/files/promo/3/calendrier',
+				referentiel: 'https://x.fr/files/formation/2/referentiel'
+			})
+		).toBe(
+			'<a href="https://x.fr/files/promo/3/calendrier">https://x.fr/files/promo/3/calendrier</a> et ' +
+				'<a href="https://x.fr/files/formation/2/referentiel">https://x.fr/files/formation/2/referentiel</a>'
 		);
 	});
 });

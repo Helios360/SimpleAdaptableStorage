@@ -120,6 +120,10 @@ export async function runRelances(now: Date = new Date()): Promise<RelanceReport
 						formation: r.formationName,
 						cre: r.creName,
 						dateRentree: r.dateRentree,
+						promoId: r.promoId,
+						calendrier: !!r.calendrierPath,
+						formationId: r.formationId,
+						referentiel: !!r.referentielPath,
 						relance: true
 					});
 
