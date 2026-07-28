@@ -50,6 +50,7 @@ export const VALID_CONTRAT = new Set(['apprentissage', 'professionnalisation']);
 
 export const VALID_STATUT_OPCO = new Set([
 	'en_attente',
+	'urgent',
 	'en_cours',
 	'accorde',
 	'rupture',
@@ -78,6 +79,7 @@ export const OPCO_ORGANISMES: string[] = [
 
 export const OPCO_LABELS: Record<string, string> = {
 	en_attente: 'En attente',
+	urgent: 'Urgent',
 	en_cours: 'En cours',
 	accorde: 'Accordé',
 	rupture: 'Rupture',
@@ -85,6 +87,28 @@ export const OPCO_LABELS: Record<string, string> = {
 	cloture: 'Clôturé',
 	sfp: 'SFP'
 };
+
+/**
+ * Code couleur du suivi OPCO, repris tel quel dans les listes et la synthèse :
+ * blanc (en attente) → jaune (urgent) → orange (en cours) → vert (accordé),
+ * rouge pour les sorties de dispositif (rupture / annulé / clôturé), violet pour SFP.
+ * Le texte est volontairement plus foncé que le fond pour rester lisible.
+ */
+export const OPCO_COLORS: Record<string, { bg: string; fg: string; border: string }> = {
+	en_attente: { bg: '#FFFFFF', fg: '#475569', border: '#CBD5E1' },
+	urgent: { bg: '#FEF9C3', fg: '#854D0E', border: '#FACC15' },
+	en_cours: { bg: '#FFEDD5', fg: '#9A3412', border: '#FB923C' },
+	accorde: { bg: '#D1FAE5', fg: '#047857', border: '#34D399' },
+	rupture: { bg: '#FEE2E2', fg: '#B91C1C', border: '#F87171' },
+	annule: { bg: '#FEE2E2', fg: '#B91C1C', border: '#F87171' },
+	cloture: { bg: '#FEE2E2', fg: '#B91C1C', border: '#F87171' },
+	sfp: { bg: '#EDE9FE', fg: '#6D28D9', border: '#A78BFA' }
+};
+
+/** Couleurs d'un statut OPCO (fallback : « en attente »). */
+export function opcoColor(statut: string | null | undefined) {
+	return OPCO_COLORS[statut ?? ''] ?? OPCO_COLORS.en_attente;
+}
 
 /** Normalise un type de contrat vers un code valide, sinon null. */
 export function normalizeContrat(raw: unknown): string | null {

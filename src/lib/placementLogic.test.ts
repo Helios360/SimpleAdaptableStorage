@@ -9,6 +9,8 @@ import {
 	situationLabel,
 	diplomeLabel,
 	OPCO_LABELS,
+	OPCO_COLORS,
+	opcoColor,
 	SITUATIONS,
 	DIPLOMES,
 	VALID_CONTRAT,
@@ -97,6 +99,29 @@ describe('normalizeStatutOpco', () => {
 		for (const v of VALID_STATUT_OPCO) {
 			expect(OPCO_LABELS[v]).toBeTruthy();
 		}
+	});
+});
+
+describe('opcoColor', () => {
+	it('has a colour for every valid status', () => {
+		for (const v of VALID_STATUT_OPCO) {
+			expect(OPCO_COLORS[v]).toBeTruthy();
+		}
+	});
+	it('follows the agreed code (blanc → jaune → orange → vert, rouge en sortie, violet SFP)', () => {
+		expect(opcoColor('en_attente').bg).toBe('#FFFFFF');
+		expect(opcoColor('urgent').bg).toBe('#FEF9C3');
+		expect(opcoColor('en_cours').bg).toBe('#FFEDD5');
+		expect(opcoColor('accorde').bg).toBe('#D1FAE5');
+		for (const v of ['rupture', 'annule', 'cloture']) {
+			expect(opcoColor(v).bg).toBe('#FEE2E2');
+		}
+		expect(opcoColor('sfp').bg).toBe('#EDE9FE');
+	});
+	it('falls back to en_attente for unknown or missing statuses', () => {
+		expect(opcoColor('bogus')).toEqual(OPCO_COLORS.en_attente);
+		expect(opcoColor(null)).toEqual(OPCO_COLORS.en_attente);
+		expect(opcoColor(undefined)).toEqual(OPCO_COLORS.en_attente);
 	});
 });
 
