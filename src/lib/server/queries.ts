@@ -55,9 +55,12 @@ export interface CandidatRow {
 	statut: string;
 	rechercheStatut: string;
 	// Placement le plus récent (null si l'étudiant n'a jamais été placé). Sert à
-	// l'onglet « Placés » : affichage + édition du statut OPCO directement en liste.
+	// l'onglet « Placés » : affichage + édition du statut OPCO directement en liste,
+	// et filtres promo / CRE / statut OPCO.
 	placementId: number | null;
 	statutOpco: string | null;
+	promo: string | null;
+	suiviPar: string | null;
 	createdAt: string;
 	cvs: CvRef[];
 	hasCvDoc: boolean;
@@ -121,6 +124,15 @@ async function attachCvs<T extends { id: number }>(rows: T[]): Promise<Record<nu
 	return bucket;
 }
 
+/**
+ * Colonne du placement le plus récent d'un candidat (sous-requête corrélée).
+ * Partagée par la projection (BASE_COLS) et les filtres de l'onglet « Placés »,
+ * pour que l'affichage et la recherche portent bien sur le même placement.
+ */
+function lastPlacementCol(column: string) {
+	return sql`(SELECT p.${sql.raw(column)} FROM ${placement} p WHERE p.candidat_id = ${candidat.id} ORDER BY p.created_at DESC LIMIT 1)`;
+}
+
 const BASE_COLS = {
 	id: candidat.id,
 	userId: candidat.userId,
@@ -145,12 +157,10 @@ const BASE_COLS = {
 	rechercheStatut: candidat.rechercheStatut,
 	// Placement le plus récent, via sous-requêtes corrélées (un candidat peut avoir
 	// plusieurs placements ; on retient le dernier créé, cohérent avec la fiche détail).
-	placementId: sql<
-		number | null
-	>`(SELECT p.id FROM ${placement} p WHERE p.candidat_id = ${candidat.id} ORDER BY p.created_at DESC LIMIT 1)`,
-	statutOpco: sql<
-		string | null
-	>`(SELECT p.statut_opco FROM ${placement} p WHERE p.candidat_id = ${candidat.id} ORDER BY p.created_at DESC LIMIT 1)`,
+	placementId: lastPlacementCol('id') as SQL<number | null>,
+	statutOpco: lastPlacementCol('statut_opco') as SQL<string | null>,
+	promo: lastPlacementCol('promo') as SQL<string | null>,
+	suiviPar: lastPlacementCol('suivi_par') as SQL<string | null>,
 	createdAt: candidat.createdAt,
 	cvPath: candidat.cvPath,
 	idDocPath: candidat.idDocPath,
@@ -185,6 +195,8 @@ type BaseRow = {
 	rechercheStatut: string;
 	placementId: number | null;
 	statutOpco: string | null;
+	promo: string | null;
+	suiviPar: string | null;
 	createdAt: Date;
 	cvPath: string | null;
 	idDocPath: string | null;
@@ -226,6 +238,8 @@ function toRow(r: BaseRow, cvs: CvRef[]): CandidatRow {
 		rechercheStatut: r.rechercheStatut,
 		placementId: r.placementId,
 		statutOpco: r.statutOpco,
+		promo: r.promo,
+		suiviPar: r.suiviPar,
 		createdAt: r.createdAt.toISOString(),
 		cvs,
 		hasCvDoc: !!r.cvPath,
@@ -296,6 +310,10 @@ export interface SearchFilters {
 	mobile?: boolean;
 	tags?: string[];
 	skills?: string[];
+	// Filtres de l'onglet « Placés » — portent sur le placement le plus récent.
+	promoId?: number[];
+	suiviPar?: string[]; // nom du CRE qui suit le dossier
+	statutOpco?: string[];
 }
 
 export type SortKey = 'name' | 'score' | 'city' | 'statut' | 'createdAt';
@@ -366,6 +384,13 @@ export async function searchCandidats(
 			sql`${candidat.birth} > ${minBirth}::date AND ${candidat.birth} <= ${maxBirth}::date AND ${candidat.birth} <= ${todayISO}::date`
 		);
 	}
+
+	// Filtres « Placés » : sur le placement le plus récent, celui qu'affiche la ligne.
+	if (filters.promoId?.length) conds.push(inArray(lastPlacementCol('promo_id'), filters.promoId));
+	if (filters.suiviPar?.length)
+		conds.push(inArray(lastPlacementCol('suivi_par'), filters.suiviPar));
+	if (filters.statutOpco?.length)
+		conds.push(inArray(lastPlacementCol('statut_opco'), filters.statutOpco));
 
 	if (filters.permis) conds.push(eq(candidat.permis, true));
 	if (filters.vehicule) conds.push(eq(candidat.vehicule, true));

@@ -11,7 +11,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { initials, statutLabel, scoreColor, debounce } from '$lib/utils';
-	import { OPCO_LABELS } from '$lib/placementLogic';
+	import { OPCO_LABELS, opcoColor } from '$lib/placementLogic';
 	import { pushToast } from '$lib/stores/toast.svelte';
 	import { C } from '$lib/tokens';
 	import type { PageData } from './$types';
@@ -25,6 +25,10 @@
 	let selectedRecherche = $state<string[]>([]);
 	let selectedYears = $state<number[]>([]);
 	let selectedFormations = $state<number[]>([]);
+	// Filtres propres à l'onglet « Placés » (portent sur le dernier placement).
+	let selectedPromos = $state<number[]>([]);
+	let selectedCre = $state<string[]>([]);
+	let selectedOpco = $state<string[]>([]);
 	let place = $state('');
 	let radius = $state('');
 	let postal = $state('');
@@ -143,7 +147,15 @@
 		// Le filtre « Dossier » est masqué dans l'onglet « Placés » : on le vide pour
 		// qu'un filtre invisible ne restreigne pas les résultats en douce.
 		if (t === 'places') selectedStatut = [];
+		// Idem pour les filtres de placement, visibles uniquement dans « Placés ».
+		else resetPlacementFilters();
 		fetchPage(1);
+	}
+
+	function resetPlacementFilters() {
+		selectedPromos = [];
+		selectedCre = [];
+		selectedOpco = [];
 	}
 
 	let confirmTarget = $state<{ id: number; action: 'valide' | 'refuse'; name: string } | null>(
@@ -293,6 +305,10 @@
 					mobile,
 					tags: currentTags,
 					skills: currentSkills,
+					// Filtres de placement : uniquement dans l'onglet « Placés ».
+					promoId: activeTab === 'places' ? selectedPromos : [],
+					suiviPar: activeTab === 'places' ? selectedCre : [],
+					statutOpco: activeTab === 'places' ? selectedOpco : [],
 					page: p,
 					pageSize,
 					sortBy,
@@ -368,6 +384,7 @@
 		currentSkills = [];
 		tagInput = '';
 		skillInput = '';
+		resetPlacementFilters();
 		fetchPage(1);
 	}
 
@@ -507,7 +524,75 @@
 				</div>
 			</div>
 		</section>
-		
+
+		<!-- Filtres du suivi de placement : portent sur le dernier placement de
+		     l'étudiant, donc réservés à l'onglet « Placés ». -->
+		{#if activeTab === 'places'}
+			<section class="cs-etu__section">
+				<p class="cs-etu__section-title">🏢 Placement</p>
+				{#if data.promos.length}
+					<div class="cs-etu__filter-row">
+						<span class="cs-etu__filter-lab">Promo</span>
+						<div class="cs-etu__chips">
+							{#each data.promos as pr}
+								<button
+									class="cs-etu__chip"
+									class:cs-etu__chip--active={selectedPromos.includes(pr.id)}
+									title={pr.formationName ?? undefined}
+									onclick={() => {
+										selectedPromos = toggle(selectedPromos, pr.id);
+										debouncedSearch();
+									}}
+								>
+									{pr.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+				{#if data.staff.length}
+					<div class="cs-etu__filter-row">
+						<span class="cs-etu__filter-lab">CRE</span>
+						<div class="cs-etu__chips">
+							{#each data.staff as s}
+								<button
+									class="cs-etu__chip"
+									class:cs-etu__chip--active={selectedCre.includes(s.name)}
+									onclick={() => {
+										selectedCre = toggle(selectedCre, s.name);
+										debouncedSearch();
+									}}
+								>
+									{s.name}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+				<div class="cs-etu__filter-row">
+					<span class="cs-etu__filter-lab">Statut OPCO</span>
+					<div class="cs-etu__chips">
+						{#each Object.entries(OPCO_LABELS) as [value, label]}
+							{@const oc = opcoColor(value)}
+							<button
+								class="cs-etu__chip"
+								class:cs-etu__chip--active={selectedOpco.includes(value)}
+								style:border-color={oc.border}
+								style:background={selectedOpco.includes(value) ? oc.bg : undefined}
+								style:color={selectedOpco.includes(value) ? oc.fg : undefined}
+								onclick={() => {
+									selectedOpco = toggle(selectedOpco, value);
+									debouncedSearch();
+								}}
+							>
+								{label}
+							</button>
+						{/each}
+					</div>
+				</div>
+			</section>
+		{/if}
+
 		{#if activeTab !== 'places'}
 		<section class="cs-etu__section">
 			<p class="cs-etu__section-title">📋 Statuts</p>
@@ -761,6 +846,10 @@
 							<p class="cs-etu__rowtags">
 								<span>📄 {r.cvs.length} CV</span>
 								{#if r.pitch}<span>🎥 Pitch</span>{/if}
+								{#if activeTab === 'places'}
+									{#if r.promo}<span>🎓 {r.promo}</span>{/if}
+									{#if r.suiviPar}<span>🧑‍💼 {r.suiviPar}</span>{/if}
+								{/if}
 							</p>
 						</div>
 					</button>
@@ -784,9 +873,13 @@
 							{/each}
 						</select>
 						{#if activeTab === 'places' && r.placementId != null}
+							{@const oc = opcoColor(r.statutOpco)}
 							<select
 								class="cs-etu__select cs-etu__select--opco"
 								title="Statut OPCO"
+								style:background={oc.bg}
+								style:color={oc.fg}
+								style:border-color={oc.border}
 								value={r.statutOpco ?? 'en_attente'}
 								onchange={(e) =>
 									changeStatutOpco(r.id, r.placementId!, e.currentTarget.value)}

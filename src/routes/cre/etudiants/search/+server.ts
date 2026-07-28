@@ -1,5 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { searchCandidats, type SearchFilters, type SortKey } from '$lib/server/queries';
+import { VALID_STATUT_OPCO } from '$lib/placementLogic';
 
 const SORT_KEYS: SortKey[] = ['name', 'score', 'city', 'statut', 'createdAt'];
 
@@ -30,7 +31,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		vehicule: !!body.vehicule,
 		mobile: !!body.mobile,
 		tags: arr(body.tags),
-		skills: arr(body.skills)
+		skills: arr(body.skills),
+		// Filtres de l'onglet « Placés » (promo / CRE / statut OPCO).
+		promoId: numArr(body.promoId),
+		suiviPar: arr(body.suiviPar),
+		statutOpco: arr(body.statutOpco).filter((s) => VALID_STATUT_OPCO.has(s))
 	};
 
 	const page = Number(body.page) || 1;

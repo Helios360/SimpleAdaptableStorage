@@ -4,6 +4,8 @@ import {
 	listFormations,
 	listStaffFormations,
 	listCompetences,
+	listPromos,
+	listAdmins,
 	DEFAULT_TAGS,
 	DEFAULT_SKILLS
 } from '$lib/server/queries';
@@ -11,18 +13,23 @@ import { candidatActions } from '$lib/server/candidatActions';
 import { placementActions } from '$lib/server/placementActions';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const [formations, staffFormationIds, competences, initial] = await Promise.all([
+	const [formations, staffFormationIds, competences, initial, promos, staff] = await Promise.all([
 		listFormations(),
 		locals.user ? listStaffFormations(locals.user.id) : Promise.resolve([] as number[]),
 		listCompetences(),
-		searchCandidats({}, { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' })
+		searchCandidats({}, { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' }),
+		// Référentiels des filtres de l'onglet « Placés » (promo / CRE).
+		listPromos(),
+		listAdmins()
 	]);
 	return {
 		formations,
 		staffFormationIds,
 		defaultTags: DEFAULT_TAGS,
 		defaultSkills: competences.length ? competences : DEFAULT_SKILLS,
-		initial
+		initial,
+		promos,
+		staff
 	};
 };
 
