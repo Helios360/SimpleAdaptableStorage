@@ -6,7 +6,7 @@
 import { fail, type RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { placement } from '$lib/server/db/schema';
+import { candidat, placement } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/guards';
 import { sendPlacementLinks } from '$lib/server/placement';
 import {
@@ -82,6 +82,13 @@ async function createPlacement({ request, locals }: RequestEvent) {
 			commentaires: strOrNull(form.get('commentaires'))
 		})
 		.returning({ id: placement.id });
+
+	// L'étudiant vient d'être placé : son statut de recherche passe à « En
+	// entreprise », sans quoi il resterait listé dans l'onglet « Non placés ».
+	await db
+		.update(candidat)
+		.set({ rechercheStatut: 'entreprise', updatedAt: new Date() })
+		.where(eq(candidat.id, candidatId));
 
 	const notified = await sendPlacementLinks(row.id);
 
