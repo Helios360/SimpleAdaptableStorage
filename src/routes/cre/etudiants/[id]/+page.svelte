@@ -12,6 +12,7 @@
 	import {
 		OPCO_LABELS,
 		OPCO_ORGANISMES,
+		opcoColor,
 		situationLabel,
 		diplomeLabel,
 		SITUATIONS,
@@ -219,6 +220,21 @@
 		}
 		await invalidateAll();
 		pushToast('Statut OPCO mis à jour ✓', 'success');
+	}
+
+	// Date de prise en charge OPCO : éditable directement depuis la synthèse
+	// (champ date du placement, vide = pas encore de prise en charge).
+	async function changePriseEnCharge(placementId: number, value: string) {
+		const fd = new FormData();
+		fd.set('placementId', String(placementId));
+		fd.set('priseEnCharge', value);
+		const res = await fetch('?/setPriseEnCharge', { method: 'POST', body: fd });
+		if (!res.ok) {
+			pushToast('Impossible d\'enregistrer la date de prise en charge.', 'error');
+			return;
+		}
+		await invalidateAll();
+		pushToast('Date de prise en charge enregistrée ✓', 'success');
 	}
 
 	// ───────── Note interne (partagée par toute l'équipe CRE) ─────────
@@ -448,6 +464,7 @@
 							{candidat.formation}{#if candidat.formationCode} · {candidat.formationCode}{/if}
 							{#if candidat.year} · Bac+{candidat.year}{/if}
 						</p>
+						{#if lastPlacement?.promo}<p class="cs-syn__muted">🎓 Promo {lastPlacement.promo}</p>{/if}
 						{#if localisation}<p class="cs-syn__muted">📍 {localisation}</p>{/if}
 					</div>
 					<div class="cs-syn__score" style:color={scoreColor(candidat.score)}>
@@ -481,6 +498,10 @@
 					</button>
 				</div>
 				{#if lastPlacement}
+					{@const oc = opcoColor(lastPlacement.statutOpco)}
+					{@const contactNom = [lastPlacement.contactPrenom, lastPlacement.contactNom]
+						.filter(Boolean)
+						.join(' ')}
 					<div class="cs-syn__ent">
 						<p class="cs-syn__name">{lastPlacement.entreprise ?? 'Entreprise'}</p>
 						{#if lastPlacement.typeContrat}
@@ -491,11 +512,30 @@
 							</p>
 						{/if}
 					</div>
+					<!-- Contact entreprise saisi à la passation (interlocuteur du dossier). -->
+					<div class="cs-syn__contact-block">
+						<p class="cs-syn__contact-lab">Contact entreprise</p>
+						{#if contactNom}<p class="cs-syn__contact-name">{contactNom}</p>{/if}
+						<div class="cs-syn__contact">
+							{#if lastPlacement.contactEmail}
+								<a href={`mailto:${lastPlacement.contactEmail}`}>📧 {lastPlacement.contactEmail}</a>
+							{/if}
+							{#if lastPlacement.contactTel}
+								<a href={`tel:${lastPlacement.contactTel}`}>📞 {lastPlacement.contactTel}</a>
+							{/if}
+						</div>
+						{#if !contactNom && !lastPlacement.contactEmail && !lastPlacement.contactTel}
+							<p class="cs-syn__muted">Aucun contact renseigné</p>
+						{/if}
+					</div>
 					<div class="cs-syn__opco">
 						<label class="cs-syn__muted" for="syn-opco">Statut OPCO</label>
 						<select
 							id="syn-opco"
 							class="cs-syn__opco-select"
+							style:background={oc.bg}
+							style:color={oc.fg}
+							style:border-color={oc.border}
 							value={lastPlacement.statutOpco}
 							onchange={(e) => changeStatutOpco(lastPlacement.id, e.currentTarget.value)}
 						>
@@ -503,6 +543,16 @@
 								<option {value}>{label}</option>
 							{/each}
 						</select>
+					</div>
+					<div class="cs-syn__opco">
+						<label class="cs-syn__muted" for="syn-pec">Date de prise en charge</label>
+						<input
+							id="syn-pec"
+							class="cs-syn__opco-select"
+							type="date"
+							value={lastPlacement.priseEnCharge ?? ''}
+							onchange={(e) => changePriseEnCharge(lastPlacement.id, e.currentTarget.value)}
+						/>
 					</div>
 				{:else}
 					<div class="cs-syn__placeholder">
@@ -964,6 +1014,7 @@
 			{:else}
 				<div class="cs-pl__list">
 					{#each placements as p (p.id)}
+						{@const pc = opcoColor(p.statutOpco)}
 						<div class="cs-pl__item">
 							<div class="cs-pl__item-head">
 								<span class="cs-pl__ent">{p.entreprise ?? 'Entreprise'}</span>
@@ -971,6 +1022,9 @@
 									<span>Statut OPCO</span>
 									<select
 										class="cs-pl__opco-select"
+										style:background={pc.bg}
+										style:color={pc.fg}
+										style:border-color={pc.border}
 										value={p.statutOpco}
 										onchange={(e) => changeStatutOpco(p.id, e.currentTarget.value)}
 									>
@@ -1457,6 +1511,33 @@
 	}
 	.cs-syn__opco-select {
 		align-self: flex-start;
+	}
+	.cs-syn__opco + .cs-syn__opco {
+		margin-top: 12px;
+	}
+	.cs-syn__contact-block {
+		margin-bottom: 14px;
+	}
+	.cs-syn__contact-lab {
+		text-transform: uppercase;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.3px;
+		color: var(--c-muted);
+		margin-bottom: 4px;
+	}
+	.cs-syn__contact-name {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--c-text);
+		margin-bottom: 4px;
+	}
+	.cs-syn__contact a {
+		color: inherit;
+		text-decoration: none;
+	}
+	.cs-syn__contact a:hover {
+		text-decoration: underline;
 	}
 	.cs-pl__item-actions {
 		display: flex;

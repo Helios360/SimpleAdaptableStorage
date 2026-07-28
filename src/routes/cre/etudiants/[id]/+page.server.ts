@@ -146,6 +146,7 @@ export const actions: Actions = {
 	createPlacement: placementActions.createPlacement,
 	resendPlacementLinks: placementActions.resendPlacementLinks,
 	setStatutOpco: placementActions.setStatutOpco,
+	setPriseEnCharge: placementActions.setPriseEnCharge,
 	// Édition des fiches directement depuis le dossier (côté CRE, sans token).
 	updateFicheEtudiant: async ({ request, locals }) => {
 		requireRole(locals.user, 'cre');

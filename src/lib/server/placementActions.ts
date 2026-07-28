@@ -117,8 +117,27 @@ async function setStatutOpco({ request, locals }: RequestEvent) {
 	return { ok: true, statutOpco };
 }
 
+/** Met à jour la date de prise en charge OPCO d'un placement (vide = effacer). */
+async function setPriseEnCharge({ request, locals }: RequestEvent) {
+	requireRole(locals.user, 'cre');
+	const form = await request.formData();
+	const placementId = Number(form.get('placementId'));
+	if (!Number.isFinite(placementId)) return fail(400, { error: 'Placement invalide.' });
+	const priseEnCharge = strOrNull(form.get('priseEnCharge'));
+	// La colonne est de type date : on n'accepte que le format ISO du champ HTML.
+	if (priseEnCharge && !/^\d{4}-\d{2}-\d{2}$/.test(priseEnCharge)) {
+		return fail(400, { error: 'Date de prise en charge invalide.' });
+	}
+	await db
+		.update(placement)
+		.set({ priseEnCharge, updatedAt: new Date() })
+		.where(eq(placement.id, placementId));
+	return { ok: true, priseEnCharge };
+}
+
 export const placementActions = {
 	createPlacement,
 	resendPlacementLinks,
-	setStatutOpco
+	setStatutOpco,
+	setPriseEnCharge
 };
