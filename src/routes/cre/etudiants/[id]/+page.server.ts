@@ -18,6 +18,8 @@ import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { sanitizeChecklist, type SchoolType } from '$lib/checklist';
 import { keepLatestPerAudience, nextRelanceAt } from '$lib/relanceLogic';
+import { promosForSchool } from '$lib/paramsLogic';
+import { ecoleForCandidat } from '$lib/server/placement';
 
 // Auteur de la note : un membre CRE, distinct du compte de l'étudiant déjà joint.
 const noteAuthor = alias(user, 'note_author');
@@ -67,7 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = Number(params.id);
 	if (!Number.isFinite(id)) throw error(404, 'Étudiant introuvable');
 
-	const [candidat, formations, competences, placements, ficheRow, promos, staff] = await Promise.all([
+	const [candidat, formations, competences, placements, ficheRow, promos, staff, ecole] = await Promise.all([
 		getCandidatRowById(id),
 		listFormations(),
 		listCompetences(),
@@ -98,7 +100,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.select({ id: user.id, name: user.name })
 			.from(user)
 			.where(eq(user.role, 'cre'))
-			.orderBy(asc(user.name))
+			.orderBy(asc(user.name)),
+		// École de rattachement (même règle que les mails : la formation d'abord,
+		// puis le compte) — elle restreint les promos proposées à la passation.
+		ecoleForCandidat(id)
 	]);
 	if (!candidat) throw error(404, 'Étudiant introuvable');
 
@@ -124,8 +129,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		noteAuthor: ficheRow[0]?.noteAuthor ?? null,
 		noteUpdatedAt: ficheRow[0]?.noteUpdatedAt ?? null,
 		schoolType: (ficheRow[0]?.schoolType as SchoolType | null) ?? 'autre',
-		// Données des selects de la fiche de passation.
-		promos,
+		// Données des selects de la fiche de passation. Les promos sont limitées à
+		// l'école de l'étudiant : proposer celles des autres écoles n'a pas de sens.
+		promos: promosForSchool(promos, ecole.id),
+		ecoleName: ecole.name,
 		staff,
 		// « Source » = Solo ou le nom du commercial connecté.
 		currentUserName: locals.user.name

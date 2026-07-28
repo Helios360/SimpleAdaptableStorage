@@ -5,7 +5,8 @@ import {
 	parseOptionalId,
 	validateFormation,
 	validatePromo,
-	validateSchool
+	validateSchool,
+	promosForSchool
 } from './paramsLogic';
 
 describe('cleanStr', () => {
@@ -143,5 +144,23 @@ describe('validateSchool', () => {
 	});
 	it('rejects an entreprise template without the form link', () => {
 		expect(validateSchool('Skalys', null, 'Bonjour {{contact_prenom}}').ok).toBe(false);
+	});
+});
+
+describe('promosForSchool', () => {
+	const promos = [
+		{ id: 1, label: 'Cloud Campus 2025', schoolId: 7 },
+		{ id: 2, label: 'Skalys 2025', schoolId: 9 },
+		{ id: 3, label: 'Promo sans école', schoolId: null }
+	];
+	it('keeps the school promos and the unassigned ones', () => {
+		expect(promosForSchool(promos, 7).map((p) => p.id)).toEqual([1, 3]);
+	});
+	it('drops the promos of other schools', () => {
+		expect(promosForSchool(promos, 9).map((p) => p.id)).toEqual([2, 3]);
+	});
+	it('keeps everything when the school is unknown', () => {
+		expect(promosForSchool(promos, null)).toEqual(promos);
+		expect(promosForSchool(promos, undefined)).toEqual(promos);
 	});
 });

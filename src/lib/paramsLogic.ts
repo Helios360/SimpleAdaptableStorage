@@ -34,6 +34,20 @@ export function parseOptionalId(raw: unknown): number | null {
 	return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/**
+ * Promos proposables pour un étudiant d'une école donnée : celles de son école,
+ * plus celles qui ne sont rattachées à aucune école (le rattachement est
+ * optionnel — les exclure priverait la passation de ces promos). Si l'école de
+ * l'étudiant est inconnue, on ne filtre rien plutôt que de vider la liste.
+ */
+export function promosForSchool<T extends { schoolId: number | null }>(
+	promos: T[],
+	schoolId: number | null | undefined
+): T[] {
+	if (schoolId == null) return promos;
+	return promos.filter((p) => p.schoolId == null || p.schoolId === schoolId);
+}
+
 export type Validated<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export interface FormationInput {

@@ -1100,6 +1100,14 @@
 						<option value={String(pr.id)}>{pr.label}</option>
 					{/each}
 				</select>
+				{#if data.promos.length === 0}
+					<!-- Les promos sont filtrées sur l'école de l'étudiant : sans promo
+					     rattachée, la passation est bloquée tant que Paramètres n'en a pas. -->
+					<p class="cs-pass__hint">
+						Aucune promo pour {data.ecoleName ?? "l'école de l'étudiant"} — créez-la dans
+						Paramètres.
+					</p>
+				{/if}
 			</div>
 			<div class="cs-field">
 				<label class="cs-pass__lab" for="pass-source">Source<span class="cs-pass__req">*</span></label>
@@ -1815,6 +1823,11 @@
 	.cs-pass__req {
 		color: var(--c-red);
 		margin-left: 3px;
+	}
+	.cs-pass__hint {
+		margin-top: 6px;
+		font-size: 12px;
+		color: var(--c-red);
 	}
 	.cs-pass__select {
 		width: 100%;
